@@ -10,7 +10,7 @@ uniform float soft = 0.0; // 1: gentle light and a glossy shine, for avatars, li
 varying vec3 world_n;
 
 void vertex() {
-	world_n = mat3(MODEL_MATRIX) * NORMAL;
+	world_n = MODEL_NORMAL_MATRIX * NORMAL;
 }
 
 void fragment() {
@@ -23,8 +23,14 @@ void fragment() {
 	vec3 col = COLOR.rgb * tint.rgb;
 	vec3 shade = col * mix(vec3(0.5, 0.46, 0.68), vec3(0.74, 0.68, 0.84), soft);
 	vec3 lit = mix(shade, col, band);
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	float rim = pow(1.0 - facing, 3.0);
 	vec3 sun_view = normalize((VIEW_MATRIX * vec4(sun, 0.0)).xyz);
 	float shine = pow(max(dot(NORMAL, normalize(sun_view + VIEW)), 0.0), 48.0) * soft * 0.1;
-	ALBEDO = mix(lit + rim * 0.1 * band * col + vec3(shine), vec3(1.0), flash);
+	vec3 surface = lit + rim * 0.1 * band * col * (1.0 - soft) + vec3(shine);
+	// Avatars' outline: a dark edge where a round surface turns away, smooth at any distance. Vertex alpha
+	// switches it off for paint (cheeks, spots, mouths).
+	float line = soft * COLOR.a * smoothstep(0.7, 0.8, 1.0 - facing);
+	surface = mix(surface, mix(col * 0.32, vec3(0.13, 0.06, 0.3), 0.55), line);
+	ALBEDO = mix(surface, vec3(1.0), flash);
 }

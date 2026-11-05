@@ -13,10 +13,6 @@ static func top(k: MeshKit, id: String, w: float) -> void:
 	var r := Vector3(0.33 * w, 0.285, 0.265 * w)
 	var hem := -0.245
 	k.ball(at, r, c, 12, 18)
-	if style not in ["tank", "armor"]:
-		var sleeve := c2 if style == "varsity" else (c2 if style == "overalls" else c)
-		for s: float in [-1.0, 1.0]:
-			k.ball(Vector3(s * Avatar3D.ARM_X, 0.585, 0), Vector3(0.115, 0.125, 0.115), sleeve, 8, 12)
 	match style:
 		"tee":
 			k.spot(at, r, 0.0, -0.05, 0.085, c2)
@@ -82,12 +78,36 @@ static func top(k: MeshKit, id: String, w: float) -> void:
 		"armor":
 			k.patch(at, r, -0.03, 0.03, -0.26, 0.13, c2)
 			k.band(at, r, -0.08, -0.05, c2)
-			for s: float in [-1.0, 1.0]:
-				k.ball(Vector3(s * Avatar3D.ARM_X, 0.61, 0), Vector3(0.15, 0.12, 0.15), c2, 8, 12)
 		"galaxy":
 			k.spot(at, r, 0.0, -0.06, 0.13, c2)
 			for star: Vector2 in [Vector2(-0.22, -0.13), Vector2(0.22, -0.05), Vector2(-0.12, 0.06), Vector2(0.13, 0.08), Vector2(0.1, -0.2)]:
 				k.spot(at, r, star.x, star.y, 0.018, Color.WHITE)
+
+
+## The sleeve on each arm, which moves with it. Tank tops have none; armour has a shoulder plate.
+static func sleeve(k: MeshKit, id: String) -> void:
+	var def := Cosmetics.item("top", id)
+	var style: String = def.get("style", "tee")
+	var c := Color(def.get("c", "ffffff"))
+	var c2 := Color(def.get("c2", "ffffff"))
+	match style:
+		"tank":
+			pass
+		"armor":
+			k.ball(Vector3(0, -0.01, 0), Vector3(0.14, 0.115, 0.14), c2, 8, 12)
+		"varsity", "overalls":
+			k.ball(Vector3(0, -0.035, 0), Vector3(0.105, 0.125, 0.105), c2, 8, 12)
+		_:
+			k.ball(Vector3(0, -0.035, 0), Vector3(0.105, 0.125, 0.105), c, 8, 12)
+
+
+## A top on its own, with its sleeves in place: the picture on its shop card.
+static func top_preview(k: MeshKit, id: String) -> void:
+	top(k, id, 1.0)
+	for s: float in [-1.0, 1.0]:
+		k.push(Transform3D(Basis(Vector3.BACK, s * 0.42), Vector3(s * Avatar3D.ARM_X, Avatar3D.ARM_Y, 0)))
+		sleeve(k, id)
+		k.pop()
 
 
 static func pants(k: MeshKit, id: String, w: float) -> void:
@@ -154,60 +174,55 @@ static func pants(k: MeshKit, id: String, w: float) -> void:
 				k.spot(at, r, star.x, star.y, 0.016, Color.WHITE)
 
 
+## Every shoe starts from the same little bean of a foot.
 static func shoe(k: MeshKit, id: String) -> void:
 	var def := Cosmetics.item("shoes", id)
 	var c := Color(def.get("c", "ffffff"))
 	var c2 := Color(def.get("c2", "ff5a4e"))
+	var at := Vector3(0, 0.0, 0.045)
+	var r := Vector3(0.125, 0.09, 0.175)
 	match String(def.get("style", "sneaker")):
 		"sneaker":
-			k.box(Vector3(0, 0.02, 0.06), Vector3(0.3, 0.2, 0.46), c, 0.08)
-			k.box(Vector3(0, -0.07, 0.06), Vector3(0.32, 0.07, 0.48), c2, 0.02)
-			k.decal_box(Vector3(0, 0.125, 0.14), Vector3(0.16, 0.012, 0.08), c2)
+			k.ball(at, r, c, 10, 14)
+			k.band(at, r, -0.075, -0.03, c2)
 		"slipper":
-			k.box(Vector3(0, -0.08, 0.06), Vector3(0.3, 0.06, 0.48), c, 0.02)
-			k.outline = 0.02
-			k.ball(Vector3(0, 0.0, 0.08), Vector3(0.13, 0.09, 0.2), Color("e0a874"), 5, 8)
-			k.torus(Vector3(0, -0.02, 0.1), 0.13, 0.022, c2, 12, 4)
-			k.outline = 0.02
+			k.ball(Vector3(0, -0.065, 0.05), Vector3(0.135, 0.03, 0.19), c, 8, 14)
+			k.ball(Vector3(0, -0.02, 0.05), Vector3(0.1, 0.06, 0.15), Color("e0a874"), 8, 12)
+			k.torus(Vector3(0, -0.015, 0.09), 0.1, 0.018, c2, 18, 6)
 		"hitop":
-			k.box(Vector3(0, 0.0, 0.08), Vector3(0.3, 0.16, 0.46), c, 0.07)
-			k.box(Vector3(0, 0.13, -0.03), Vector3(0.28, 0.2, 0.26), c, 0.05)
-			k.box(Vector3(0, -0.08, 0.08), Vector3(0.32, 0.06, 0.48), c2, 0.02)
-			k.decal_box(Vector3(0, 0.14, 0.1), Vector3(0.14, 0.14, 0.01), c2)
+			k.ball(at, r, c, 10, 14)
+			k.ball(Vector3(0, 0.09, -0.02), Vector3(0.1, 0.095, 0.105), c, 8, 12)
+			k.band(at, r, -0.075, -0.03, c2)
 		"boot":
-			k.box(Vector3(0, -0.02, 0.08), Vector3(0.3, 0.16, 0.44), c, 0.07)
-			k.box(Vector3(0, 0.15, -0.03), Vector3(0.28, 0.3, 0.26), c, 0.05)
-			k.box(Vector3(0, -0.09, 0.08), Vector3(0.32, 0.05, 0.46), c2, 0.01)
-			k.box(Vector3(0, 0.29, -0.03), Vector3(0.3, 0.05, 0.28), c2, 0.01)
+			k.ball(at, r, c, 10, 14)
+			k.cyl(Vector3(0, 0.0, -0.02), 0.24, 0.1, 0.105, c, 14)
+			k.torus(Vector3(0, 0.24, -0.02), 0.1, 0.022, c2, 18, 6)
+			k.band(at, r, -0.08, -0.05, c2)
 		"clown":
-			k.ball(Vector3(0, -0.01, 0.2), Vector3(0.22, 0.14, 0.34), c, 6, 10)
-			k.box(Vector3(0, -0.05, -0.05), Vector3(0.26, 0.16, 0.22), c2, 0.05)
-			k.ball(Vector3(0, 0.12, 0.05), Vector3(0.07, 0.05, 0.07), c2, 3, 7)
+			k.ball(Vector3(0, 0.0, 0.14), Vector3(0.17, 0.11, 0.28), c, 10, 14)
+			k.ball(Vector3(0, -0.01, -0.06), Vector3(0.11, 0.08, 0.1), c2, 8, 12)
+			k.ball(Vector3(0, 0.11, 0.08), Vector3(0.06, 0.05, 0.06), c2, 6, 9)
 		"bunny":
-			k.ball(Vector3(0, 0.0, 0.08), Vector3(0.18, 0.13, 0.26), c, 6, 10)
-			for s: float in [-0.08, 0.08]:
-				k.ball(Vector3(s, 0.17, 0.12), Vector3(0.04, 0.14, 0.05), c, 4, 7)
-				k.outline = 0.0
-				k.ball(Vector3(s, 0.17, 0.155), Vector3(0.02, 0.1, 0.02), c2, 3, 6)
-				k.outline = 0.02
+			k.ball(at, Vector3(0.14, 0.1, 0.19), c, 10, 14)
+			for s: float in [-0.07, 0.07]:
+				k.ball(Vector3(s, 0.14, 0.03), Vector3(0.04, 0.12, 0.05), c, 6, 9)
 			k.outline = 0.0
-			k.ball(Vector3(0, 0.04, 0.32), Vector3(0.025, 0.02, 0.015), c2, 2, 6)
+			k.ball(Vector3(0, 0.03, 0.225), Vector3(0.025, 0.02, 0.012), c2, 4, 6)
 			k.outline = 0.02
 		"flipper":
-			k.box(Vector3(0, 0.0, -0.02), Vector3(0.28, 0.16, 0.3), c2, 0.05)
-			k.box(Vector3(0, -0.08, 0.3), Vector3(0.36, 0.04, 0.56), c, 0.01)
+			k.ball(Vector3(0, -0.065, 0.2), Vector3(0.16, 0.028, 0.3), c, 8, 14)
+			k.ball(at + Vector3(0, 0, -0.03), Vector3(0.12, 0.085, 0.14), c2, 10, 14)
 		"roller":
-			k.box(Vector3(0, 0.08, 0.05), Vector3(0.28, 0.2, 0.42), c, 0.07)
-			k.box(Vector3(0, -0.04, 0.05), Vector3(0.24, 0.05, 0.42), Color("3a3748"), 0.01)
-			for z: float in [-0.08, 0.2]:
-				k.ball(Vector3(0.1, -0.09, z), Vector3(0.05, 0.05, 0.05), c2, 3, 7)
-				k.ball(Vector3(-0.1, -0.09, z), Vector3(0.05, 0.05, 0.05), c2, 3, 7)
+			k.ball(Vector3(0, 0.035, 0.045), Vector3(0.125, 0.08, 0.17), c, 10, 14)
+			for z: float in [-0.07, 0.15]:
+				for s: float in [-0.08, 0.08]:
+					k.ball(Vector3(s, -0.055, z), Vector3(0.04, 0.04, 0.04), c2, 6, 9)
 		"rocket":
-			k.box(Vector3(0, 0.0, 0.08), Vector3(0.3, 0.18, 0.44), c, 0.08)
-			k.box(Vector3(0, 0.15, -0.02), Vector3(0.28, 0.2, 0.26), c, 0.05)
-			k.cyl(Vector3(0, 0.0, -0.2), 0.2, 0.09, 0.09, Color("6a6a7a"), 7)
+			k.ball(at, r, c, 10, 14)
+			k.cyl(Vector3(0, 0.0, -0.02), 0.16, 0.098, 0.1, c, 14)
+			k.ball(Vector3(0, 0.0, -0.15), Vector3(0.06, 0.06, 0.05), Color("6a6a7a"), 6, 9)
 			k.outline = 0.0
-			k.ball(Vector3(0, -0.07, -0.2), Vector3(0.07, 0.11, 0.07), c2, 3, 7)
+			k.ball(Vector3(0, -0.01, -0.21), Vector3(0.05, 0.05, 0.08), c2, 6, 9)
 			k.outline = 0.02
 
 
@@ -269,21 +284,23 @@ static func _plate(k: MeshKit, c: Color, rx := 0.47, ry := 0.45, depth := 0.34, 
 static func mask(k: MeshKit, id: String) -> void:
 	match id:
 		"shades":
-			k.box(Vector3(0, 0.05, 0.46), Vector3(0.72, 0.05, 0.05), Color("1d1a30"))
-			for s: float in [-0.19, 0.19]:
-				k.box(Vector3(s, 0.02, 0.47), Vector3(0.28, 0.17, 0.04), Color("1d1a30"), 0.03)
-				k.decal_box(Vector3(s - 0.05, 0.05, 0.492), Vector3(0.07, 0.03, 0.006), Color("7ee8ff"))
-			for s: float in [-1.0, 1.0]:
-				k.box(Vector3(s * 0.38, 0.05, 0.27), Vector3(0.03, 0.04, 0.4), Color("1d1a30"))
+			for side: float in [-0.225, 0.225]:
+				k.soft_box(Vector3(side, -0.045, 0.455), Vector3(0.14, 0.11, 0.035), Color("1d1a30"), 0.6, 8, 12)
+				k.outline = 0.0
+				k.round_patch(Vector3(side, -0.045, 0.455), Vector3(0.14, 0.11, 0.035), -0.05, 0.03, 0.04, 0.022, Color("7ee8ff"), 0.003, 12)
+				k.outline = 0.02
+			k.soft_box(Vector3(0, -0.02, 0.45), Vector3(0.08, 0.02, 0.02), Color("1d1a30"), 0.7, 6, 8)
+			for side: float in [-1.0, 1.0]:
+				k.soft_box(Vector3(side * 0.37, -0.02, 0.26), Vector3(0.018, 0.022, 0.2), Color("1d1a30"), 0.7, 6, 8)
 		"bandana":
-			k.ball(Vector3(0, -0.2, 0.17), Vector3(0.47, 0.26, 0.34), Color("e8282f"), 8, 14)
-			k.outline = 0.0
-			for spot: Vector2 in [Vector2(-0.18, -0.17), Vector2(0.18, -0.2), Vector2(0.0, -0.3), Vector2(-0.08, -0.08), Vector2(0.1, -0.06)]:
-				k.ball(Vector3(spot.x, spot.y, 0.48), Vector3(0.024, 0.024, 0.012), Color.WHITE, 2, 5)
-			k.outline = 0.02
+			var band_at := Vector3(0, -0.32, 0.14)
+			var band_r := Vector3(0.45, 0.2, 0.33)
+			k.ball(band_at, band_r, Color("e8282f"), 10, 16)
+			for spot_at: Vector2 in [Vector2(-0.18, 0.0), Vector2(0.18, -0.02), Vector2(0.0, -0.08), Vector2(-0.08, 0.1), Vector2(0.1, 0.1)]:
+				k.spot(band_at, band_r, spot_at.x, spot_at.y, 0.024, Color.WHITE)
 		"domino":
-			k.ball(Vector3(0, 0.05, 0.3), Vector3(0.42, 0.14, 0.2), Color("e8282f"), 6, 14)
-			_eyes(k, 0.05, 0.49, 0.19, 0.08, Color("fff8ea"))
+			k.ball(Vector3(0, -0.04, 0.3), Vector3(0.43, 0.15, 0.2), Color("e8282f"), 8, 14)
+			_eyes(k, -0.04, 0.49, 0.2, 0.075, Color("fff8ea"))
 		"ninja":
 			var z := _plate(k, Color("2b2448"))
 			k.ball(Vector3(0, 0.2, 0.1), Vector3(0.5, 0.32, 0.42), Color("2b2448"), 8, 14)
@@ -293,13 +310,13 @@ static func mask(k: MeshKit, id: String) -> void:
 			_eyes(k, 0.03, z - 0.02, 0.15, 0.05)
 			k.box(Vector3(0, 0.26, 0.42), Vector3(0.74, 0.07, 0.08), Color("e8282f"), 0.01)
 		"snorkel":
-			k.box(Vector3(0, 0.03, 0.44), Vector3(0.6, 0.26, 0.1), Color("24135f"), 0.04)
+			k.soft_box(Vector3(0, -0.04, 0.44), Vector3(0.31, 0.14, 0.05), Color("24135f"), 0.6, 8, 12)
 			k.outline = 0.0
-			k.box(Vector3(0, 0.03, 0.49), Vector3(0.52, 0.2, 0.02), Color("7ee8ff"))
+			k.round_patch(Vector3(0, -0.04, 0.44), Vector3(0.31, 0.14, 0.05), 0.0, 0.0, 0.255, 0.1, Color("7ee8ff"), 0.003)
 			k.outline = 0.02
-			_eyes(k, 0.03, 0.5, 0.15, 0.05)
-			k.cyl(Vector3(0.32, -0.25, 0.3), 0.85, 0.035, 0.035, Color("ffd23f"), 6)
-			k.ball(Vector3(0.32, 0.6, 0.3), Vector3(0.05, 0.05, 0.05), Color("ff5a4e"), 3, 6)
+			_eyes(k, -0.04, 0.49, 0.15, 0.05)
+			k.cyl(Vector3(0.36, -0.28, 0.28), 0.85, 0.035, 0.035, Color("ffd23f"), 8)
+			k.ball(Vector3(0.36, 0.58, 0.28), Vector3(0.05, 0.05, 0.05), Color("ff5a4e"), 6, 8)
 		"panda":
 			var z := _plate(k, Color("f8f8fb"))
 			k.outline = 0.0
@@ -377,11 +394,11 @@ static func mask(k: MeshKit, id: String) -> void:
 				k.cone(Vector3(s * 0.3, 0.32, 0.16), 0.22, 0.06, Color("e8282f"), 4)
 				k.outline = 0.02
 		"pixel":
-			k.box(Vector3(0, 0.04, 0.45), Vector3(0.74, 0.24, 0.12), Color("1d1a30"), 0.02)
+			k.soft_box(Vector3(0, -0.04, 0.45), Vector3(0.39, 0.13, 0.06), Color("1d1a30"), 0.55, 8, 12)
 			k.outline = 0.0
 			var colors := [Color("27e9ff"), Color("ff2fc0"), Color("6dff8c")]
 			for i in 6:
-				k.box(Vector3(-0.28 + i * 0.112, 0.04, 0.513), Vector3(0.09, 0.15, 0.01), colors[i % 3])
+				k.box(Vector3(-0.28 + i * 0.112, -0.04, 0.513), Vector3(0.09, 0.15, 0.01), colors[i % 3])
 			k.outline = 0.02
 		"oni":
 			var z := _plate(k, Color("d43a2a"))

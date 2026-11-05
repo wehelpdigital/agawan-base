@@ -23,6 +23,9 @@ var _flip_bevel := false
 ## enough segments that no flat sides show. `detail` lowers the segment counts on slower devices.
 var soften := false
 var detail := 1.0
+## Avatars draw their outline in the shader, so they build no outline shells: overlapping parts would
+## cross each other's lines. `outline` then only says "line" (above zero) or "paint" (zero).
+var shells := true
 var _stack: Array[Transform3D] = []
 
 
@@ -112,14 +115,15 @@ func box(center: Vector3, size: Vector3, color: Color, bevel := 0.0, low := 0.86
 	if soften and minf(size.x, minf(size.y, size.z)) > 0.035:
 		soft_box(center, size * 0.5, color, 0.62, 8, 12)
 		return
+	color = _marked(color)
 	var col := color
 	var col_low := (color * Color(low, low, low, 1.0))
 	if bevel <= 0.0:
-		if outline > 0.0:
+		if outline > 0.0 and shells:
 			_box_plain(center, size + Vector3.ONE * outline * 2.0, ink, ink, true)
 		_box_plain(center, size, col, col_low, false)
 	else:
-		if outline > 0.0:
+		if outline > 0.0 and shells:
 			_flip_bevel = true
 			_box_bevel(center, size + Vector3.ONE * outline * 2.0, bevel + outline * 0.4, ink, ink)
 			_flip_bevel = false
@@ -216,10 +220,11 @@ func _oriented_tri(a: Vector3, b: Vector3, c: Vector3, n: Vector3, shade: Callab
 func ball(center: Vector3, r: Vector3, color: Color, rings := 9, segs := 14) -> void:
 	var tiny := false
 	if soften:
-		rings = maxi(int(maxi(rings, 8) * detail), 4)
-		segs = maxi(int(maxi(segs, 12) * detail), 6)
+		rings = maxi(int(maxi(rings, 8) * detail), 6)
+		segs = maxi(int(maxi(segs, 14) * detail), 10)
 		tiny = maxf(r.x, maxf(r.y, r.z)) < 0.05  # Too small for its outline to do anything but darken it.
-	if outline > 0.0 and not tiny:
+	color = _marked(color)
+	if outline > 0.0 and not tiny and shells:
 		_ball(center, r + Vector3.ONE * outline, ink, rings, segs, true, false)
 	_ball(center, r, color, rings, segs, false, true)
 
@@ -260,7 +265,8 @@ func _ball(center: Vector3, r: Vector3, col: Color, rings: int, segs: int, flip:
 ## A soft, plush box: flat-ish faces melting into round edges. `half` is half its size on each axis;
 ## a smaller `e` is boxier, 1.0 would be a ball.
 func soft_box(center: Vector3, half: Vector3, color: Color, e := 0.42, rings := 10, segs := 16) -> void:
-	if outline > 0.0:
+	color = _marked(color)
+	if outline > 0.0 and shells:
 		_soft_box(center, half + Vector3.ONE * outline, ink, e, rings, segs, true, false)
 	_soft_box(center, half, color, e, rings, segs, false, true)
 
@@ -312,10 +318,11 @@ func cyl(at: Vector3, height: float, r0: float, r1: float, color: Color, segs :=
 			r1 = maxf(r0 * 0.34, 0.016)
 			height -= r1 * 0.5
 			var tip := at + Vector3(0, height, 0)
-			if outline > 0.0:
+			if outline > 0.0 and shells:
 				_ball(tip, Vector3.ONE * (r1 * 1.02 + outline), ink, 6, 10, true, false)
-			_ball(tip, Vector3.ONE * r1 * 1.02, color, 6, 10, false, true)
-	if outline > 0.0:
+			_ball(tip, Vector3.ONE * r1 * 1.02, _marked(color), 6, 10, false, true)
+	color = _marked(color)
+	if outline > 0.0 and shells:
 		_cyl(at - Vector3(0, outline, 0), height + outline * 2.0, r0 + outline, r1 + outline if r1 > 0.0 else outline * 0.5, ink, segs, true, true, false)
 	_cyl(at, height, r0, r1, color, segs, false, smooth, true)
 
@@ -357,7 +364,8 @@ func torus(center: Vector3, big: float, r: float, color: Color, segs := 14, side
 	if soften:
 		segs = maxi(int(maxi(segs, 20) * detail), 10)
 		sides = maxi(int(maxi(sides, 8) * detail), 5)
-	if outline > 0.0:
+	color = _marked(color)
+	if outline > 0.0 and shells:
 		_torus(center, big, r + outline, ink, segs, sides, true)
 	_torus(center, big, r, color, segs, sides, false)
 
@@ -396,8 +404,16 @@ func blade(a: Vector3, b: Vector3, c: Vector3, color: Color, sway := 0.0) -> voi
 	_tri(a, c, b, -n, -n, -n, root, tip, root, false)
 
 
+## Vertex alpha tells the avatar shader whether this shape gets an edge line.
+func _marked(color: Color) -> Color:
+	if soften:
+		color.a = 1.0 if outline > 0.0 else 0.0
+	return color
+
+
 ## A flat shape from a closed outline, counter-clockwise as seen from its front. Mouths, tongues.
 func fan(points: PackedVector3Array, color: Color, n := Vector3.BACK) -> void:
+	color.a = 0.0
 	var center := Vector3.ZERO
 	for point in points:
 		center += point
@@ -408,6 +424,7 @@ func fan(points: PackedVector3Array, color: Color, n := Vector3.BACK) -> void:
 
 ## A flat ribbon along a path, facing +Z and tapering at both ends. Brows, lashes, closed eyes.
 func ribbon(path: PackedVector3Array, half_width: float, color: Color) -> void:
+	color.a = 0.0
 	var count := path.size()
 	for i in count - 1:
 		var d := (path[i + 1] - path[i])
@@ -419,6 +436,7 @@ func ribbon(path: PackedVector3Array, half_width: float, color: Color) -> void:
 
 ## A coloured rectangle standing on the face of something, a hair proud of it (eyes, stripes, signs).
 func decal_box(center: Vector3, size: Vector3, color: Color) -> void:
+	color.a = 0.0
 	_box_plain(center, size, color, color, false)
 
 

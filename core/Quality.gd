@@ -41,7 +41,7 @@ static func _detect_handheld() -> bool:
 static func apply(tree: SceneTree) -> void:
 	var low := is_low()
 	var root := tree.root
-	root.msaa_3d = Viewport.MSAA_DISABLED if low else Viewport.MSAA_2X
-	var ratio := minf(1.0, 1.6 / maxf(UiScale.density(), 1.0)) if low else minf(1.0, 2.2 / maxf(UiScale.density(), 1.0))
+	root.msaa_3d = Viewport.MSAA_2X if low else Viewport.MSAA_4X
+	var ratio := minf(1.0, 1.8 / maxf(UiScale.density(), 1.0)) if low else minf(1.0, 2.4 / maxf(UiScale.density(), 1.0))
 	root.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	root.scaling_3d_scale = clampf(ratio, 0.5, 1.0)

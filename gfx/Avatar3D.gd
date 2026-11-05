@@ -88,7 +88,11 @@ func setup(p_look: Dictionary, p_team_color := Color("ffffff")) -> void:
 		hero = Cosmetics.HEROES[0]
 	var skin := Cosmetics.item("skin", look.get("skin", ""))
 	var skin_key := "%s|%s" % [hero["id"], look.get("skin", "")]
-	_add_part(_hips, _shared("body|" + skin_key, _build_body.bind(hero, skin)), Vector3.ZERO)
+	var dressed_top: bool = str(look.get("top", "")) != ""
+	var dressed_low: bool = str(look.get("pants", "")) != ""
+	var kid: bool = hero["kind"] == "kid"
+	var body_key := "body|%s|%s|%s" % [skin_key, kid and dressed_top, kid and dressed_low]
+	_add_part(_hips, _shared(body_key, _build_body.bind(hero, skin, kid and dressed_top, kid and dressed_low)), Vector3.ZERO)
 	_head = Node3D.new()
 	_head.position = Vector3(0, HEAD_Y, 0)
 	_head.scale = HEAD_SHAPE
@@ -122,9 +126,13 @@ func setup(p_look: Dictionary, p_team_color := Color("ffffff")) -> void:
 	_arm_r = Node3D.new()
 	_arm_r.position = Vector3(ARM_X, ARM_Y, 0)
 	_hips.add_child(_arm_r)
-	var arm := _shared("arm|" + skin_key, _build_arm.bind(hero, skin))
+	var arm := _shared("arm|%s|%s" % [skin_key, dressed_top], _build_arm.bind(hero, skin, dressed_top))
 	_add_part(_arm_l, arm, Vector3.ZERO)
 	_add_part(_arm_r, arm, Vector3.ZERO)
+	if top_id != "":
+		var sleeve := _shared("sleeve|" + top_id, AvatarParts.sleeve.bind(top_id))
+		_add_part(_arm_l, sleeve, Vector3.ZERO)
+		_add_part(_arm_r, sleeve, Vector3.ZERO)
 	var gloves_id: String = look.get("gloves", "")
 	if gloves_id != "":
 		var hand_glove := _shared("gloves|" + gloves_id, AvatarParts.glove.bind(gloves_id))
@@ -177,7 +185,8 @@ func _shared(key: String, builder: Callable) -> ArrayMesh:
 		var kit := MeshKit.new()
 		kit.outline = 0.02
 		kit.soften = true
-		kit.detail = 0.55 if Quality.is_low() else 1.0
+		kit.shells = false
+		kit.detail = 0.8 if Quality.is_low() else 1.0
 		builder.call(kit)
 		_meshes[key] = kit.to_mesh()
 	return _meshes[key]
@@ -231,19 +240,21 @@ static func _second(hero: Dictionary, skin: Dictionary, key: String) -> Color:
 
 # --- Body parts -----------------------------------------------------------------------------------
 
-func _build_body(k: MeshKit, hero: Dictionary, skin: Dictionary) -> void:
+func _build_body(k: MeshKit, hero: Dictionary, skin: Dictionary, no_top := false, no_low := false) -> void:
 	match hero["kind"]:
 		"kid":
 			var top := _main(hero, skin, "top")
 			var low := _second(hero, skin, "low")
 			var pants_r := Vector3(0.3, 0.15, 0.24)
 			var pants_at := Vector3(0, 0.28, 0)
-			k.ball(pants_at, pants_r, low, 12, 18)
+			if not no_low:
+				k.ball(pants_at, pants_r, low, 12, 18)
 			var top_r := Vector3(0.31, 0.27, 0.25)
 			var top_at := Vector3(0, 0.48, 0)
-			k.ball(top_at, top_r, top, 12, 18)
-			k.band(top_at, top_r, -0.235, -0.2, top.lightened(0.32))
-			k.spot(top_at, top_r, 0.0, -0.06, 0.075, top.lightened(0.35))
+			if not no_top:
+				k.ball(top_at, top_r, top, 12, 18)
+				k.band(top_at, top_r, -0.235, -0.2, top.lightened(0.32))
+				k.spot(top_at, top_r, 0.0, -0.06, 0.075, top.lightened(0.35))
 		"animal":
 			var fur := _main(hero, skin, "fur")
 			var belly := _second(hero, skin, "belly")
@@ -290,7 +301,7 @@ func _tail(k: MeshKit, hero: Dictionary, fur: Color) -> void:
 
 
 ## A short round arm ending in an oblong mitten of a hand. No fingers: it's cuter.
-func _build_arm(k: MeshKit, hero: Dictionary, skin: Dictionary) -> void:
+func _build_arm(k: MeshKit, hero: Dictionary, skin: Dictionary, dressed := false) -> void:
 	var arm := Color.WHITE
 	var hand := Color.WHITE
 	var sleeve := Color(0, 0, 0, 0)
@@ -299,7 +310,7 @@ func _build_arm(k: MeshKit, hero: Dictionary, skin: Dictionary) -> void:
 		"kid":
 			arm = Color(hero["skin"])
 			hand = arm
-			sleeve = _main(hero, skin, "top")
+			sleeve = _main(hero, skin, "top") if not dressed else Color(0, 0, 0, 0)
 		"animal":
 			arm = _main(hero, skin, "fur")
 			hand = _second(hero, skin, "belly").lerp(arm, 0.3)
@@ -595,10 +606,12 @@ func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, acce
 			k.torus(Vector3(0, -0.34, 0), 0.26, 0.04, accent, 10, 4)
 		"cat":
 			for s: float in [-1.0, 1.0]:
-				k.cone(Vector3(s * 0.28, 0.32, -0.03), 0.34, 0.15, fur, 4)
+				k.push(Transform3D(Basis(Vector3.BACK, s * -0.3), Vector3(s * 0.3, 0.4, -0.02)))
+				k.ball(Vector3.ZERO, Vector3(0.135, 0.19, 0.075), fur, 8, 12)
 				k.outline = 0.0
-				k.cone(Vector3(s * 0.28, 0.32, 0.03), 0.24, 0.08, Color("ffb3a8"), 4)
+				k.ball(Vector3(0, -0.02, 0.05), Vector3(0.08, 0.125, 0.04), Color("ffb3a8"), 6, 10)
 				k.outline = 0.02
+				k.pop()
 			k.outline = 0.0
 			for s: float in [-1.0, 1.0]:
 				k.box(Vector3(s * 0.34, -0.1, 0.34), Vector3(0.22, 0.015, 0.015), Color("24135f"))
@@ -611,7 +624,9 @@ func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, acce
 				k.ball(Vector3(s * 0.5, -0.02, 0), Vector3(0.14, 0.08, 0.1), fur.darkened(0.15), 3, 6)
 		"pig":
 			for s: float in [-1.0, 1.0]:
-				k.cone(Vector3(s * 0.28, 0.32, 0.05), 0.2, 0.13, fur.darkened(0.08), 4)
+				k.push(Transform3D(Basis(Vector3.BACK, s * -0.55), Vector3(s * 0.33, 0.36, 0.03)))
+				k.ball(Vector3.ZERO, Vector3(0.11, 0.13, 0.06), fur.darkened(0.06), 8, 12)
+				k.pop()
 		"monkey":
 			for s: float in [-1.0, 1.0]:
 				k.ball(Vector3(s * 0.54, 0.04, 0), Vector3(0.14, 0.18, 0.08), belly, 3, 7)
@@ -1203,7 +1218,7 @@ func accessory_mesh(slot: String, id: String) -> ArrayMesh:
 		"back":
 			return _shared("back|" + id, _build_back.bind(id, Color("ffb21f")))
 		"top":
-			return _shared("top|%s|%.2f" % [id, 1.0], AvatarParts.top.bind(id, 1.0))
+			return _shared("top_preview|" + id, AvatarParts.top_preview.bind(id))
 		"pants":
 			return _shared("pants|%s|%.2f" % [id, 1.0], AvatarParts.pants.bind(id, 1.0))
 		"shoes":
