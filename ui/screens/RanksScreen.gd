@@ -38,7 +38,7 @@ func _my_card() -> Control:
 	var badge := PanelContainer.new()
 	badge.add_theme_stylebox_override("panel", UiKit.style(league["color"], 18, 4))
 	badge.custom_minimum_size = Vector2(56, 56)
-	var icon := UiKit.icon("trophy", 40, UiKit.INK)
+	var icon := UiKit.icon("trophy", 40)
 	badge.add_child(icon)
 	row.add_child(badge)
 	var text := UiKit.vbox(2)
@@ -101,7 +101,7 @@ func _fill_leagues() -> void:
 		var dot := PanelContainer.new()
 		dot.add_theme_stylebox_override("panel", UiKit.style(league["color"] if reached else Color("6e6b92"), 12, 3))
 		dot.custom_minimum_size = Vector2(36, 36)
-		dot.add_child(UiKit.icon("trophy", 24, UiKit.INK))
+		dot.add_child(UiKit.icon("trophy", 24))
 		row.add_child(dot)
 		var text := UiKit.vbox(0)
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -111,7 +111,7 @@ func _fill_leagues() -> void:
 		var gems := int(league["reward_gems"])
 		if gems > 0:
 			if Profile.claimed_leagues.has(league["id"]):
-				row.add_child(UiKit.icon("check", 28, UiKit.MINT))
+				row.add_child(UiKit.icon("check", 28))
 			elif reached:
 				var claim := UiKit.button("+%d" % gems, "yellow", 16, "gem")
 				var id: String = league["id"]
@@ -124,7 +124,7 @@ func _fill_leagues() -> void:
 				row.add_child(claim)
 			else:
 				var reward := UiKit.hbox(3)
-				reward.add_child(UiKit.icon("gem", 20, UiKit.GEM))
+				reward.add_child(UiKit.icon("gem", 20))
 				reward.add_child(UiKit.label(str(gems), 16, UiKit.WHITE, 3, true))
 				row.add_child(reward)
 		_body.add_child(card)
@@ -181,7 +181,7 @@ func _board_row(rank: int, row: Dictionary, scope: String) -> Control:
 		sub = "[%s] · %d members" % [str(row.get("tag", "")), int(row.get("members", 0))]
 	text.add_child(UiKit.label(sub, 14, UiKit.MUTED))
 	box.add_child(text)
-	box.add_child(UiKit.icon("trophy", 22, UiKit.TROPHY))
+	box.add_child(UiKit.icon("trophy", 22))
 	box.add_child(UiKit.label(UiKit.format_number(int(row.get("trophies", 0))), 18, UiKit.WHITE, 3, true))
 	return card
 

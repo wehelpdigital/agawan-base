@@ -77,8 +77,6 @@ func set_kind(p_kind: String) -> void:
 			_label.add_theme_constant_override("outline_size", maxi(int(_font_size * 0.25), 5))
 		else:
 			_label.add_theme_constant_override("outline_size", 0)
-	if _icon:
-		_icon.modulate = text_color
 	queue_redraw()
 
 
@@ -94,11 +92,6 @@ func set_text(text: String) -> void:
 
 func get_text() -> String:
 	return _text
-
-
-func set_icon_color(color: Color) -> void:
-	if _icon:
-		_icon.modulate = color
 
 
 func _refresh_min() -> void:

@@ -237,13 +237,12 @@ static func icon_texture(icon_name: String) -> Texture2D:
 	return _icons[icon_name]
 
 
-static func icon(icon_name: String, size := 28.0, color := WHITE) -> TextureRect:
+static func icon(icon_name: String, size := 28.0) -> TextureRect:
 	var r := TextureRect.new()
 	r.texture = icon_texture(icon_name)
 	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	r.custom_minimum_size = Vector2(size, size)
-	r.modulate = color
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return r
 
@@ -269,7 +268,7 @@ static func stat_pill(icon_name: String, text: String, color: Color, height := 4
 	box.content_margin_bottom = 2
 	pill.add_theme_stylebox_override("panel", box)
 	var row := hbox(6)
-	row.add_child(icon(icon_name, height * 0.68, color))
+	row.add_child(icon(icon_name, height * 0.68))
 	var value := title(text, int(height * 0.48))
 	value.name = "Value"
 	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

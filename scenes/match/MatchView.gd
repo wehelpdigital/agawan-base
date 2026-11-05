@@ -492,26 +492,38 @@ func _update_pickups(_delta: float) -> void:
 		var node: Node3D = _pickups[uid]
 		var at: Vector2 = item["pos"]
 		node.position = Vector3(at.x, 0.55 + sin(now * 3.0 + uid) * 0.12, at.y)
-		node.get_child(1).rotation.y = now * 2.0
+		node.get_child(0).rotation.y = now * 1.6 + uid
 	_erase_missing(_pickups, seen)
 
 
 func _make_pickup(item: Dictionary) -> Node3D:
 	var node := Node3D.new()
 	add_child(node)
-	var color := Powerups.color(item["pw"])
-	var sprite := Sprite3D.new()
-	sprite.texture = load(Powerups.icon_path(item["pw"]))
-	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.pixel_size = 0.0088
-	sprite.position.y = 0.55
-	sprite.no_depth_test = true
-	sprite.render_priority = 1
-	node.add_child(sprite)
-	var ring := _flat_quad(_disc_material(color, 3.0, 0.3, 2.5), 1.9, 0.0)
+	var gem := MeshInstance3D.new()
+	gem.mesh = Crystal.mesh()
+	gem.material_override = Crystal.material()
+	gem.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	gem.position.y = 0.62
+	gem.scale = Vector3.ONE * 1.12
+	node.add_child(gem)
+	var mark := Label3D.new()
+	mark.text = "?"
+	mark.font = UiKit.font_title()
+	mark.font_size = 96
+	mark.outline_size = 26
+	mark.outline_modulate = UiKit.INK
+	mark.pixel_size = 0.0072
+	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mark.no_depth_test = true
+	mark.render_priority = 1
+	mark.position.y = 0.72
+	node.add_child(mark)
+	var ring := _flat_quad(_disc_material(Color("fff1a8"), 3.0, 0.3, 2.5), 1.9, 0.0)
 	ring.position.y = -0.5
 	node.add_child(ring)
-	fx.burst(Vector3((item["pos"] as Vector2).x, 1.0, (item["pos"] as Vector2).y), 10, 3.5, 0.45, 0.3, Cosmetics.Fx.SPARK, [color, "ffffff"], 2.0)
+	node.scale = Vector3.ONE * 0.2
+	create_tween().tween_property(node, "scale", Vector3.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	fx.burst(Vector3((item["pos"] as Vector2).x, 1.0, (item["pos"] as Vector2).y), 10, 3.5, 0.45, 0.3, Cosmetics.Fx.SPARK, Crystal.COLOURS, 2.0)
 	return node
 
 
@@ -803,9 +815,9 @@ func _event(ev: Array) -> void:
 		"blocked":
 			fx.burst(_world(x, y, 1.0), 14, 6.0, 0.4, 0.4, Cosmetics.Fx.RING, ["8fe3ff", "ffffff"])
 			if pa:
-				_avatars[a].react("shock", 0.9)
+				_avatars[a].react_any(Faces.TAGGED, 0.9)
 			if pb:
-				_avatars[b].react("happy", 0.9)
+				_avatars[b].react_any(Faces.TAGGING, 0.9)
 			Audio.sfx("clash_tie", _audible(at2))
 			if a == local_id or b == local_id:
 				shake(0.25)
@@ -814,7 +826,7 @@ func _event(ev: Array) -> void:
 		"rescue":
 			fx.burst(_world(x, y, 1.2), 22, 7.0, 0.7, 0.42, Cosmetics.Fx.STAR, ["ffd23f", "ffffff", "35d07f"])
 			if a >= 0:
-				_avatars[a].react("happy", 1.6)
+				_avatars[a].react_any(Faces.CHEERING, 1.6)
 			Audio.sfx("powerup_good")
 			if pa:
 				var mine_team := pa.team == my_team
@@ -859,13 +871,11 @@ func _event(ev: Array) -> void:
 			if mine or _audible(at2) > 0.6:
 				Audio.sfx("move_teleport", _audible(at2))
 		"pick":
-			var c := Powerups.color(String(extra))
-			fx.burst(_world(x, y, 1.0), 12, 4.0, 0.45, 0.3, Cosmetics.Fx.STAR, [c, "ffffff"], 2.0)
+			fx.burst(_world(x, y, 1.0), 16, 4.5, 0.5, 0.32, Cosmetics.Fx.STAR, Crystal.COLOURS, 2.0)
 			if a >= 0:
-				_avatars[a].react("happy", 0.7)
+				_avatars[a].react_any(Faces.GOT_CRYSTAL, Sim.SPIN_TIME)
 			if mine:
 				Audio.sfx("coins", 0.8)
-				feed.emit("Got %s" % Powerups.by_id(String(extra)).get("name", ""), c.lightened(0.35))
 		"drop":
 			Audio.sfx("piece_pickup", _audible(at2) * 0.6)
 		"use":
@@ -958,7 +968,8 @@ func _on_tag(tagger: Sim.Player, tagged: Sim.Player, at2: Vector2) -> void:
 	_float_text(_world(at2.x, at2.y, 2.2), String(burst_def["text"]), ArenaBuilder.team_color(tagger.team).lightened(0.3))
 	_avatars[tagged.id].flash()
 	_avatars[tagger.id].squash(0.3)
-	_avatars[tagger.id].react("happy", 1.6)
+	_avatars[tagger.id].react_any(Faces.TAGGING, 1.6)
+	_avatars[tagged.id].react_any(Faces.TAGGED, 1.2)
 	var near := _audible(at2)
 	Audio.sfx("kill_generic", near)
 	var i_tagged := tagger.id == local_id
@@ -1000,7 +1011,7 @@ func _on_score(team: int, who: int, at2: Vector2, reason: String) -> void:
 		fx.burst(_world(at2.x + randf_range(-2.0, 2.0), at2.y + randf_range(-2.0, 2.0), 1.5), 36, 10.0, 0.9, 0.5, Cosmetics.Fx.CONFETTI, [color, "ffffff", "ffd23f"], 8.0)
 	var mine := team == my_team
 	for p: Sim.Player in sim.players:
-		_avatars[p.id].react("happy" if p.team == team else "sad", SCORED_FACE_SECONDS)
+		_avatars[p.id].react_any(Faces.CHEERING if p.team == team else Faces.BOOING, SCORED_FACE_SECONDS)
 	Audio.sfx("flag_capture")
 	Audio.sfx("finale_cheer" if mine else "defeat", 0.7)
 	var text := "BASE CAPTURED!" if reason == "capture" else "TOTAL JAIL!"
@@ -1036,6 +1047,7 @@ func _float_text(at: Vector3, text: String, color: Color) -> void:
 func show_emote(player_id: int, text: String) -> void:
 	if player_id < 0 or player_id >= _avatars.size():
 		return
+	_avatars[player_id].react(Faces.funny(), 1.8)
 	if _emote_labels.has(player_id):
 		(_emote_labels[player_id] as Node).queue_free()
 	var label := Label3D.new()

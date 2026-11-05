@@ -131,7 +131,7 @@ func _badge(index: int, side: float) -> Control:
 	var plate := PanelContainer.new()
 	plate.add_theme_stylebox_override("panel", UiKit.style(BADGE_COLORS[i], int(side * 0.3), 3))
 	plate.custom_minimum_size = Vector2(side, side)
-	plate.add_child(UiKit.icon(BADGES[i], side * 0.68, UiKit.INK))
+	plate.add_child(UiKit.icon(BADGES[i], side * 0.68))
 	return plate
 
 
@@ -186,7 +186,7 @@ func _create_popup() -> void:
 	var cost := UiKit.hbox(4)
 	cost.alignment = BoxContainer.ALIGNMENT_CENTER
 	cost.add_child(UiKit.label("Costs", 17))
-	cost.add_child(UiKit.icon("coin", 20, UiKit.COIN))
+	cost.add_child(UiKit.icon("coin", 20))
 	cost.add_child(UiKit.label(str(CREATE_COST), 18, UiKit.WHITE, 3, true))
 	col.add_child(cost)
 	var row := UiKit.hbox(8)
@@ -281,13 +281,13 @@ func _member_row(rank: int, member: Dictionary, leader_id: int, me_id: int) -> C
 	box.add_child(number)
 	var id := int(member.get("id", 0))
 	if id == leader_id:
-		box.add_child(UiKit.icon("crown", 22, UiKit.YELLOW))
+		box.add_child(UiKit.icon("crown", 22))
 	var name_line := UiKit.label(str(member.get("name", "?")), 16, UiKit.YELLOW if id == me_id else UiKit.WHITE, 3, true)
 	name_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_line.clip_text = true
 	name_line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(name_line)
-	box.add_child(UiKit.icon("trophy", 18, UiKit.TROPHY))
+	box.add_child(UiKit.icon("trophy", 18))
 	box.add_child(UiKit.label(UiKit.format_number(int(member.get("trophies", 0))), 15, UiKit.WHITE, 3, true))
 	if me_id == leader_id and id != me_id:
 		var kick := UiKit.button("", "coral", 12, "close")

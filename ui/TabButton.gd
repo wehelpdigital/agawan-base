@@ -35,8 +35,7 @@ func _draw() -> void:
 	var label_room := float(font_size) + 4.0
 	var side := minf(size.y - label_room - 6.0, 38.0)
 	var at := Vector2((size.x - side) * 0.5, 4.0)
-	var tint := UiKit.YELLOW if _on else Color(1, 1, 1, 0.85)
-	draw_texture_rect(_icon, Rect2(at, Vector2(side, side)), false, tint)
+	draw_texture_rect(_icon, Rect2(at, Vector2(side, side)), false, Color.WHITE if _on else Color(1, 1, 1, 0.85))
 	var w := font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	var text_at := Vector2((size.x - w) * 0.5, size.y - 6.0)
 	draw_string_outline(font, text_at, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, UiKit.INK)

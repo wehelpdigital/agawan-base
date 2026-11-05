@@ -259,7 +259,7 @@ func _card(slot: String, id: String, cell: float, deal: bool) -> Control:
 		if deal:
 			coins /= 2
 			gems /= 2
-		foot.add_child(UiKit.icon("gem" if gems > 0 else "coin", 16, UiKit.GEM if gems > 0 else UiKit.COIN))
+		foot.add_child(UiKit.icon("gem" if gems > 0 else "coin", 16))
 		foot.add_child(UiKit.label(UiKit.format_number(gems if gems > 0 else coins), 14, UiKit.YELLOW if deal else UiKit.WHITE, 3, true))
 	col.add_child(foot)
 	return card
@@ -284,6 +284,8 @@ func _show_item(slot: String, id: String) -> void:
 	if slot != "" and slot != "emote":
 		_preview[slot] = id
 		_drop_clash(_preview, slot)
+		if slot == "face":
+			_preview["mask"] = ""
 	_avatar.set_look(_preview, slot)
 	if slot == "emote":
 		_avatar.show_emote(String(Cosmetics.item(slot, id).get("text", "")))
@@ -352,5 +354,8 @@ func _on_action() -> void:
 		root.toast("%s is yours!" % Cosmetics.item(slot, id)["name"], UiKit.YELLOW)
 	if slot in ["mask", "hat"] and Cosmetics.wearing_clash(str(Profile.look.get("mask", "")), str(Profile.look.get("hat", ""))):
 		Profile.equip("hat" if slot == "mask" else "mask", "")
+	if slot == "face" and str(Profile.look.get("mask", "")) != "":
+		Profile.equip("mask", "")
+		root.toast("Mask off, so your new face shows!", UiKit.YELLOW)
 	_refill()
 	_show_item(slot, id)

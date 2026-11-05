@@ -83,7 +83,9 @@ func _draw() -> void:
 		draw_circle(_to_map(_sim.base[team]), 8.0 * scale_k, color)
 		draw_arc(_to_map(_sim.jail[team]), 5.0 * scale_k + 1.0, 0.0, TAU, 14, color, 2.0, true)
 	for item: Dictionary in _sim.pickups:
-		draw_circle(_to_map(item["pos"]), 2.2 * scale_k, Powerups.color(item["pw"]))
+		var at_gem := _to_map(item["pos"])
+		var gem_r := 3.0 * scale_k
+		draw_colored_polygon(PackedVector2Array([at_gem + Vector2(0, -gem_r), at_gem + Vector2(gem_r, 0), at_gem + Vector2(0, gem_r), at_gem + Vector2(-gem_r, 0)]), Color("fff8c4"))
 	for p: Sim.Player in _sim.players:
 		if p.state != Sim.State.PLAY or _sim.is_hidden_from(p, _my_team):
 			continue

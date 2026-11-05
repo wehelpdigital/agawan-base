@@ -38,8 +38,7 @@ by `tools/copy_audio.py`.
 
 ## Icons
 
-Powerup and interface shapes from https://game-icons.net (https://github.com/game-icons/icons), CC BY 3.0, by Lorc,
-Delapouite, Skoll, Willdabeast and Guard13007, recoloured and framed by `tools/gen_icons.py`.
+The icons and power cards are original to this game, drawn by `tools/gen_icons.py`.
 
 ## Fonts
 

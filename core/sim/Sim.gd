@@ -36,6 +36,7 @@ const MATCH_TIME := 180.0
 const FIESTA_AT := 60.0  ## Seconds left when powerups start to rain faster.
 const OVERTIME := 45.0
 const WIN_POINTS := 3
+const SPIN_TIME := 1.3  ## How long a new power spins before you can use it.
 const COUNTDOWN := 3.0
 const SCORED_PAUSE := 3.2
 const MAX_POWERS := 2
@@ -93,6 +94,7 @@ class Player:
 	var captures := 0
 	var times_jailed := 0
 	var powers_used := 0
+	var spin_left := 0.0  ## The newest power, while its reel is still spinning.
 	var brain := {}  ## The bot's memory (BotBrain.gd).
 	var away := false  ## An online player whose connection dropped: a bot plays for them.
 
@@ -496,13 +498,14 @@ func _tick_player(p: Player, dt: float) -> void:
 	p.dash_cd = maxf(p.dash_cd - dt * (6.0 if has_status(p, "dashboost") else 1.0), 0.0)
 	p.pad_cd = maxf(p.pad_cd - dt, 0.0)
 	p.mash_cd = maxf(p.mash_cd - dt, 0.0)
+	p.spin_left = maxf(p.spin_left - dt, 0.0)
 	if p.state == State.JAIL:
 		_tick_jailed(p, dt)
 		return
 	if p.want_dash and p.dash_cd <= 0.0 and not is_held(p) and not is_airborne(p):
 		_start_dash(p)
 	p.want_dash = false
-	if p.want_use and not p.powers.is_empty() and not is_held(p) and not is_airborne(p):
+	if p.want_use and can_use_power(p) and not is_held(p) and not is_airborne(p):
 		_use_power(p)
 	p.want_use = false
 	_move(p, dt)
@@ -901,8 +904,9 @@ func _tick_pickups(dt: float) -> void:
 				continue
 			var reach := radius_of(p) + 0.75
 			if p.pos.distance_squared_to(item["pos"]) <= reach * reach:
-				p.powers.append(String(item["pw"]))
-				_event("pick", p.id, -1, p.pos.x, p.pos.y, item["pw"])
+				p.powers.append(Powerups.roll(rng))
+				p.spin_left = SPIN_TIME
+				_event("pick", p.id, -1, p.pos.x, p.pos.y)
 				pickups.remove_at(i)
 				break
 
@@ -927,9 +931,8 @@ func _spawn_pickup(near := Vector2.INF) -> void:
 				break
 	if at == Vector2.ZERO:
 		return
-	var pw := Powerups.roll(rng)
-	pickups.append({"uid": _next_uid(), "pw": pw, "pos": at, "born": t})
-	_event("drop", -1, -1, at.x, at.y, pw)
+	pickups.append({"uid": _next_uid(), "pos": at, "born": t})
+	_event("drop", -1, -1, at.x, at.y)
 
 
 func _pickup_near(at: Vector2) -> bool:
@@ -945,6 +948,11 @@ func _next_uid() -> int:
 
 
 # --- Using powerups -------------------------------------------------------------------------------
+
+## The first power can be used unless it's the one still spinning: a second one spins behind it.
+func can_use_power(p: Player) -> bool:
+	return not p.powers.is_empty() and (p.spin_left <= 0.0 or p.powers.size() > 1)
+
 
 func _use_power(p: Player) -> void:
 	var id: String = p.powers.pop_front()
@@ -1467,7 +1475,7 @@ func mvp() -> int:
 
 # --- Copying a match to other players ------------------------------------------------------------
 
-const P_STRIDE := 14
+const P_STRIDE := 15
 
 ## Everything a viewer (or a new host) needs. Designed to stay small: about 1 KB, 15 times a second.
 func to_snapshot() -> Dictionary:
@@ -1493,6 +1501,7 @@ func to_snapshot() -> Dictionary:
 		floats[o + 11] = p.leap_t
 		floats[o + 12] = p.leap_dur
 		floats[o + 13] = 1.0 if p.on_base else 0.0
+		floats[o + 14] = p.spin_left
 		var packed := PackedFloat32Array()
 		for name: String in p.status:
 			var index := STATUS_NAMES.find(name)
@@ -1551,6 +1560,7 @@ func apply_snapshot(snap: Dictionary) -> void:
 		p.leap_t = floats[o + 11]
 		p.leap_dur = floats[o + 12]
 		p.on_base = floats[o + 13] > 0.5
+		p.spin_left = floats[o + 14]
 		p.status.clear()
 		var packed: PackedFloat32Array = statuses[i]
 		for s in range(0, packed.size(), 2):

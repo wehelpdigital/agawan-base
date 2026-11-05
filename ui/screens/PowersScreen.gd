@@ -1,5 +1,5 @@
 extends Control
-## Every powerup in the game, by category.
+## Every power card in the game, by category.
 
 var root: UiRoot
 var args: Dictionary
@@ -22,7 +22,7 @@ func _ready() -> void:
 	back.custom_minimum_size = Vector2(56, 48)
 	back.pressed.connect(func() -> void: root.go_back())
 	head.add_child(back)
-	var heading := UiKit.title("POWERUPS (%d)" % Powerups.ALL.size(), 26 if not root.compact else 21)
+	var heading := UiKit.title("POWER CARDS (%d)" % Powerups.ALL.size(), 26 if not root.compact else 21)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(heading)
@@ -72,13 +72,17 @@ func _card(def: Dictionary) -> Control:
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row := UiKit.hbox(10)
 	card.add_child(row)
-	var pic := UiKit.image(Powerups.icon_path(def["id"]), Vector2(64, 64))
+	var pic := PowerCard.new().setup(String(def["id"]))
+	pic.custom_minimum_size = Vector2(96, 128)
 	pic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(pic)
 	var text := UiKit.vbox(0)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var head := UiKit.hbox(6)
-	head.add_child(UiKit.title(String(def["name"]), 17))
+	var title := UiKit.title(String(def["name"]), 17)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
 	text.add_child(head)
 	var tier := UiKit.label("%s %s" % [Powerups.TIER_NAMES[int(def["tier"])], Powerups.CATS[def["cat"]]["name"]], 13, (Powerups.CATS[def["cat"]]["color"] as Color).lightened(0.3))
 	text.add_child(tier)

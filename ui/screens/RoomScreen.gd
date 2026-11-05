@@ -208,7 +208,7 @@ func _team_column(team: int, seats: Array, me: int) -> Control:
 			continue
 		shown += 1
 		var row := UiKit.hbox(6)
-		row.add_child(UiKit.icon("avatar", 20, color))
+		row.add_child(UiKit.icon("avatar", 20))
 		var line := UiKit.label(str(seat["name"]), 16, UiKit.YELLOW if int(seat["id"]) == me else UiKit.WHITE, 3, true)
 		line.clip_text = true
 		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -217,7 +217,7 @@ func _team_column(team: int, seats: Array, me: int) -> Control:
 		col.add_child(row)
 	for _i in Sim.TEAM_SIZE - shown:
 		var row := UiKit.hbox(6)
-		row.add_child(UiKit.icon("robot", 20, UiKit.MUTED))
+		row.add_child(UiKit.icon("robot", 20))
 		row.add_child(UiKit.label("AI", 15, UiKit.MUTED))
 		col.add_child(row)
 	return card

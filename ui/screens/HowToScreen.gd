@@ -6,8 +6,8 @@ const CARDS: Array[Dictionary] = [
 	{"icon": "flag", "color": Color("35d07f"), "title": "The Fresher Wins", "text": "Whoever left their base LAST is fresher, and tags the other. A green arrow over an enemy means you can tag them. A red sign means they can tag you. Touch your own base to get fresh again."},
 	{"icon": "cage", "color": Color("ff4f6b"), "title": "Jail & Rescue", "text": "Tagged players go to the jail beside the enemy base. Tap to break out, or wait for a teammate: one touch of the jail frees everyone, and rescuers get a free walk home."},
 	{"icon": "crown", "color": Color("23a7ff"), "title": "Capture the Base", "text": "Stand on the enemy base to capture it. That's a point. First team to 3 wins. Jail the whole enemy team at once for a point too. Most points when time runs out wins."},
-	{"icon": "power", "color": Color("b768ff"), "title": "Grab Powerups", "text": "Powerups drop all over the map. Hold two at a time. Tap the big button to use one, or drag it to aim. Fiesta Time, the last minute, rains them down."},
-	{"icon": "dash", "color": Color("19d3e6"), "title": "Controls", "text": "Touch: left thumb runs, right thumb uses buttons.\nKeyboard: WASD or arrows, Space to dash, E to use a powerup, 1-4 for emotes.\nController: left stick, A to dash, X to use."},
+	{"icon": "power", "color": Color("b768ff"), "title": "Grab Crystals", "text": "Rainbow crystals drop all over the map. Nobody knows what's inside: grab one, and a slot machine spins up a power card. Hold two at a time. Tap a card to use it, or drag it to aim. Fiesta Time, the last minute, rains them down."},
+	{"icon": "dash", "color": Color("19d3e6"), "title": "Controls", "text": "Touch: left thumb runs, right thumb uses buttons.\nKeyboard: WASD or arrows, Space to dash, E to use a card, 1-4 for emotes.\nController: left stick, A to dash, X to use."},
 ]
 
 var root: UiRoot
@@ -66,7 +66,7 @@ func _card(def: Dictionary) -> Control:
 	plate.add_theme_stylebox_override("panel", UiKit.style(def["color"], 18, 3))
 	plate.custom_minimum_size = Vector2(64, 64)
 	plate.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	plate.add_child(UiKit.icon(def["icon"], 44, UiKit.INK))
+	plate.add_child(UiKit.icon(def["icon"], 44))
 	row.add_child(plate)
 	var text := UiKit.vbox(2)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL

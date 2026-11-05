@@ -53,22 +53,25 @@ func _bake_shop() -> void:
 	for slot: String in Cosmetics.BAKED_SLOTS:
 		for entry: Dictionary in Cosmetics.list(slot):
 			var id: String = entry["id"]
-			if id == "":
+			if id == "" and slot != "face":  # The plain face is a face too; the other empty slots are nothing.
 				continue
 			for child in holder.get_children():
 				holder.remove_child(child)
 				child.free()
 			var box := AABB()
-			if slot == "char":
+			if slot == "char" or slot == "face":
 				var look := Cosmetics.default_look()
-				look["char"] = id
 				for slot_name: String in ["mask", "top", "pants", "shoes"]:
 					look[slot_name] = ""
+				if slot == "char":
+					look["char"] = id
+				else:
+					look["face"] = id
 				avatar.visible = true
 				avatar.setup(look, Color("ffb21f"))
-				avatar.rotation.y = -0.35
+				avatar.rotation.y = -0.35 if slot == "char" else -0.15
 				avatar.animate(0.0)
-				box = AABB(Vector3(-0.8, 0.0, -0.5), Vector3(1.6, 2.0, 1.0))
+				box = AABB(Vector3(-0.8, 0.0, -0.5), Vector3(1.6, 2.0, 1.0)) if slot == "char" else AABB(Vector3(-0.7, 0.62, -0.3), Vector3(1.4, 1.1, 0.6))
 			else:
 				avatar.visible = false
 				box = _place_accessory(holder, helper, slot, id)

@@ -53,8 +53,10 @@ func _run() -> void:
 	await _shot("3_still_out_with_a_hat")
 	_check("so does changing to another kind of item", is_equal_approx(view.zoom_level(), chosen))
 	var whole: float = view._want_distance
+	var before_click := view.zoom_level()
 	await _click(out_button)
-	_check("it can go past the whole avatar, for the widest things", view._want_distance > whole)
+	print("  zoom %.2f -> %.2f, distance %.2f -> %.2f, view %s" % [before_click, view.zoom_level(), whole, view._want_distance, view.size])
+	_check("it can go past the whole avatar, for the widest things", view.zoom_level() < before_click and view._want_distance > whole)
 	var far: float = view._want_distance
 	await _click(in_button)
 	await _click(in_button)
@@ -95,6 +97,27 @@ func _run() -> void:
 	_check("trying on a helmet takes the mask off in the preview", shop._preview["mask"] == "")
 	shop._on_action()
 	_check("wearing it takes the mask off for real", Profile.look["hat"] == "astronaut" and Profile.look["mask"] == "")
+	# A mask would hide the face you're trying on, so wearing a face takes it off.
+	Profile.equip("hat", "")
+	Profile.equip("mask", "shades")
+	shop._group = "wear"
+	shop._slot = "face"
+	shop._after_tab()
+	await _wait(0.5)
+	Profile.owned[Cosmetics.key("face", "love")] = true
+	shop._on_card("face", "love")
+	await _wait(0.2)
+	_check("trying on a face takes the mask off in the preview", shop._preview["mask"] == "")
+	await _wait(0.8)
+	await _shot("5_faces")
+	shop._on_action()
+	_check("wearing a face takes the mask off for real", Profile.look["face"] == "love" and Profile.look["mask"] == "")
+	var tapped: String = view.avatar._face_for_state()
+	_send_button(view.get_global_rect().get_center() + Vector2(0, -40), true, MOUSE_BUTTON_LEFT)
+	await get_tree().process_frame
+	_send_button(view.get_global_rect().get_center() + Vector2(0, -40), false, MOUSE_BUTTON_LEFT)
+	await get_tree().process_frame
+	_check("tapping the avatar pulls a silly face", view.avatar._face_for_state() != tapped)
 	for file in DirAccess.get_files_at("user://"):
 		if file.begins_with("profile"):
 			DirAccess.remove_absolute("user://" + file)

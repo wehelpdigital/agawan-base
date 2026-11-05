@@ -128,9 +128,9 @@ func _player_row(row: Dictionary, mvp: int) -> Control:
 	var box := UiKit.hbox(6)
 	card.add_child(box)
 	if int(row["id"]) == mvp:
-		box.add_child(UiKit.icon("crown", 20, UiKit.YELLOW))
+		box.add_child(UiKit.icon("crown", 20))
 	if row.get("bot", false):
-		box.add_child(UiKit.icon("robot", 16, UiKit.MUTED))
+		box.add_child(UiKit.icon("robot", 16))
 	var name_line := UiKit.label(str(row["name"]), 15, UiKit.WHITE, 3, true)
 	name_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_line.clip_text = true

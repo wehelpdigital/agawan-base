@@ -59,6 +59,7 @@ func _ready() -> void:
 		var look := Cosmetics.default_look()
 		for slot_name: String in ["mask", "top", "pants", "shoes"]:
 			look[slot_name] = ""
+		look["face"] = ""
 		look["char"] = _heroes[i] if not _heroes.is_empty() else _hero
 		look[_slot] = String(items[0 if not _heroes.is_empty() else i]["id"]) if not items.is_empty() else ""
 		look.merge(_also, true)

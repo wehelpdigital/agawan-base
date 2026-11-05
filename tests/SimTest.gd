@@ -11,6 +11,8 @@ func _init() -> void:
 	_test_capture()
 	_test_wipeout()
 	_test_every_power()
+	_test_crystals()
+	_test_faces()
 	_test_maps()
 	_test_snapshot()
 	_test_full_matches()
@@ -132,6 +134,54 @@ func _test_jail_and_rescue() -> void:
 	for _i in 30:
 		sim.step()
 	_ok(p.state == Sim.State.PLAY and p.on_base, "jail ends at home")
+
+
+## Crystals hold nothing until they're grabbed, and a new power can't be used until its spin is over.
+func _test_crystals() -> void:
+	var sim := _new_sim()
+	var a: Sim.Player = sim.players[0]
+	_park_others(sim, [0])
+	sim.pickups.clear()
+	sim._spawn_pickup(a.pos)
+	var crystal: Dictionary = sim.pickups[0]
+	_ok(not crystal.has("pw"), "nothing on the field says what's in a crystal")
+	sim.t = float(crystal["born"]) + 1.0
+	a.pos = crystal["pos"]
+	sim.step()
+	_ok(a.powers.size() == 1, "walking into a crystal gives a power")
+	_ok(a.spin_left > Sim.SPIN_TIME - 0.1, "and it starts to spin")
+	a.want_use = true
+	sim.step()
+	_ok(a.powers.size() == 1 and a.powers_used == 0, "a spinning power can't be used")
+	var copy := _new_sim()
+	copy.apply_snapshot(sim.to_snapshot())
+	_ok(is_equal_approx(copy.players[0].spin_left, a.spin_left), "the spin goes over the network")
+	sim.pickups.clear()
+	a.powers = ["rocket_slippers", "tailwind"] as Array[String]
+	a.spin_left = Sim.SPIN_TIME
+	a.want_use = true
+	sim.step()
+	_ok(a.powers == (["tailwind"] as Array[String]), "the card before it can be, while the second one spins")
+	a.want_use = true
+	sim.step()
+	_ok(a.powers.size() == 1, "but then the second has to finish first")
+	for _i in int(Sim.SPIN_TIME / Sim.TICK) + 2:
+		sim.step()
+	a.want_use = true
+	sim.step()
+	_ok(a.powers.is_empty(), "once it stops, it can be used")
+
+
+## Everything the game asks an avatar's face to do has to exist.
+func _test_faces() -> void:
+	for entry: Dictionary in Cosmetics.FACES:
+		_ok(Faces.PARTS.has(entry["expr"]), "%s is a face" % entry["expr"])
+	for list: Array in [Faces.FUNNY, Faces.TAGGING, Faces.TAGGED, Faces.CHEERING, Faces.BOOING, Faces.GOT_CRYSTAL]:
+		for face: String in list:
+			_ok(Faces.PARTS.has(face), "%s is a face" % face)
+	for state: String in Faces.DURING:
+		for face: String in Faces.DURING[state]:
+			_ok(Faces.PARTS.has(face), "%s is a face" % face)
 
 
 func _test_capture() -> void:

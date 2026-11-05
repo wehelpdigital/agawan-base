@@ -31,9 +31,8 @@ var _feed_box: VBoxContainer
 var _status_label: Label
 var _mini: Minimap
 var _dash_btn: HudButton
-var _use_btn: HudButton
-var _next_power: TextureRect
-var _power_name: Label
+var _use_btn: PowerSlot
+var _next_slot: PowerSlot
 var _jail_panel: Control
 var _jail_time: Label
 var _jail_bar: ProgressBar
@@ -67,7 +66,7 @@ const HINTS: Array[String] = [
 	"Touch your own base to get fresh again. You're safe on it, but it pops you off after 5 seconds.",
 	"Stand on the enemy base to capture it. First team to 3 captures wins!",
 	"In jail? Tap to break out. Or a free teammate can touch the jail and spring everyone.",
-	"Grab powerups! They fill your big button. Tap to use it, or drag to aim.",
+	"Grab the crystals! Each one spins up a random power card. Tap the card to use it, or drag to aim.",
 ]
 
 
@@ -130,16 +129,12 @@ func _build() -> void:
 	_dash_btn = HudButton.new()
 	_dash_btn.setup("dash", Color("3aa6ff"), "DASH")
 	add_child(_dash_btn)
-	_use_btn = HudButton.new()
-	_use_btn.setup("power", Color("ffc21f"), "")
+	PowerSlot.prepare_deck()
+	_next_slot = PowerSlot.new()
+	_next_slot.compact = true
+	add_child(_next_slot)
+	_use_btn = PowerSlot.new()
 	add_child(_use_btn)
-	_next_power = TextureRect.new()
-	_next_power.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_next_power.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_next_power)
-	_power_name = UiKit.title("", 16, UiKit.WHITE)
-	_power_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(_power_name)
 	_build_emotes()
 	_build_jail_panel()
 	_build_hint()
@@ -335,18 +330,18 @@ func _relayout() -> void:
 	var big := clampf(short * 0.3, 104.0, 150.0)
 	var mid := big * 0.72
 	var flip := Settings.left_handed
-	var use_x := right - big - 6.0 if not flip else left + 6.0
-	var use_pos := Vector2(use_x, bottom - big - 8.0)
+	var card := Vector2(big * 0.9, big * 1.2)
+	var use_x := right - card.x - 4.0 if not flip else left + 4.0
+	var use_pos := Vector2(use_x, bottom - card.y - 2.0)
 	_use_btn.position = use_pos
-	_use_btn.size = Vector2(big, big)
-	var dash_x := use_pos.x - mid - 8.0 if not flip else use_pos.x + big + 8.0
+	_use_btn.size = card
+	var dash_x := use_pos.x - mid - 8.0 if not flip else use_pos.x + card.x + 8.0
 	_dash_btn.position = Vector2(dash_x, bottom - mid - 2.0)
 	_dash_btn.size = Vector2(mid, mid)
-	var next_size := mid * 0.52
-	_next_power.size = Vector2(next_size, next_size)
-	_next_power.position = Vector2(use_pos.x + big - next_size * 0.72 if not flip else use_pos.x - next_size * 0.28, use_pos.y - next_size * 0.6)
-	_power_name.position = Vector2(use_pos.x - 60.0, use_pos.y - 24.0)
-	_power_name.size = Vector2(big + 120.0, 0)
+	# The next card waits just above the one in your hand.
+	var next := card * 0.46
+	_next_slot.size = next
+	_next_slot.position = Vector2(use_pos.x + (card.x - next.x) * 0.5, use_pos.y - next.y - 6.0)
 	# Top-right buttons.
 	var pause: Control = get_node("Pause")
 	pause.position = Vector2(right - 54.0, top)
@@ -415,24 +410,14 @@ func _refresh_buttons(me: Sim.Player) -> void:
 	var alive := me != null and me.state == Sim.State.PLAY and sim.phase != Sim.Phase.END
 	_dash_btn.visible = alive
 	_use_btn.visible = alive
-	_power_name.visible = alive
+	_next_slot.visible = alive and me != null and me.powers.size() > 1
 	if me == null:
-		_next_power.visible = false
 		return
 	_dash_btn.set_cooldown(me.dash_cd / Sim.DASH_COOLDOWN)
+	# The newest card is the one spinning: the second if there are two, or else the first.
 	var held := me.powers
-	if held.is_empty():
-		_use_btn.set_power("")
-		_next_power.visible = false
-		_power_name.text = ""
-	else:
-		_use_btn.set_power(held[0])
-		_power_name.text = String(Powerups.by_id(held[0]).get("name", ""))
-		if held.size() > 1 and alive:
-			_next_power.visible = true
-			_next_power.texture = load(Powerups.icon_path(held[1]))
-		else:
-			_next_power.visible = false
+	_use_btn.show_state(held[0] if held.size() > 0 else "", me.spin_left if held.size() == 1 else 0.0)
+	_next_slot.show_state(held[1] if held.size() > 1 else "", me.spin_left if held.size() > 1 else 0.0)
 
 
 func _refresh_jail(me: Sim.Player) -> void:

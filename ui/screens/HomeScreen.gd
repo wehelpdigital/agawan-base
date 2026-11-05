@@ -223,13 +223,13 @@ func _daily_popup() -> void:
 		if coins > 0:
 			var amount := UiKit.hbox(3)
 			amount.alignment = BoxContainer.ALIGNMENT_CENTER
-			amount.add_child(UiKit.icon("coin", 18, UiKit.COIN if not is_today else UiKit.INK))
+			amount.add_child(UiKit.icon("coin", 18))
 			amount.add_child(UiKit.label(str(coins), 16, UiKit.INK if is_today else UiKit.WHITE, 0, true))
 			inner.add_child(amount)
 		if gems > 0:
 			var amount := UiKit.hbox(3)
 			amount.alignment = BoxContainer.ALIGNMENT_CENTER
-			amount.add_child(UiKit.icon("gem", 18, UiKit.GEM if not is_today else UiKit.INK))
+			amount.add_child(UiKit.icon("gem", 18))
 			amount.add_child(UiKit.label(str(gems), 16, UiKit.INK if is_today else UiKit.WHITE, 0, true))
 			inner.add_child(amount)
 		if done:
@@ -288,7 +288,7 @@ func _quests_popup() -> void:
 		text.add_child(bar)
 		row.add_child(text)
 		if claimed:
-			row.add_child(UiKit.icon("check", 32, UiKit.MINT))
+			row.add_child(UiKit.icon("check", 32))
 		elif progress >= goal:
 			var claim := UiKit.button("Claim", "yellow", 18)
 			claim.pressed.connect(func() -> void:
@@ -300,10 +300,10 @@ func _quests_popup() -> void:
 		else:
 			var reward := UiKit.hbox(3)
 			if int(def.get("coins", 0)) > 0:
-				reward.add_child(UiKit.icon("coin", 20, UiKit.COIN))
+				reward.add_child(UiKit.icon("coin", 20))
 				reward.add_child(UiKit.label(str(def["coins"]), 17, UiKit.WHITE, 0, true))
 			else:
-				reward.add_child(UiKit.icon("gem", 20, UiKit.GEM))
+				reward.add_child(UiKit.icon("gem", 20))
 				reward.add_child(UiKit.label(str(def["gems"]), 17, UiKit.WHITE, 0, true))
 			row.add_child(reward)
 		card.add_child(row)

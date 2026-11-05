@@ -1,7 +1,7 @@
 class_name Powerups
 extends RefCounted
-## Every powerup that can drop in a match. Sim reads `kind` and its parameters; the HUD, the codex and
-## the 3D view read the name, description, category, icon and sound. `tier` sets how often it drops
+## Every power a crystal can hold. Sim reads `kind` and its parameters; the HUD, the codex and the 3D view read
+## the name, description, category, card and sound. `tier` sets how often it comes up
 ## (1 common, 2 rare, 3 epic). `ai` tells the bots when it makes sense:
 ##   chase: an enemy you can tag is close      flee: someone who can tag you is close
 ##   crowd: several enemies are close          attack: going for the enemy base

@@ -310,7 +310,7 @@ func _closest(p: Sim.Player, list: Array[Sim.Player]) -> Sim.Player:
 
 
 func _use_powers(sim: Sim, p: Sim.Player, threat: Sim.Player, target: Sim.Player, threat_d: float, target_d: float, near: int) -> void:
-	if p.powers.is_empty() or sim.rng.randf() > lerpf(0.25, 0.8, p.skill):
+	if not sim.can_use_power(p) or sim.rng.randf() > lerpf(0.25, 0.8, p.skill):
 		return
 	var def := Powerups.by_id(p.powers[0])
 	var hint: String = def.get("ai", "any")

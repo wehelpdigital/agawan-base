@@ -16,7 +16,7 @@ func setup(slot: String, id: String) -> void:
 	_entry = Cosmetics.item(slot, id)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var path := Cosmetics.thumb_path(slot, id)
-	if slot in Cosmetics.BAKED_SLOTS and id != "" and ResourceLoader.exists(path):
+	if slot in Cosmetics.BAKED_SLOTS and (id != "" or slot == "face") and ResourceLoader.exists(path):
 		_thumb = load(path)
 	_atlas = preload("res://assets/fx/atlas.png")
 
@@ -35,11 +35,9 @@ func _draw() -> void:
 		"emote":
 			_draw_bubble(center, side)
 		"dance", "run":
-			if _id == "" and _slot == "run":
-				tint = Color.WHITE
 			var icon := UiKit.icon_texture("dance" if _slot == "dance" else "dash")
-			var s := side * 0.62
-			draw_texture_rect(icon, Rect2(center - Vector2(s, s) * 0.5, Vector2(s, s)), false, tint)
+			var s := side * 0.72
+			draw_texture_rect(icon, Rect2(center - Vector2(s, s) * 0.5, Vector2(s, s)), false)
 		"skin":
 			_draw_swatch(center, side)
 		"frame":

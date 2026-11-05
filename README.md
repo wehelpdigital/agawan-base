@@ -15,7 +15,7 @@ online.
   or the most when time runs out, then sudden death, then whoever took the most prisoners.
 - **Ways to play:** online with whoever's around (AI takes any empty seat), Friend Rooms with a share code
   (same team or opposing, AI fills the rest), or against AI at four levels.
-- **53 powerups**, dropping at random: `core/data/Powerups.gd`. **56 maps** (14 looks, 16 layouts):
+- **53 power cards**, hidden in crystals that drop at random: `core/data/Powerups.gd`. **56 maps** (14 looks, 16 layouts):
   `core/data/Maps.gd`.
 - **The shop** is sorted by accessory: masks, head gear, tops, pants, shoes, gloves, backs, run styles, dances,
   emotes, trails, auras, tag effects, frames, titles. Avatars and colours are one category among them.
@@ -34,8 +34,8 @@ npm start                     # http://127.0.0.1:8787 (needs Node 22.13+)
 
 Then run the game with `-- --server=http://127.0.0.1:8787`, or enter the address in Settings > More.
 
-**Controls.** Touch: left thumb runs, right thumb dashes and uses powerups (tap to auto-aim, drag to aim).
-Keyboard: WASD or arrows, Space to dash, E to use a powerup, right-click to aim, 1-4 for emotes.
+**Controls.** Touch: left thumb runs, right thumb dashes and plays cards (tap to auto-aim, drag to aim).
+Keyboard: WASD or arrows, Space to dash, E to use a card, right-click to aim, 1-4 for emotes.
 Controller: left stick, A to dash, X to use, right stick to aim.
 
 ## Layout

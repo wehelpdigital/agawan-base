@@ -1,15 +1,12 @@
 class_name HudButton
 extends Control
-## A big round action button in the match: an icon or powerup, and a cooldown sweep around it.
+## A big round action button in the match: an icon, a name, and a cooldown sweep around it.
 
 var _icon: Texture2D
-var _power: Texture2D
 var _label_text := ""
 var _color := Color.WHITE
 var _cooldown := 0.0
 var _down := false
-var _power_id := ""
-var _pulse := 0.0
 
 
 func setup(icon_name: String, color: Color, label_text: String) -> void:
@@ -30,40 +27,17 @@ func set_pressed_look(on: bool) -> void:
 	queue_redraw()
 
 
-func set_power(id: String) -> void:
-	if id == _power_id:
-		return
-	_power_id = id
-	_power = load(Powerups.icon_path(id)) if id != "" else null
-	if id != "":
-		_pulse = 1.0
-		var tween := create_tween()
-		tween.tween_method(func(v: float) -> void:
-			_pulse = v
-			queue_redraw(), 1.0, 0.0, 0.3)
-	queue_redraw()
-
-
 func _draw() -> void:
 	var r := size.x * 0.5
 	var c := Vector2(r, r + (3.0 if _down else 0.0))
-	var scale_now := 1.0 + _pulse * 0.16 - (0.04 if _down else 0.0)
-	if _power != null:
-		var side := size.x * scale_now
-		draw_circle(c + Vector2(0, 5), r * 0.98, Color(UiKit.INK, 0.5))
-		draw_texture_rect(_power, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false)
-		return
 	var ready := _cooldown <= 0.0
 	draw_circle(c + Vector2(0, 5), r, UiKit.INK)
 	draw_circle(c, r, UiKit.INK)
-	var fill := _color if ready else _color.darkened(0.5)
-	if _label_text == "":
-		fill = Color(UiKit.INK_SOFT, 0.9)  # An empty power slot.
-	draw_circle(c, r - 5.0, fill)
-	if ready and _label_text != "":
+	draw_circle(c, r - 5.0, _color if ready else _color.darkened(0.5))
+	if ready:
 		draw_arc(c + Vector2(0, -2), r - 12.0, PI * 1.15, PI * 1.85, 16, Color(1, 1, 1, 0.5), 5.0, true)
-	var icon_side := r * (1.05 if _label_text != "" else 0.9)
-	draw_texture_rect(_icon, Rect2(c - Vector2(icon_side, icon_side) * 0.5 - Vector2(0, 4 if _label_text != "" else 0), Vector2(icon_side, icon_side)), false, Color(1, 1, 1, 0.95 if _label_text != "" else 0.32))
+	var icon_side := r * 1.28
+	draw_texture_rect(_icon, Rect2(c - Vector2(icon_side, icon_side) * 0.5 - Vector2(0, r * 0.12), Vector2(icon_side, icon_side)), false)
 	if _cooldown > 0.0:
 		var steps := 32
 		var pts := PackedVector2Array([c])

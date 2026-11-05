@@ -9,7 +9,7 @@ const WHOLE := [6.2, 0.82]
 const FACE := [3.7, 1.1]
 const ZOOM_OUT_MOST := -0.6  ## Past the whole avatar, for the widest hats and wings.
 const FOCUS := {
-	"mask": [3.7, 1.1], "hat": [4.6, 1.42], "top": [3.6, 0.5], "gloves": [3.8, 0.45], "pants": [3.1, 0.28],
+	"face": [3.1, 1.08], "mask": [3.7, 1.1], "hat": [4.6, 1.42], "top": [3.6, 0.5], "gloves": [3.8, 0.45], "pants": [3.1, 0.28],
 	"shoes": [2.7, 0.14], "back": [5.4, 0.8],
 }
 const MAX_SIDE := 1400.0
@@ -117,7 +117,7 @@ func set_look(look: Dictionary, slot := "") -> void:
 	_apply_zoom()
 	if not (same_slot and _turned):  # Having turned the avatar to look at something, you keep that view.
 		_turned = false
-		_yaw_locked = slot in ["mask", "hat", "back", "shoes", "pants", "top", "gloves"]
+		_yaw_locked = slot in ["face", "mask", "hat", "back", "shoes", "pants", "top", "gloves"]
 		_want_yaw = PI + 0.5 if slot == "back" else 0.42
 		if slot != "":
 			_auto_yaw = not _yaw_locked
@@ -146,6 +146,7 @@ func _apply_preview() -> void:
 
 
 func show_emote(text: String) -> void:
+	avatar.react(Faces.funny(), 2.0)
 	if _emote:
 		_emote.queue_free()
 	_emote = Label3D.new()
@@ -227,7 +228,7 @@ func _add_zoom_buttons() -> void:
 		row.add_child(b)
 
 
-## Drag to turn the avatar round; a tap makes it smile. The wheel or two fingers zoom.
+## Drag to turn the avatar round; a tap makes it pull a silly face. The wheel or two fingers zoom.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if zoomable and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
@@ -237,7 +238,7 @@ func _gui_input(event: InputEvent) -> void:
 			_dragging = event.pressed
 			_auto_yaw = false
 			if event.pressed and avatar:
-				avatar.react("happy", 1.2)
+				avatar.react(Faces.funny(), 1.4)
 	elif event is InputEventMouseMotion and _dragging:
 		if _touches.size() < 2:
 			_turn(event.relative.x)
@@ -254,7 +255,7 @@ func _gui_input(event: InputEvent) -> void:
 		_dragging = event.pressed
 		_auto_yaw = false
 		if event.pressed and avatar:
-			avatar.react("happy", 1.2)
+			avatar.react(Faces.funny(), 1.4)
 	elif event is InputEventScreenDrag:
 		_touches[event.index] = event.position
 		if _touches.size() >= 2:

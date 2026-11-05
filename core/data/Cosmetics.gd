@@ -7,8 +7,9 @@ extends RefCounted
 ##
 ## An avatar's look is a dictionary with one entry per slot (see default_look).
 
-const SLOTS := ["mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "dance", "emote", "trail", "aura", "burst", "frame", "title", "char", "skin"]
+const SLOTS := ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "dance", "emote", "trail", "aura", "burst", "frame", "title", "char", "skin"]
 const SLOT_INFO := {
+	"face": {"name": "Faces", "icon": "emote"},
 	"mask": {"name": "Masks", "icon": "mask"},
 	"hat": {"name": "Head Gear", "icon": "hat"},
 	"top": {"name": "Tops", "icon": "top"},
@@ -29,14 +30,14 @@ const SLOT_INFO := {
 }
 ## The shop's top row. Accessories come first; avatars are one choice among them.
 const GROUPS: Array[Dictionary] = [
-	{"id": "wear", "name": "Wear", "icon": "mask", "slots": ["mask", "hat", "top", "pants", "shoes", "gloves", "back"]},
+	{"id": "wear", "name": "Wear", "icon": "mask", "slots": ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back"]},
 	{"id": "moves", "name": "Moves", "icon": "dance", "slots": ["run", "dance", "emote"]},
 	{"id": "effects", "name": "Effects", "icon": "aura", "slots": ["trail", "aura", "burst"]},
 	{"id": "profile", "name": "Profile", "icon": "frame", "slots": ["frame", "title"]},
 	{"id": "avatars", "name": "Avatars", "icon": "avatar", "slots": ["char", "skin"]},
 ]
 ## Slots whose shop card is a picture of the item alone, rendered from its 3D model.
-const BAKED_SLOTS := ["char", "mask", "hat", "top", "pants", "shoes", "gloves", "back"]
+const BAKED_SLOTS := ["char", "face", "mask", "hat", "top", "pants", "shoes", "gloves", "back"]
 const RARITY := {
 	"free": {"name": "Free", "color": Color("9aa3b8"), "coins": 0, "gems": 0},
 	"common": {"name": "Common", "color": Color("6fcf6a"), "coins": 200, "gems": 0},
@@ -46,6 +47,38 @@ const RARITY := {
 }
 ## Atlas cells in assets/fx/atlas.png.
 enum Fx { SOFT, STAR, HEART, SPARK, RING, FLAME, LEAF, NOTE, PIXEL, PUFF, SNOW, COIN, BOLT, PETAL, DROP, CONFETTI }
+
+## The look you wear when nothing's happening. You still pull all the others as the game goes on.
+const FACES: Array[Dictionary] = [
+	{"id": "", "name": "Just Smiling", "rarity": "free", "expr": "normal"},
+	{"id": "happy", "name": "Sunny Smile", "rarity": "free", "expr": "happy"},
+	{"id": "tongue", "name": "Blep", "rarity": "free", "expr": "tongue"},
+	{"id": "wink", "name": "Cheeky Wink", "rarity": "common", "expr": "wink"},
+	{"id": "smug", "name": "So Smug", "rarity": "common", "expr": "smug"},
+	{"id": "grin", "name": "Toothy Grin", "rarity": "common", "expr": "grin"},
+	{"id": "blank", "name": "Deadpan", "rarity": "common", "expr": "blank", "blurb": "Nothing surprises you. Nothing ever has."},
+	{"id": "pout", "name": "Big Pout", "rarity": "common", "expr": "pout"},
+	{"id": "shy", "name": "Shy Blush", "rarity": "common", "expr": "shy"},
+	{"id": "angry", "name": "Grumpy", "rarity": "common", "expr": "angry"},
+	{"id": "shock", "name": "Shook", "rarity": "common", "expr": "shock"},
+	{"id": "sad", "name": "Sad Bean", "rarity": "common", "expr": "sad"},
+	{"id": "cat", "name": "Kitty Mouth", "rarity": "rare", "expr": "cat"},
+	{"id": "uwu", "name": "Soft and Sweet", "rarity": "rare", "expr": "uwu"},
+	{"id": "sideeye", "name": "Side Eye", "rarity": "rare", "expr": "sideeye", "blurb": "You saw what they did."},
+	{"id": "nervous", "name": "Sweating", "rarity": "rare", "expr": "nervous"},
+	{"id": "laugh", "name": "Can't Stop Laughing", "rarity": "rare", "expr": "laugh"},
+	{"id": "love", "name": "Heart Eyes", "rarity": "rare", "expr": "love"},
+	{"id": "derp", "name": "Derp", "rarity": "rare", "expr": "derp"},
+	{"id": "focus", "name": "Game Face", "rarity": "rare", "expr": "focus"},
+	{"id": "dizzy", "name": "Knocked Silly", "rarity": "rare", "expr": "dizzy"},
+	{"id": "sleepy", "name": "Sleepyhead", "rarity": "epic", "expr": "sleepy", "blurb": "Still running. Still asleep."},
+	{"id": "star", "name": "Starstruck", "rarity": "epic", "expr": "star"},
+	{"id": "money", "name": "Coin Eyes", "rarity": "epic", "expr": "money"},
+	{"id": "cry", "name": "Waterworks", "rarity": "epic", "expr": "cry"},
+	{"id": "scream", "name": "Full Panic", "rarity": "epic", "expr": "scream"},
+	{"id": "swirl", "name": "Hypnotized", "rarity": "legend", "expr": "swirl"},
+	{"id": "puppy", "name": "Puppy Eyes", "rarity": "legend", "expr": "puppy", "blurb": "Nobody has ever tagged these eyes on purpose."},
+]
 
 ## Worn over the face or the whole head. `cover` says how much of the head they hide: "eyes", "low" (nose and
 ## mouth), "plate" (the whole face) or "whole" (they replace the head). `no_hat`: they already are a hat.
@@ -403,6 +436,7 @@ static func list(slot: String) -> Array[Dictionary]:
 		"burst": return BURSTS
 		"dance": return DANCES
 		"emote": return EMOTES
+		"face": return FACES
 		"frame": return FRAMES
 		"title": return TITLES
 	return []
@@ -440,7 +474,7 @@ static func total_items() -> int:
 
 
 static func default_look() -> Dictionary:
-	return {"char": "kiko", "skin": "", "mask": "shades", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
+	return {"char": "kiko", "skin": "", "face": "", "mask": "shades", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
 
 
 ## A believable random outfit, for bots.
@@ -449,7 +483,7 @@ static func random_look(rng: RandomNumberGenerator, fancy := 0.5) -> Dictionary:
 	for slot: String in ["mask", "top", "pants", "shoes"]:
 		look[slot] = ""
 	look["char"] = String(HEROES[rng.randi_range(0, HEROES.size() - 1)]["id"])
-	for slot: String in ["mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "trail", "aura", "burst"]:
+	for slot: String in ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "trail", "aura", "burst"]:
 		if rng.randf() < fancy:
 			var entries := list(slot)
 			look[slot] = String(entries[rng.randi_range(0, entries.size() - 1)]["id"])
