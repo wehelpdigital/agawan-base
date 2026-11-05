@@ -40,7 +40,10 @@ static func build(sim: Sim, low_detail := false) -> Node3D:
 	if shadows:
 		root.add_child(shadows)
 
+	# Everything on the field is soft and rounded, to match the players.
 	var solid := MeshKit.new()
+	solid.soften = true
+	solid.detail = 0.55 if low_detail else 0.85
 	_draw_border(solid, sim, theme)
 	_draw_blocks(solid, sim, theme, rng)
 	_draw_bases(solid, sim)
@@ -48,6 +51,8 @@ static func build(sim: Sim, low_detail := false) -> Node3D:
 	_add(root, solid, toon, "Solid")
 
 	var deco := MeshKit.new()
+	deco.soften = true
+	deco.detail = 0.45 if low_detail else 0.8
 	_draw_decor(deco, sim, theme, rng, low_detail)
 	_add(root, deco, toon, "Decor")
 

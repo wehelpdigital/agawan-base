@@ -65,8 +65,8 @@ func _ready() -> void:
 
 ## Where the camera goes for each kind of item, so you see what you're choosing: distance, height.
 const FOCUS := {
-	"mask": [3.0, 1.2], "hat": [3.5, 1.42], "top": [3.9, 0.72], "gloves": [3.9, 0.7], "pants": [3.3, 0.36],
-	"shoes": [2.8, 0.2], "back": [4.6, 0.85],
+	"mask": [3.0, 1.1], "hat": [3.5, 1.36], "top": [3.6, 0.5], "gloves": [3.6, 0.45], "pants": [3.1, 0.28],
+	"shoes": [2.7, 0.14], "back": [4.4, 0.7],
 }
 
 
@@ -150,6 +150,8 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed
 		_auto_yaw = false
+		if event.pressed and avatar:
+			avatar.react("happy", 1.2)
 	elif event is InputEventMouseMotion and _dragging:
 		_yaw += event.relative.x * 0.012
 	elif event is InputEventScreenTouch:

@@ -84,5 +84,7 @@ func _finish() -> void:
 	for d in _fps_samples:
 		total += d
 	if total > 0.0:
-		print("%s: %.0f fps average" % [_tag, _fps_samples.size() / total])
+		print("%s: %.0f fps average, %d triangles on screen, %d draw calls" % [_tag, _fps_samples.size() / total,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
 	get_tree().quit()

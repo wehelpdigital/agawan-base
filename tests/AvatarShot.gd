@@ -5,6 +5,7 @@ extends Node
 var _out := "user://avatars.png"
 var _slot := ""
 var _only: PackedStringArray = []
+var _faces := ""  ## An avatar to show in every expression.
 
 
 func _ready() -> void:
@@ -15,6 +16,8 @@ func _ready() -> void:
 			_slot = arg.trim_prefix("--slot=")
 		elif arg.begins_with("--only="):
 			_only = arg.trim_prefix("--only=").split(",")
+		elif arg.begins_with("--faces="):
+			_faces = arg.trim_prefix("--faces=")
 	var world := Node3D.new()
 	add_child(world)
 	var env := Environment.new()
@@ -42,10 +45,38 @@ func _ready() -> void:
 		avatar.setup(look, Color("ffb21f"))
 		avatar.position = Vector3((i % columns) * 2.0, -(i / columns) * 2.6, 0)
 		avatar.rotation.y = -0.4 if _slot != "back" else PI - 0.4
+	if _faces != "":
+		await _show_faces(world, camera)
+		return
 	var center := Vector3((columns - 1) * 1.0, -(rows - 1) * 1.3 + 1.0, 0)
 	camera.position = center + Vector3(0, 1.8, 2.0 + maxf(columns * 1.6, rows * 5.5))
 	camera.look_at(center)
 	await get_tree().create_timer(0.3).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(_out)
+	get_tree().quit()
+
+
+func _show_faces(world: Node3D, camera: Camera3D) -> void:
+	for child in world.get_children():
+		if child is Avatar3D:
+			child.free()
+	var names := ["normal", "blink", "happy", "focus", "shock", "dizzy", "sad"]
+	for i in names.size():
+		var look := Cosmetics.default_look()
+		for slot_name: String in ["mask", "top", "pants", "shoes"]:
+			look[slot_name] = ""
+		look["char"] = _faces
+		var avatar := Avatar3D.new()
+		world.add_child(avatar)
+		avatar.setup(look, Color("ffb21f"))
+		avatar.position = Vector3(i * 1.8, 0, 0)
+		avatar.rotation.y = -0.15
+		avatar.react(names[i], 999.0)
+	var center := Vector3((names.size() - 1) * 0.9, 0.9, 0)
+	camera.position = center + Vector3(0, 0.9, 13.0)
+	camera.look_at(center)
+	await get_tree().create_timer(0.4).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(_out)
 	get_tree().quit()

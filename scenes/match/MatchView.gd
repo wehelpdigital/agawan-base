@@ -8,7 +8,8 @@ signal feed(text: String, color: Color)
 signal stat_flash(kind: String)
 
 const CAM_PITCH := deg_to_rad(52.0)
-const AVATAR_SCALE := 1.3  ## Heroes are drawn bigger than their footprint: they are the show.
+const AVATAR_SCALE := 1.2  ## Heroes are drawn bigger than their footprint: they are the show.
+const SCORED_FACE_SECONDS := 3.0
 const STATUS_ICONS := {
 	"stun": [Cosmetics.Fx.STAR, "ffd23f"], "freeze": [Cosmetics.Fx.SNOW, "bff3ff"], "root": [Cosmetics.Fx.RING, "c9b95c"],
 	"slow": [Cosmetics.Fx.DROP, "62e0a0"], "slip": [Cosmetics.Fx.RING, "bff3ff"], "reverse": [Cosmetics.Fx.SPARK, "b768ff"],
@@ -801,6 +802,10 @@ func _event(ev: Array) -> void:
 			_on_tag(pa, pb, at2)
 		"blocked":
 			fx.burst(_world(x, y, 1.0), 14, 6.0, 0.4, 0.4, Cosmetics.Fx.RING, ["8fe3ff", "ffffff"])
+			if pa:
+				_avatars[a].react("shock", 0.9)
+			if pb:
+				_avatars[b].react("happy", 0.9)
 			Audio.sfx("clash_tie", _audible(at2))
 			if a == local_id or b == local_id:
 				shake(0.25)
@@ -808,6 +813,8 @@ func _event(ev: Array) -> void:
 			fx.burst(_world(x, y, 1.0), 16, 7.0, 0.35, 0.4, Cosmetics.Fx.BOLT, ["7ee8ff", "ffffff"], 1.0)
 		"rescue":
 			fx.burst(_world(x, y, 1.2), 22, 7.0, 0.7, 0.42, Cosmetics.Fx.STAR, ["ffd23f", "ffffff", "35d07f"])
+			if a >= 0:
+				_avatars[a].react("happy", 1.6)
 			Audio.sfx("powerup_good")
 			if pa:
 				var mine_team := pa.team == my_team
@@ -854,6 +861,8 @@ func _event(ev: Array) -> void:
 		"pick":
 			var c := Powerups.color(String(extra))
 			fx.burst(_world(x, y, 1.0), 12, 4.0, 0.45, 0.3, Cosmetics.Fx.STAR, [c, "ffffff"], 2.0)
+			if a >= 0:
+				_avatars[a].react("happy", 0.7)
 			if mine:
 				Audio.sfx("coins", 0.8)
 				feed.emit("Got %s" % Powerups.by_id(String(extra)).get("name", ""), c.lightened(0.35))
@@ -949,6 +958,7 @@ func _on_tag(tagger: Sim.Player, tagged: Sim.Player, at2: Vector2) -> void:
 	_float_text(_world(at2.x, at2.y, 2.2), String(burst_def["text"]), ArenaBuilder.team_color(tagger.team).lightened(0.3))
 	_avatars[tagged.id].flash()
 	_avatars[tagger.id].squash(0.3)
+	_avatars[tagger.id].react("happy", 1.6)
 	var near := _audible(at2)
 	Audio.sfx("kill_generic", near)
 	var i_tagged := tagger.id == local_id
@@ -989,6 +999,8 @@ func _on_score(team: int, who: int, at2: Vector2, reason: String) -> void:
 	for i in 3:
 		fx.burst(_world(at2.x + randf_range(-2.0, 2.0), at2.y + randf_range(-2.0, 2.0), 1.5), 36, 10.0, 0.9, 0.5, Cosmetics.Fx.CONFETTI, [color, "ffffff", "ffd23f"], 8.0)
 	var mine := team == my_team
+	for p: Sim.Player in sim.players:
+		_avatars[p.id].react("happy" if p.team == team else "sad", SCORED_FACE_SECONDS)
 	Audio.sfx("flag_capture")
 	Audio.sfx("finale_cheer" if mine else "defeat", 0.7)
 	var text := "BASE CAPTURED!" if reason == "capture" else "TOTAL JAIL!"

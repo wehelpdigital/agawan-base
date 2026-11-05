@@ -19,6 +19,10 @@ var ink := INK
 var xform := Transform3D.IDENTITY
 var _basis_n := Basis.IDENTITY
 var _flip_bevel := false
+## Avatars: no hard corners. Boxes become soft and rounded, cones get round tips, and every curve gets
+## enough segments that no flat sides show. `detail` lowers the segment counts on slower devices.
+var soften := false
+var detail := 1.0
 var _stack: Array[Transform3D] = []
 
 
@@ -105,6 +109,9 @@ func ground(rect: Rect2, y: float, color: Color, color2: Variant = null) -> void
 
 ## A box. `bevel` cuts its edges for a chunky, catch-the-light look; `low` darkens the bottom a little.
 func box(center: Vector3, size: Vector3, color: Color, bevel := 0.0, low := 0.86) -> void:
+	if soften and minf(size.x, minf(size.y, size.z)) > 0.035:
+		soft_box(center, size * 0.5, color, 0.62, 8, 12)
+		return
 	var col := color
 	var col_low := (color * Color(low, low, low, 1.0))
 	if bevel <= 0.0:
@@ -207,7 +214,12 @@ func _oriented_tri(a: Vector3, b: Vector3, c: Vector3, n: Vector3, shade: Callab
 
 ## An ellipsoid with smooth shading. `r` is the radius on each axis.
 func ball(center: Vector3, r: Vector3, color: Color, rings := 9, segs := 14) -> void:
-	if outline > 0.0:
+	var tiny := false
+	if soften:
+		rings = maxi(int(maxi(rings, 8) * detail), 4)
+		segs = maxi(int(maxi(segs, 12) * detail), 6)
+		tiny = maxf(r.x, maxf(r.y, r.z)) < 0.05  # Too small for its outline to do anything but darken it.
+	if outline > 0.0 and not tiny:
 		_ball(center, r + Vector3.ONE * outline, ink, rings, segs, true, false)
 	_ball(center, r, color, rings, segs, false, true)
 
@@ -293,6 +305,16 @@ func _soft_box(center: Vector3, half: Vector3, col: Color, e: float, rings: int,
 
 ## A cylinder or cone from `at` going up `height`; r0 at the bottom, r1 at the top.
 func cyl(at: Vector3, height: float, r0: float, r1: float, color: Color, segs := 10, smooth := true) -> void:
+	if soften:
+		segs = maxi(int(maxi(segs, 14) * detail), 7)
+		smooth = true
+		if r1 <= 0.001 and r0 > 0.0:  # A cone gets a round tip, sunk in so no flat cap shows.
+			r1 = maxf(r0 * 0.34, 0.016)
+			height -= r1 * 0.5
+			var tip := at + Vector3(0, height, 0)
+			if outline > 0.0:
+				_ball(tip, Vector3.ONE * (r1 * 1.02 + outline), ink, 6, 10, true, false)
+			_ball(tip, Vector3.ONE * r1 * 1.02, color, 6, 10, false, true)
 	if outline > 0.0:
 		_cyl(at - Vector3(0, outline, 0), height + outline * 2.0, r0 + outline, r1 + outline if r1 > 0.0 else outline * 0.5, ink, segs, true, true, false)
 	_cyl(at, height, r0, r1, color, segs, false, smooth, true)
@@ -332,6 +354,9 @@ func cone(at: Vector3, height: float, r: float, color: Color, segs := 10) -> voi
 
 ## A ring lying flat: major radius R, tube radius r.
 func torus(center: Vector3, big: float, r: float, color: Color, segs := 14, sides := 6) -> void:
+	if soften:
+		segs = maxi(int(maxi(segs, 20) * detail), 10)
+		sides = maxi(int(maxi(sides, 8) * detail), 5)
 	if outline > 0.0:
 		_torus(center, big, r + outline, ink, segs, sides, true)
 	_torus(center, big, r, color, segs, sides, false)
@@ -394,7 +419,91 @@ func ribbon(path: PackedVector3Array, half_width: float, color: Color) -> void:
 
 ## A coloured rectangle standing on the face of something, a hair proud of it (eyes, stripes, signs).
 func decal_box(center: Vector3, size: Vector3, color: Color) -> void:
+	_box_plain(center, size, color, color, false)
+
+
+## Paint on the front (or back) of an ellipsoid, following its curve: pockets, panels, badges. The x and y
+## limits are measured from the ellipsoid's centre.
+func patch(center: Vector3, r: Vector3, x0: float, x1: float, y0: float, y1: float, color: Color, back := false, lift := 0.006, steps := 6) -> void:
+	var side := -1.0 if back else 1.0
+	var point := func(x: float, y: float) -> Vector3:
+		var q := maxf(1.0 - pow(x / r.x, 2.0) - pow(y / r.y, 2.0), 0.0)
+		return center + Vector3(x, y, side * (r.z * sqrt(q) + lift))
+	var normal := func(p: Vector3) -> Vector3:
+		var d := p - center
+		return Vector3(d.x / (r.x * r.x), d.y / (r.y * r.y), d.z / (r.z * r.z)).normalized()
+	for i in steps:
+		for j in steps:
+			var xa := lerpf(x0, x1, float(i) / steps)
+			var xb := lerpf(x0, x1, float(i + 1) / steps)
+			var ya := lerpf(y0, y1, float(j) / steps)
+			var yb := lerpf(y0, y1, float(j + 1) / steps)
+			var a: Vector3 = point.call(xa, ya)
+			var b: Vector3 = point.call(xb, ya)
+			var c: Vector3 = point.call(xb, yb)
+			var d: Vector3 = point.call(xa, yb)
+			if back:
+				_tri(b, a, d, normal.call(b), normal.call(a), normal.call(d), color, color, color, false)
+				_tri(b, d, c, normal.call(b), normal.call(d), normal.call(c), color, color, color, false)
+			else:
+				_tri(a, b, c, normal.call(a), normal.call(b), normal.call(c), color, color, color, false)
+				_tri(a, c, d, normal.call(a), normal.call(c), normal.call(d), color, color, color, false)
+
+
+## A stripe all the way round an ellipsoid, between two heights measured from its centre.
+func band(center: Vector3, r: Vector3, y0: float, y1: float, color: Color, lift := 0.006, segs := 24) -> void:
+	segs = maxi(int(segs * detail), 12)
+	var rings := 3
+	for i in rings:
+		var ya := lerpf(y1, y0, float(i) / rings)
+		var yb := lerpf(y1, y0, float(i + 1) / rings)
+		var ka := sqrt(maxf(1.0 - pow(ya / r.y, 2.0), 0.0))
+		var kb := sqrt(maxf(1.0 - pow(yb / r.y, 2.0), 0.0))
+		for j in segs:
+			var t0 := TAU * float(j) / segs
+			var t1 := TAU * float(j + 1) / segs
+			var u1 := Vector3(cos(t0) * ka, ya / r.y, sin(t0) * ka)
+			var u2 := Vector3(cos(t1) * ka, ya / r.y, sin(t1) * ka)
+			var u3 := Vector3(cos(t1) * kb, yb / r.y, sin(t1) * kb)
+			var u4 := Vector3(cos(t0) * kb, yb / r.y, sin(t0) * kb)
+			var p1 := center + u1 * r + u1.normalized() * lift
+			var p2 := center + u2 * r + u2.normalized() * lift
+			var p3 := center + u3 * r + u3.normalized() * lift
+			var p4 := center + u4 * r + u4.normalized() * lift
+			_tri(p1, p2, p3, u1, u2, u3, color, color, color, false)
+			_tri(p1, p3, p4, u1, u3, u4, color, color, color, false)
+
+
+## A round patch of paint on the front of an ellipsoid, with a smooth edge: bellies, faces, badges. It
+## follows the curve, so it never shows the jagged line two intersecting shapes do.
+func round_patch(center: Vector3, r: Vector3, cx: float, cy: float, px: float, py: float, color: Color, lift := 0.006, segs := 28) -> void:
+	var point := func(x: float, y: float) -> Vector3:
+		var q := maxf(1.0 - pow(x / r.x, 2.0) - pow(y / r.y, 2.0), 0.0)
+		return center + Vector3(x, y, r.z * sqrt(q) + lift)
+	var normal := func(p: Vector3) -> Vector3:
+		var d := p - center
+		return Vector3(d.x / (r.x * r.x), d.y / (r.y * r.y), d.z / (r.z * r.z)).normalized()
+	var rings := 4
+	for i in rings:
+		var ka := float(i) / rings
+		var kb := float(i + 1) / rings
+		for j in segs:
+			var a0 := TAU * float(j) / segs
+			var a1 := TAU * float(j + 1) / segs
+			var p1: Vector3 = point.call(cx + cos(a0) * px * ka, cy + sin(a0) * py * ka)
+			var p2: Vector3 = point.call(cx + cos(a0) * px * kb, cy + sin(a0) * py * kb)
+			var p3: Vector3 = point.call(cx + cos(a1) * px * kb, cy + sin(a1) * py * kb)
+			var p4: Vector3 = point.call(cx + cos(a1) * px * ka, cy + sin(a1) * py * ka)
+			_tri(p1, p2, p3, normal.call(p1), normal.call(p2), normal.call(p3), color, color, color, false)
+			if i > 0:
+				_tri(p1, p3, p4, normal.call(p1), normal.call(p3), normal.call(p4), color, color, color, false)
+
+
+## A round dot sitting on the surface of an ellipsoid.
+func spot(center: Vector3, r: Vector3, x: float, y: float, size: float, color: Color, back := false) -> void:
 	var saved := outline
 	outline = 0.0
-	box(center, size, color, 0.0, 1.0)
+	var q := maxf(1.0 - pow(x / r.x, 2.0) - pow(y / r.y, 2.0), 0.0)
+	var z := r.z * sqrt(q)
+	ball(center + Vector3(x, y, -z if back else z), Vector3(size, size, 0.012), color, 5, 9)
 	outline = saved
