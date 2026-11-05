@@ -1,0 +1,17 @@
+{
+  "name": "capture-the-base-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Game server for Capture the Base: accounts, rankings, guilds, chat, matchmaking and Friend Rooms.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/server.test.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -45,7 +45,8 @@ UI = {
     "hat": "delapouite/party-hat", "trail": "lorc/boot-prints", "aura": "lorc/embrassed-energy", "burst": "lorc/crowned-explosion",
     "frame": "delapouite/ribbon-medal", "title": "delapouite/medallist", "dance": "lorc/cartwheel", "backpack": "delapouite/backpack",
     "skull": "lorc/crowned-skull", "robot": "delapouite/walking-turret", "exit": "delapouite/exit-door",
-    "lock": "delapouite/dial-padlock", "gift": "delapouite/present", "swords": "lorc/crossed-swords",
+    "lock": "delapouite/dial-padlock", "mask": "lorc/tribal-mask", "top": "delapouite/t-shirt", "pants": "lorc/trousers",
+    "shoes": "delapouite/converse-shoe", "gloves": "delapouite/gloves", "people": "delapouite/three-friends", "gift": "delapouite/present", "swords": "lorc/crossed-swords",
 }
 # Simple shapes drawn here, for things the set has no clean glyph for.
 DRAWN = {
