@@ -12,6 +12,9 @@ var _clock := 0.0
 var _hud_root: Control
 var _fps_samples: Array[float] = []
 var _power := ""
+var _all_powers := false
+var _power_i := 0
+var _power_clock := 0.0
 
 
 func _ready() -> void:
@@ -24,6 +27,10 @@ func _ready() -> void:
 			_tag = arg.trim_prefix("--tag=")
 		elif arg.begins_with("--power="):
 			_power = arg.trim_prefix("--power=")
+		elif arg == "--all-powers":
+			_all_powers = true
+		elif arg.begins_with("--speed="):
+			Engine.time_scale = float(arg.trim_prefix("--speed="))
 		elif arg.begins_with("--times="):
 			_times.clear()
 			for part in arg.trim_prefix("--times=").split(","):
@@ -55,6 +62,14 @@ func _process(delta: float) -> void:
 	if _power != "" and _clock > 3.5:
 		_runner.sim.players[0].powers = [_power] as Array[String]
 		_power = ""
+	if _all_powers and _runner.sim.phase == Sim.Phase.PLAY:
+		_power_clock -= delta
+		if _power_clock <= 0.0 and _power_i < Powerups.ALL.size():
+			_power_clock = 0.4
+			var p: Sim.Player = _runner.sim.players[_power_i % 10]
+			p.powers = [Powerups.id_at(_power_i)] as Array[String]
+			p.want_use = true
+			_power_i += 1
 	if _times.is_empty():
 		_finish()
 	elif _clock >= _times[0]:

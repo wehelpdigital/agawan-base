@@ -62,6 +62,8 @@ func _bake_shop() -> void:
 			if slot == "char":
 				var look := Cosmetics.default_look()
 				look["char"] = id
+				for slot_name: String in ["mask", "top", "pants", "shoes"]:
+					look[slot_name] = ""
 				avatar.visible = true
 				avatar.setup(look, Color("ffb21f"))
 				avatar.rotation.y = -0.35

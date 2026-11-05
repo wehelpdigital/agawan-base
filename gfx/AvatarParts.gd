@@ -11,10 +11,10 @@ static func top(k: MeshKit, id: String, w: float) -> void:
 	var style: String = def.get("style", "tee")
 	k.push(Transform3D(Basis.IDENTITY.scaled(Vector3(w, 1.0, w)), Vector3.ZERO))
 	var front := 0.275
-	k.box(Vector3(0, 0.67, 0), Vector3(0.72, 0.54, 0.54), c, 0.1)
+	k.soft_box(Vector3(0, 0.66, 0), Vector3(0.36, 0.28, 0.27), c)
 	if style not in ["tank", "armor"]:
 		for s: float in [-1.0, 1.0]:
-			k.ball(Vector3(s * 0.38 / w, 0.85, 0), Vector3(0.15, 0.13, 0.15), c, 6, 9)
+			k.ball(Vector3(s * 0.36 / w, 0.8, 0), Vector3(0.14, 0.16, 0.14), c, 7, 10)
 	match style:
 		"tee":
 			k.decal_box(Vector3(0, 0.72, front), Vector3(0.3, 0.2, 0.01), c2)
@@ -61,7 +61,7 @@ static func top(k: MeshKit, id: String, w: float) -> void:
 			k.decal_box(Vector3(0, 0.43, front), Vector3(0.7, 0.06, 0.01), c2)
 			k.decal_box(Vector3(-0.2, 0.74, front), Vector3(0.16, 0.2, 0.01), c2)
 			for s: float in [-1.0, 1.0]:
-				k.ball(Vector3(s * 0.38 / w, 0.85, 0), Vector3(0.155, 0.135, 0.155), c2, 6, 9)
+				k.ball(Vector3(s * 0.36 / w, 0.8, 0), Vector3(0.145, 0.165, 0.145), c2, 7, 10)
 		"overalls":
 			k.decal_box(Vector3(0, 0.53, front), Vector3(0.7, 0.26, 0.01), c)
 			k.decal_box(Vector3(0, 0.77, front), Vector3(0.68, 0.24, 0.01), c2)
@@ -114,14 +114,14 @@ static func pants(k: MeshKit, id: String, w: float) -> void:
 	var style: String = def.get("style", "shorts")
 	k.push(Transform3D(Basis.IDENTITY.scaled(Vector3(w, 1.0, w)), Vector3.ZERO))
 	var front := 0.26
-	k.box(Vector3(0, 0.36, 0), Vector3(0.68, 0.3, 0.5), c, 0.06)
+	k.soft_box(Vector3(0, 0.36, 0), Vector3(0.34, 0.16, 0.255), c)
 	var long: bool = style in ["long", "track", "cargo", "checks", "dots", "armor", "galaxy"]
 	if style not in ["tutu", "kilt", "grass"]:
 		for s: float in [-1.0, 1.0]:
 			if long:
-				k.box(Vector3(s * 0.19 / w, 0.2, 0), Vector3(0.3, 0.2, 0.36), c, 0.03)
+				k.soft_box(Vector3(s * 0.2 / w, 0.2, 0), Vector3(0.135, 0.13, 0.15), c, 0.5, 8, 12)
 			else:
-				k.box(Vector3(s * 0.19 / w, 0.24, 0), Vector3(0.3, 0.12, 0.36), c, 0.03)
+				k.soft_box(Vector3(s * 0.2 / w, 0.25, 0), Vector3(0.135, 0.08, 0.15), c, 0.5, 8, 12)
 	match style:
 		"shorts", "long":
 			k.decal_box(Vector3(0, 0.48, front), Vector3(0.66, 0.05, 0.01), c2 if style == "shorts" else c.darkened(0.25))
@@ -237,21 +237,21 @@ static func glove(k: MeshKit, id: String) -> void:
 	var def := Cosmetics.item("gloves", id)
 	var c := Color(def.get("c", "ffffff"))
 	var c2 := Color(def.get("c2", "ffffff"))
-	var hand := Vector3(0, -0.2, 0)
+	var hand := Vector3(0, -0.4, 0)
 	match String(def.get("style", "band")):
 		"band":
-			k.torus(Vector3(0, -0.1, 0), 0.1, 0.045, c, 10, 4)
+			k.torus(Vector3(0, -0.27, 0), 0.085, 0.04, c, 10, 5)
 		"mitten":
-			k.ball(hand, Vector3(0.16, 0.18, 0.16), c, 6, 9)
-			k.ball(hand + Vector3(0.11, 0.05, 0.08), Vector3(0.07, 0.09, 0.07), c, 3, 6)
-			k.cyl(Vector3(0, -0.1, 0), 0.08, 0.13, 0.13, c2, 8)
+			k.ball(hand + Vector3(0, -0.04, 0), Vector3(0.155, 0.185, 0.13), c, 8, 11)
+			k.ball(hand + Vector3(0, 0.0, 0.13), Vector3(0.06, 0.07, 0.075), c, 4, 7)
+			k.cyl(Vector3(0, -0.3, 0), 0.08, 0.115, 0.115, c2, 9)
 		"boxing":
-			k.ball(hand + Vector3(0, -0.03, 0), Vector3(0.22, 0.24, 0.24), c, 7, 11)
-			k.ball(hand + Vector3(0.15, 0.04, 0.06), Vector3(0.09, 0.1, 0.09), c, 4, 7)
-			k.cyl(Vector3(0, -0.12, 0), 0.1, 0.15, 0.15, c2, 9)
+			k.ball(hand + Vector3(0, -0.04, 0), Vector3(0.21, 0.23, 0.22), c, 9, 12)
+			k.ball(hand + Vector3(0, 0.02, 0.2), Vector3(0.08, 0.09, 0.09), c, 5, 8)
+			k.cyl(Vector3(0, -0.32, 0), 0.1, 0.13, 0.13, c2, 9)
 		"foam":
-			k.box(hand + Vector3(0, -0.04, 0), Vector3(0.3, 0.24, 0.16), c, 0.05)
-			k.box(hand + Vector3(0, 0.0, 0.2), Vector3(0.08, 0.08, 0.34), c, 0.03)
+			k.soft_box(hand + Vector3(0, -0.04, 0), Vector3(0.15, 0.13, 0.09), c)
+			k.box(hand + Vector3(0, -0.02, 0.2), Vector3(0.08, 0.08, 0.34), c, 0.03)
 			k.decal_box(hand + Vector3(0, -0.04, 0.085), Vector3(0.18, 0.1, 0.01), c2)
 		"crab":
 			k.ball(hand + Vector3(0, -0.04, 0), Vector3(0.18, 0.15, 0.15), c, 5, 8)

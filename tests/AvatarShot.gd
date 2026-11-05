@@ -4,6 +4,7 @@ extends Node
 
 var _out := "user://avatars.png"
 var _slot := ""
+var _only: PackedStringArray = []
 
 
 func _ready() -> void:
@@ -12,6 +13,8 @@ func _ready() -> void:
 			_out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--slot="):
 			_slot = arg.trim_prefix("--slot=")
+		elif arg.begins_with("--only="):
+			_only = arg.trim_prefix("--only=").split(",")
 	var world := Node3D.new()
 	add_child(world)
 	var env := Environment.new()
@@ -23,11 +26,16 @@ func _ready() -> void:
 	var camera := Camera3D.new()
 	camera.fov = 22.0
 	world.add_child(camera)
-	var list := Cosmetics.list(_slot if _slot != "" else "char")
-	var columns := 7
+	var list := Cosmetics.list(_slot if _slot != "" else "char").duplicate()
+	if not _only.is_empty():
+		list = list.filter(func(entry: Dictionary) -> bool: return _only.has(entry["id"]))
+	var columns := mini(7, list.size())
 	var rows := ceili(list.size() / float(columns))
 	for i in list.size():
 		var look := Cosmetics.default_look()
+		if _slot == "":
+			for slot_name: String in ["mask", "top", "pants", "shoes"]:
+				look[slot_name] = ""
 		look[_slot if _slot != "" else "char"] = String(list[i]["id"])
 		var avatar := Avatar3D.new()
 		world.add_child(avatar)
@@ -35,7 +43,7 @@ func _ready() -> void:
 		avatar.position = Vector3((i % columns) * 2.0, -(i / columns) * 2.6, 0)
 		avatar.rotation.y = -0.4 if _slot != "back" else PI - 0.4
 	var center := Vector3((columns - 1) * 1.0, -(rows - 1) * 1.3 + 1.0, 0)
-	camera.position = center + Vector3(0, 1.8, 7.5 + rows * 5.5)
+	camera.position = center + Vector3(0, 1.8, 2.0 + maxf(columns * 1.6, rows * 5.5))
 	camera.look_at(center)
 	await get_tree().create_timer(0.3).timeout
 	await RenderingServer.frame_post_draw

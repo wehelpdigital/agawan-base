@@ -429,12 +429,14 @@ static func total_items() -> int:
 
 
 static func default_look() -> Dictionary:
-	return {"char": "kiko", "skin": "", "mask": "", "hat": "", "top": "", "pants": "", "shoes": "", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
+	return {"char": "kiko", "skin": "", "mask": "shades", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
 
 
 ## A believable random outfit, for bots.
 static func random_look(rng: RandomNumberGenerator, fancy := 0.5) -> Dictionary:
 	var look := default_look()
+	for slot: String in ["mask", "top", "pants", "shoes"]:
+		look[slot] = ""
 	look["char"] = String(HEROES[rng.randi_range(0, HEROES.size() - 1)]["id"])
 	for slot: String in ["mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "trail", "aura", "burst"]:
 		if rng.randf() < fancy:

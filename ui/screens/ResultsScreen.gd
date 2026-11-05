@@ -87,12 +87,18 @@ func _earned(rewards: Dictionary, result: Dictionary) -> Control:
 		var pill := UiKit.stat_pill("trophy", "...", UiKit.TROPHY, 40)
 		_trophy_line = pill.find_child("Value", true, false) as Label
 		row.add_child(pill)
-	else:
-		var note := UiKit.label("Practice: no trophies", 15, UiKit.MUTED)
-		note.add_theme_color_override("font_outline_color", UiKit.INK)
-		note.add_theme_constant_override("outline_size", 4)
-		row.add_child(note)
-	return row
+		# The server may well have answered before this screen opened.
+		if str(Net.last_result.get("match", "")) == str(result.get("match_id", "-")):
+			_on_server_result(Net.last_result)
+		return row
+	var col := UiKit.vbox(2)
+	col.add_child(row)
+	var note := UiKit.body("No trophies in AI or Friend matches", 15, UiKit.MUTED)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.add_theme_color_override("font_outline_color", UiKit.INK)
+	note.add_theme_constant_override("outline_size", 4)
+	col.add_child(note)
+	return col
 
 
 func _on_server_result(data: Dictionary) -> void:

@@ -31,6 +31,7 @@ const SYNC_DELAY := 2.0
 var online := false
 var players_online := 0
 var room: Dictionary = {}  ## The Friend Room this player is in; empty when none.
+var last_result: Dictionary = {}  ## The server's word on the last match, for the results screen.
 var _ws := WebSocketPeer.new()
 var _ws_open := false
 var _ws_url := ""
@@ -130,8 +131,6 @@ func register(username: String, password: String) -> Dictionary:
 	var result := await request("POST", "/api/auth/register", {"username": username, "password": password, "save": Profile.to_data()})
 	if result["ok"]:
 		_after_auth(result["data"])
-		_close_ws()
-		_connect_ws()
 	return result
 
 
@@ -301,12 +300,14 @@ func _process(delta: float) -> void:
 				room = {}
 				_set_online(false)
 				_retry = RECONNECT_SECONDS
-			if Profile.token != "" and _base_url != "":
+			if _pending_login:
+				pass  # The login in progress opens the connection when it's done.
+			elif Profile.token != "" and _base_url != "":
 				_retry -= delta
 				if _retry <= 0.0:
 					_retry = RECONNECT_SECONDS
 					_connect_ws()
-			elif _base_url != "" and not _pending_login:
+			elif _base_url != "":
 				_retry -= delta
 				if _retry <= 0.0:
 					_retry = RECONNECT_SECONDS * 3.0
@@ -345,6 +346,7 @@ func _on_text(text: String) -> void:
 			match_player_left.emit(int(msg.get("player", -1)))
 		"match_result":
 			_in_match = false
+			last_result = msg
 			if msg.has("trophies"):
 				Profile.set_trophies(int(msg["trophies"]))
 			match_result.emit(msg)

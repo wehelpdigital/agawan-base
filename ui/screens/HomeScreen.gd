@@ -29,7 +29,8 @@ func _ready() -> void:
 	_refresh_map()
 	_update_look()
 	Profile.changed.connect(_update_look)
-	if view_w > 0.0 and Profile.daily_ready() and not args.get("skip_daily", false):
+	# A new player's first tap should start a match, not open a pop-up.
+	if view_w > 0.0 and Profile.daily_ready() and Profile.matches_played > 0 and not args.get("skip_daily", false):
 		_daily_popup.call_deferred()
 
 
@@ -200,6 +201,7 @@ func _daily_popup() -> void:
 	var col := root.popup("Daily Reward")
 	var grid := GridContainer.new()
 	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	var today := int(Profile.daily_next()["day"])
@@ -216,17 +218,20 @@ func _daily_popup() -> void:
 		var day := UiKit.label("Day %d" % (i + 1), 13, UiKit.INK if is_today else UiKit.MUTED, 0, true)
 		day.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inner.add_child(day)
-		var amount := UiKit.hbox(3)
-		amount.alignment = BoxContainer.ALIGNMENT_CENTER
 		var gems := int(reward.get("gems", 0))
 		var coins := int(reward.get("coins", 0))
 		if coins > 0:
+			var amount := UiKit.hbox(3)
+			amount.alignment = BoxContainer.ALIGNMENT_CENTER
 			amount.add_child(UiKit.icon("coin", 18, UiKit.COIN if not is_today else UiKit.INK))
 			amount.add_child(UiKit.label(str(coins), 16, UiKit.INK if is_today else UiKit.WHITE, 0, true))
+			inner.add_child(amount)
 		if gems > 0:
+			var amount := UiKit.hbox(3)
+			amount.alignment = BoxContainer.ALIGNMENT_CENTER
 			amount.add_child(UiKit.icon("gem", 18, UiKit.GEM if not is_today else UiKit.INK))
 			amount.add_child(UiKit.label(str(gems), 16, UiKit.INK if is_today else UiKit.WHITE, 0, true))
-		inner.add_child(amount)
+			inner.add_child(amount)
 		if done:
 			inner.modulate.a = 0.5
 		cell.add_child(inner)

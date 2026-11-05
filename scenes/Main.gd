@@ -219,7 +219,11 @@ func _on_match_found(data: Dictionary) -> void:
 		seats.append(entry)
 	if ui.current_name == "room":
 		Net.room = {}
-	_start_match(str(data.get("map", Maps.random_id())), seats, me, float(data.get("skill", 0.6)), true, me == host, str(data.get("match", "")), int(data.get("seed", 1)))
+	# "Random map" is decided by the seed, so every device lands on the same one.
+	var map_id := str(data.get("map", ""))
+	if Maps.by_id(map_id).is_empty():
+		map_id = String(Maps.all()[int(data.get("seed", 1)) % Maps.all().size()]["id"])
+	_start_match(map_id, seats, me, float(data.get("skill", 0.6)), true, me == host, str(data.get("match", "")), int(data.get("seed", 1)))
 	_runner.ranked = bool(data.get("ranked", true))
 
 
@@ -298,3 +302,18 @@ func _watch_performance(delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and _runner and not _runner.online and not is_instance_valid(_pause_col):
 		_on_pause()
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_on_android_back()
+
+
+## The phone's back button: pause in a match, step back in the menus, ask before leaving the game.
+func _on_android_back() -> void:
+	if _runner:
+		if is_instance_valid(_pause_col):
+			_close_pause()
+		else:
+			_on_pause()
+	elif ui.current_name in ["home", "title"]:
+		ui.confirm("Leave the Game?", "See you on the field!", "Leave", func() -> void: get_tree().quit(), "Stay", "coral")
+	elif ui.current_name != "results":
+		ui.go_back()

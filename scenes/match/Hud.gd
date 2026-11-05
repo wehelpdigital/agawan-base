@@ -81,6 +81,9 @@ func setup(p_runner: MatchRunner) -> void:
 	_build()
 	get_viewport().size_changed.connect(_relayout)
 	_relayout()
+	var me := sim.player_by_id(runner.local_id)
+	if me:
+		show_announcement("You're on Team %s!" % ArenaBuilder.TEAM_NAMES[me.team], ArenaBuilder.team_color(me.team).lightened(0.25), false)
 
 
 func _build() -> void:
@@ -295,7 +298,7 @@ func _relayout() -> void:
 	_roster_box.size = roster_size
 	var below := roster_y + roster_size.y + 4.0
 	# Minimap: in the corner on wide screens; below the roster on upright ones.
-	var mini_w := clampf(short * 0.34, 130.0, 240.0)
+	var mini_w := clampf(short * (0.27 if _portrait else 0.34), 110.0, 240.0)
 	var aspect := sim.arena_size().y / sim.arena_size().x
 	_mini.size = Vector2(mini_w, mini_w * aspect)
 	_mini.custom_minimum_size = _mini.size

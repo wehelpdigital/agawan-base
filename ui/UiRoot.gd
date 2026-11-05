@@ -296,6 +296,15 @@ func confirm(title_text: String, body_text: String, yes_text: String, on_yes: Ca
 	col.add_child(row)
 
 
+func _input(event: InputEvent) -> void:
+	if not visible or _screen == null:
+		return
+	if (event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf(event.axis_value) > 0.5)) and get_viewport().gui_get_focus_owner() == null:
+		var first: Control = _screen.find_next_valid_focus()
+		if first:
+			first.grab_focus()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return

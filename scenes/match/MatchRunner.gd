@@ -43,6 +43,7 @@ func start(map_id: String, seats: Array, p_local_id: int, difficulty: float, par
 	sim.setup(map_id, seats, seed_value, difficulty)
 	sim.authoritative = is_host
 	view = MatchView.new()
+	view.tag_bots = online
 	parent_3d.add_child(view)
 	view.setup(sim, local_id)
 	hud = Hud.new()

@@ -245,6 +245,52 @@ func _ball(center: Vector3, r: Vector3, col: Color, rings: int, segs: int, flip:
 			_tri(p1, p3, p4, n1, n3, n4, c1, c3, c4, flip)
 
 
+## A soft, plush box: flat-ish faces melting into round edges. `half` is half its size on each axis;
+## a smaller `e` is boxier, 1.0 would be a ball.
+func soft_box(center: Vector3, half: Vector3, color: Color, e := 0.42, rings := 10, segs := 16) -> void:
+	if outline > 0.0:
+		_soft_box(center, half + Vector3.ONE * outline, ink, e, rings, segs, true, false)
+	_soft_box(center, half, color, e, rings, segs, false, true)
+
+
+func _soft_box(center: Vector3, half: Vector3, col: Color, e: float, rings: int, segs: int, flip: bool, shaded: bool) -> void:
+	var low := col * Color(0.86, 0.86, 0.86, 1.0) if shaded else col
+	var pow_of := func(v: float, k: float) -> float:
+		return signf(v) * pow(absf(v), k)
+	var pts: Array[PackedVector3Array] = []
+	var ns: Array[PackedVector3Array] = []
+	for i in rings + 1:
+		var phi := PI * float(i) / rings
+		var row_p := PackedVector3Array()
+		var row_n := PackedVector3Array()
+		for j in segs + 1:
+			var theta := TAU * float(j) / segs
+			var sp: float = pow_of.call(sin(phi), e)
+			var cp: float = pow_of.call(cos(phi), e)
+			var ct: float = pow_of.call(cos(theta), e)
+			var st: float = pow_of.call(sin(theta), e)
+			row_p.append(Vector3(sp * ct, cp, sp * st))
+			var sp2: float = pow_of.call(sin(phi), 2.0 - e)
+			var cp2: float = pow_of.call(cos(phi), 2.0 - e)
+			var ct2: float = pow_of.call(cos(theta), 2.0 - e)
+			var st2: float = pow_of.call(sin(theta), 2.0 - e)
+			row_n.append(Vector3(sp2 * ct2 / half.x, cp2 / half.y, sp2 * st2 / half.z).normalized())
+		pts.append(row_p)
+		ns.append(row_n)
+	for i in rings:
+		for j in segs:
+			var u1 := pts[i][j]
+			var u2 := pts[i][j + 1]
+			var u3 := pts[i + 1][j + 1]
+			var u4 := pts[i + 1][j]
+			var c1 := col.lerp(low, 0.5 - u1.y * 0.5)
+			var c2 := col.lerp(low, 0.5 - u2.y * 0.5)
+			var c3 := col.lerp(low, 0.5 - u3.y * 0.5)
+			var c4 := col.lerp(low, 0.5 - u4.y * 0.5)
+			_tri(center + u1 * half, center + u2 * half, center + u3 * half, ns[i][j], ns[i][j + 1], ns[i + 1][j + 1], c1, c2, c3, flip)
+			_tri(center + u1 * half, center + u3 * half, center + u4 * half, ns[i][j], ns[i + 1][j + 1], ns[i + 1][j], c1, c3, c4, flip)
+
+
 ## A cylinder or cone from `at` going up `height`; r0 at the bottom, r1 at the top.
 func cyl(at: Vector3, height: float, r0: float, r1: float, color: Color, segs := 10, smooth := true) -> void:
 	if outline > 0.0:
@@ -323,6 +369,27 @@ func blade(a: Vector3, b: Vector3, c: Vector3, color: Color, sway := 0.0) -> voi
 	root.a = 0.0
 	_tri(a, b, c, n, n, n, root, root, tip, false)
 	_tri(a, c, b, -n, -n, -n, root, tip, root, false)
+
+
+## A flat shape from a closed outline, counter-clockwise as seen from its front. Mouths, tongues.
+func fan(points: PackedVector3Array, color: Color, n := Vector3.BACK) -> void:
+	var center := Vector3.ZERO
+	for point in points:
+		center += point
+	center /= float(points.size())
+	for i in points.size():
+		_tri(center, points[i], points[(i + 1) % points.size()], n, n, n, color, color, color, false)
+
+
+## A flat ribbon along a path, facing +Z and tapering at both ends. Brows, lashes, closed eyes.
+func ribbon(path: PackedVector3Array, half_width: float, color: Color) -> void:
+	var count := path.size()
+	for i in count - 1:
+		var d := (path[i + 1] - path[i])
+		var side := Vector3(-d.y, d.x, 0.0).normalized()
+		var w0 := half_width * (0.25 + 0.75 * sin(PI * float(i) / (count - 1)))
+		var w1 := half_width * (0.25 + 0.75 * sin(PI * float(i + 1) / (count - 1)))
+		_quad(path[i] - side * w0, path[i + 1] - side * w1, path[i + 1] + side * w1, path[i] + side * w0, Vector3.BACK, color, color, color, color, false)
 
 
 ## A coloured rectangle standing on the face of something, a hair proud of it (eyes, stripes, signs).

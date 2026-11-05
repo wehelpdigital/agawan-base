@@ -24,6 +24,7 @@ var my_team := 0
 var fx: FxField
 var camera: Camera3D
 var low_detail := false
+var tag_bots := false  ## Online, AI players say so over their heads.
 
 var _avatars: Array[Avatar3D] = []
 var _rings: Array[MeshInstance3D] = []
@@ -177,7 +178,7 @@ func _build_players() -> void:
 		add_child(mark)
 		_markers.append(mark)
 		var label := Label3D.new()
-		label.text = p.name
+		label.text = p.name + (" [AI]" if p.bot and tag_bots else "")
 		label.font = UiKit.font_body()
 		label.font_size = 40
 		label.outline_size = 10
