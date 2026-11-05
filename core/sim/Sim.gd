@@ -44,6 +44,7 @@ const FOUNTAIN_REFILL := 16.0
 const ALTAR_REGROW := 13.0
 const BUMPER_KICK := 26.0
 const BUSH_SIGHT := 3.5  ## Enemies this close can see you in a bush. Walk in too and you find each other.
+const CHARGE_TIME := 6.0  ## How long a fountain or a Fresh card lets you tag anyone, on either side of the line.
 const COUNTDOWN := 3.0
 const SCORED_PAUSE := 3.2
 const MAX_POWERS := 2
@@ -361,6 +362,17 @@ func flow_field(target: int) -> PackedInt32Array:
 
 # --- Fresher rule ---------------------------------------------------------------------------------
 
+## The line down the middle decides who tags who. On your own side your clock never runs, so you always out-fresh an
+## invader: touch them and they go to jail. Cross the line and it starts: anyone at home can tag you.
+func on_home_side(p: Player) -> bool:
+	return (p.pos.x < arena_size().x * 0.5) == (p.team == 0)
+
+
+## Charged by a fountain or a card: you can tag anyone, wherever you are.
+func is_charged(p: Player) -> bool:
+	return p.fresh > t
+
+
 func has_status(p: Player, name: String) -> bool:
 	return float(p.status.get(name, -1.0)) > t
 
@@ -556,11 +568,12 @@ func _tick_player(p: Player, dt: float) -> void:
 		_use_power(p)
 	p.want_use = false
 	_move(p, dt)
+	if on_home_side(p) and not is_airborne(p):
+		p.fresh = maxf(p.fresh, t)
 	var home_d: float = p.pos.distance_to(base[p.team])
 	var was_on := p.on_base
 	p.on_base = home_d < BASE_R and not is_airborne(p)
 	if p.on_base:
-		p.fresh = t
 		if p.free_until > t:
 			p.free_until = -1.0
 		if not was_on:
@@ -697,7 +710,7 @@ func _move(p: Player, dt: float) -> void:
 		Maps.FOUNTAIN:
 			if fountain_ready(here):
 				fountains[here] = t + FOUNTAIN_REFILL
-				p.fresh = t
+				p.fresh = t + CHARGE_TIME
 				_event("fountain", p.id, -1, p.pos.x, p.pos.y)
 	if tiles[here] == Maps.BOUNCE:
 		_launch(p, tile_center(_mirror_tile(here)), 0.8)
@@ -919,7 +932,7 @@ func _free_team(team: int) -> int:
 		if mate.state == State.JAIL:
 			mate.state = State.PLAY
 			mate.free_until = t + FREE_WALK
-			mate.fresh = -1.0  # Stale until they touch home again.
+			mate.fresh = -1.0  # Stale until they're back on their own side.
 			mate.on_base = false
 			count += 1
 			_event("freed", mate.id, -1, mate.pos.x, mate.pos.y)
@@ -1116,7 +1129,7 @@ func _use_power(p: Player) -> void:
 		"hedge":
 			zones.append({"uid": _next_uid(), "fx": "thorn", "team": p.team, "pos": base[p.team], "r": BASE_R + 1.6, "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true})
 		"fresh":
-			p.fresh = t
+			p.fresh = t + CHARGE_TIME
 		"swap":
 			_swap(p, float(def["range"]))
 		"curse":
@@ -1135,7 +1148,7 @@ func _use_power(p: Player) -> void:
 		"teamfresh":
 			for mate: Player in team_of(p.team):
 				if mate.state == State.PLAY:
-					mate.fresh = t
+					mate.fresh = t + CHARGE_TIME
 					_event("refreshed", mate.id, -1, mate.pos.x, mate.pos.y)
 		"radar":
 			radar[p.team] = t + float(def["dur"])

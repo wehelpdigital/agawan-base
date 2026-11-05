@@ -29,6 +29,10 @@ var _announce: Label
 var _announce_big: Label
 var _feed_box: VBoxContainer
 var _status_label: Label
+var _side_pill: PanelContainer
+var _side_text: Label
+var _side_shown := ""
+var _side_line_y := 0.0
 var _mini: Minimap
 var _dash_btn: HudButton
 var _use_btn: PowerSlot
@@ -62,8 +66,8 @@ var _mouse_aiming := false
 var _pad_used := false
 
 const HINTS: Array[String] = [
-	"Who left their base last wins! A green arrow means you can tag them. Red means they can tag you.",
-	"Touch your own base to get fresh again. You're safe on it, but it pops you off after 5 seconds.",
+	"The line is everything! On your side, you can tag them. Over the line, they can tag you.",
+	"A green arrow means you can tag them. A red sign means they can tag you. Run back over the line to be safe!",
 	"Stand on the enemy base to capture it. First team to 3 captures wins!",
 	"In jail? Tap to break out. Or a free teammate can touch the jail and spring everyone.",
 	"Grab the crystals! Each one spins up a random power card. Tap the card to use it, or drag to aim.",
@@ -123,6 +127,14 @@ func _build() -> void:
 	_status_label = UiKit.title("", 18, Color("c9f1ff"))
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_status_label)
+	_side_pill = PanelContainer.new()
+	_side_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_side_pill.visible = false
+	add_child(_side_pill)
+	_side_text = UiKit.title("", 17)
+	_side_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_side_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_side_pill.add_child(_side_text)
 	_countdown = UiKit.title("", 110, UiKit.YELLOW)
 	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_countdown.visible = false
@@ -294,23 +306,23 @@ func _relayout() -> void:
 	_roster_box.size = roster_size
 	var below := roster_y + roster_size.y + 4.0
 	# Minimap: in the corner on wide screens; below the roster on upright ones.
-	var mini_w := clampf(short * (0.44 if _portrait else 0.5), 150.0, 320.0)
+	var mini_w := clampf(short * (0.6 if _portrait else 0.5), 150.0, 320.0)
 	if not _portrait:  # Never under the scoreboard.
 		mini_w = minf(mini_w, board.position.x - left - Minimap.FRAME * 2.0 - 8.0)
 	var aspect := sim.arena_size().y / sim.arena_size().x
+	_mini.custom_minimum_size = Vector2.ZERO
 	_mini.size = Vector2(mini_w, mini_w * aspect)
-	_mini.custom_minimum_size = _mini.size
-	if _portrait:
+	if _portrait:  # Under the pill that says which side you're on.
 		_mini.set_rotated(true)
 		_mini.size = Vector2(mini_w * aspect, mini_w)
-		_mini.position = Vector2(left + Minimap.FRAME, below + Minimap.FRAME)
+		_mini.position = Vector2(left + Minimap.FRAME, below + 36.0 + Minimap.FRAME)
 	else:
 		_mini.set_rotated(false)
 		_mini.position = Vector2(left + Minimap.FRAME, top + Minimap.FRAME)
 	# Feed: under the minimap on wide screens; opposite it on upright ones.
 	_feed_box.custom_minimum_size = Vector2(minf(280.0, view_size.x * 0.46), 0)
 	if _portrait:
-		_feed_box.position = Vector2(right - _feed_box.custom_minimum_size.x, below + 62.0)
+		_feed_box.position = Vector2(right - _feed_box.custom_minimum_size.x, below + 40.0)
 	else:
 		_feed_box.position = Vector2(left, top + _mini.size.y + 16.0)
 	_feed_box.size = _feed_box.custom_minimum_size
@@ -321,13 +333,15 @@ func _relayout() -> void:
 	_announce_big.size = Vector2(center_w, 0)
 	_announce.position = Vector2((view_size.x - center_w) * 0.5, mid_y + (66.0 if tiny else 84.0))
 	_announce.size = Vector2(center_w, 0)
-	_attack_label.position = Vector2(0, below)
+	_side_line_y = below
+	_place_side_pill()
+	_attack_label.position = Vector2(0, below + 36.0)
 	_attack_label.size = Vector2(view_size.x, 0)
-	_status_label.position = Vector2(0, below + 26.0)
+	_status_label.position = Vector2(0, below + 62.0)
 	_status_label.size = Vector2(view_size.x, 0)
 	_countdown.position = Vector2(0, view_size.y * 0.32 - 60.0)
 	_countdown.size = Vector2(view_size.x, 0)
-	_reverse_flash.position = Vector2(0, below + 52.0)
+	_reverse_flash.position = Vector2(0, below + 88.0)
 	_reverse_flash.size = Vector2(view_size.x, 0)
 	# Buttons: thumb reach, bigger on phones.
 	var big := clampf(short * 0.3, 104.0, 150.0)
@@ -387,6 +401,7 @@ func refresh() -> void:
 	_refresh_buttons(me)
 	_refresh_jail(me)
 	_refresh_status(me)
+	_refresh_side(me)
 	_refresh_hints(delta, me)
 	_refresh_countdown()
 	_mini.view_rect = view.ground_view()
@@ -433,6 +448,52 @@ func _refresh_jail(me: Sim.Player) -> void:
 		_jail_bar.value = Sim.JAIL_TIME - me.jail_left
 
 
+## Always on screen: which side of the line you're on, and so whether you're the hunter or the hunted.
+func _refresh_side(me: Sim.Player) -> void:
+	var show_it := me != null and me.state == Sim.State.PLAY and sim.phase == Sim.Phase.PLAY
+	_side_pill.visible = show_it
+	if not show_it:
+		_side_shown = ""
+		return
+	var state := "enemy"
+	if sim.is_free_walking(me):
+		state = "free"
+	elif sim.is_charged(me):
+		state = "charged"
+	elif sim.on_home_side(me):
+		state = "home"
+	if state == _side_shown:
+		return
+	var first := _side_shown == ""
+	_side_shown = state
+	var look: Array = {"home": ["YOUR SIDE: TAG THEM!", Color("22b85c")], "enemy": ["ENEMY SIDE: RUN!", Color("f0413a")],
+		"charged": ["CHARGED: TAG ANYONE!", Color("ffb31f")], "free": ["FREE WALK HOME", Color("3f8fe8")]}[state]
+	_side_text.text = look[0]
+	var box := UiKit.style(look[1], 18, 3, UiKit.RIM)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	box.content_margin_top = 3
+	box.content_margin_bottom = 5
+	box.shadow_color = Color(UiKit.INK, 0.3)
+	box.shadow_size = 2
+	box.shadow_offset = Vector2(0, 3)
+	_side_pill.add_theme_stylebox_override("panel", box)
+	_place_side_pill()
+	if first:
+		return
+	Audio.sfx("topper_chime" if state != "enemy" else "timer_urgent", 0.6)
+	_side_pill.scale = Vector2.ONE * 1.35
+	create_tween().tween_property(_side_pill, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _place_side_pill() -> void:
+	_side_pill.reset_size()
+	var size_now := _side_pill.get_combined_minimum_size()
+	_side_pill.size = size_now
+	_side_pill.pivot_offset = size_now * 0.5
+	_side_pill.position = Vector2((get_viewport_rect().size.x - size_now.x) * 0.5, _side_line_y)
+
+
 func _refresh_status(me: Sim.Player) -> void:
 	var mine: int = me.team if me else 0
 	var under_attack: bool = sim.phase == Sim.Phase.PLAY and (int(sim.capturing[mine]) > 0 or float(sim.cap[mine]) > 0.02)
@@ -447,10 +508,6 @@ func _refresh_status(me: Sim.Player) -> void:
 		var their_base: Vector2 = sim.base[1 - me.team]
 		if me.pos.distance_to(their_base) < Sim.BASE_R:
 			text = "CAPTURING %d%%" % int(float(sim.cap[1 - me.team]) * 100.0)
-		elif sim.is_free_walking(me):
-			text = "FREE WALK: nobody can tag you, get home!"
-		elif me.on_base:
-			text = "YOU ARE FRESH, GET OUT THERE!"
 		elif me.camp > 3.0:
 			text = "THE PAD IS ABOUT TO POP YOU!"
 		elif sim.tile_at(me.pos) == Maps.GRASS:

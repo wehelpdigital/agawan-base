@@ -28,6 +28,7 @@ static func build(sim: Sim, low_detail := false) -> Node3D:
 	floor_kit.outline = 0.0
 	_draw_background(floor_kit, sim, theme)
 	_draw_floor(floor_kit, sim, theme, rng)
+	_draw_midline(floor_kit, sim)
 	_draw_pads(floor_kit, sim)
 	_add(root, floor_kit, toon, "Floor")
 
@@ -51,6 +52,7 @@ static func build(sim: Sim, low_detail := false) -> Node3D:
 	_draw_bases(solid, sim)
 	_draw_jails(solid, sim)
 	_draw_tricks(solid, sim)
+	_draw_line_posts(solid, sim)
 	_add(root, solid, props, "Solid")
 
 	var deco := prop_kit(low_detail)
@@ -110,13 +112,16 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 	var leafy: bool = String(Maps.by_id(sim.map_id)["theme"]) in ["barrio", "terraces", "mangrove", "schoolyard", "ruins"]
 	var accent := Color(theme["accent"])
 	var mid_y: float = (sim.base[0].y + sim.base[1].y) * 0.5
-	var shade := func(px: float, py: float) -> Color:
+	var mid_x: float = sim.w * t * 0.5
+	var shade := func(px: float, py: float, side: Color) -> Color:
 		var n := clampf(noise.get_noise_2d(px, py) * 1.9 + 0.5, 0.0, 1.0)
 		var c := light.lerp(dark, smoothstep(0.34, 0.66, n))
 		# The path wanders a little, and it fades out as it gets to the sides.
 		var wander := sin(px * 0.18 + float(noise.seed)) * 1.0
 		var on_path := 1.0 - smoothstep(0.7, 1.7, absf(py - mid_y - wander))
-		return c.lerp(worn, on_path * 0.62)
+		c = c.lerp(worn, on_path * 0.62)
+		# Each team's ground takes on its colour, most of all along the line, so you always know whose side you're on.
+		return c.lerp(side, 0.13 + 0.2 * (1.0 - smoothstep(0.0, 6.0, absf(px - mid_x))))
 	var cols := sim.w * 2
 	var rows := sim.h * 2
 	var cell := t * 0.5
@@ -129,8 +134,9 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 			var y0 := gy * cell
 			var x1 := x0 + cell
 			var y1 := y0 + cell
+			var side: Color = team_color(0 if gx < cols / 2 else 1)
 			k._quad(Vector3(x0, 0, y0), Vector3(x0, 0, y1), Vector3(x1, 0, y1), Vector3(x1, 0, y0), Vector3.UP,
-				shade.call(x0, y0), shade.call(x0, y1), shade.call(x1, y1), shade.call(x1, y0), false)
+				shade.call(x0, y0, side), shade.call(x0, y1, side), shade.call(x1, y1, side), shade.call(x1, y0, side), false)
 	for y in sim.h:
 		for x in sim.w:
 			var code := sim.tiles[y * sim.w + x]
@@ -159,6 +165,28 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 					_landing_box(k, center)
 				Maps.GATE:
 					_gate_track(k, center)
+
+
+## The line that decides who can tag who: bold, straight across the field, in both teams' colours.
+static func _draw_midline(k: MeshKit, sim: Sim) -> void:
+	var size := sim.arena_size()
+	var mid := size.x * 0.5
+	k.ground(Rect2(mid - 0.62, 0, 0.3, size.y), 0.018, team_color(0))
+	k.ground(Rect2(mid + 0.32, 0, 0.3, size.y), 0.018, team_color(1))
+	k.ground(Rect2(mid - 0.34, 0, 0.68, size.y), 0.02, Color("fffdf4"))
+
+
+## A tall post at each end of the line, flying both teams' flags.
+static func _draw_line_posts(k: MeshKit, sim: Sim) -> void:
+	var size := sim.arena_size()
+	var mid := size.x * 0.5
+	for z: float in [-0.35, size.y + 0.35]:
+		var post := Vector3(mid, 0, z)
+		k.cyl(post, 0.5, 0.42, 0.3, Color("fff3d6"), 12)
+		k.cyl(post, 4.6, 0.1, 0.09, Color("fff3d6"), 8)
+		k.ball(post + Vector3(0, 4.7, 0), Vector3(0.2, 0.2, 0.2), Color("ffd23f"), 6, 10)
+		_pennant(k, post + Vector3(0, 4.5, 0), -1.0, 2.0, 1.2, team_color(0))
+		_pennant(k, post + Vector3(0, 4.5, 0), 1.0, 2.0, 1.2, team_color(1))
 
 
 ## A tile of ice or mud with its corners rounded off, joining smoothly on to any neighbour of the same kind.
@@ -468,7 +496,6 @@ static func _draw_border(k: MeshKit, sim: Sim, theme: Dictionary) -> void:
 	var size := sim.arena_size()
 	var wall := Color(theme["wall"])
 	var edge := Color(theme["edge"])
-	var accent := Color(theme["accent"])
 	var w := 0.7
 	var h := WALL_H
 	var step := 3.0
@@ -477,7 +504,7 @@ static func _draw_border(k: MeshKit, sim: Sim, theme: Dictionary) -> void:
 	var i := 0
 	while x < size.x + w:
 		var l := minf(step, size.x + w - x)
-		var c: Color = wall if i % 2 == 0 else accent
+		var c: Color = wall if i % 2 == 0 else team_color(0 if x + l * 0.5 < size.x * 0.5 else 1)
 		k.soft_box(Vector3(x + l * 0.5, h * 0.5, -w * 0.5), Vector3(l, h, w) * 0.5, c, 0.42, 6, 10)
 		k.soft_box(Vector3(x + l * 0.5, h * 0.5, size.y + w * 0.5), Vector3(l, h, w) * 0.5, c, 0.42, 6, 10)
 		x += l
@@ -486,9 +513,8 @@ static func _draw_border(k: MeshKit, sim: Sim, theme: Dictionary) -> void:
 	i = 0
 	while y < size.y:
 		var l := minf(step, size.y - y)
-		var c: Color = wall if i % 2 == 1 else accent
-		k.soft_box(Vector3(-w * 0.5, h * 0.5, y + l * 0.5), Vector3(w, h, l) * 0.5, c, 0.42, 6, 10)
-		k.soft_box(Vector3(size.x + w * 0.5, h * 0.5, y + l * 0.5), Vector3(w, h, l) * 0.5, c, 0.42, 6, 10)
+		k.soft_box(Vector3(-w * 0.5, h * 0.5, y + l * 0.5), Vector3(w, h, l) * 0.5, wall if i % 2 == 1 else team_color(0), 0.42, 6, 10)
+		k.soft_box(Vector3(size.x + w * 0.5, h * 0.5, y + l * 0.5), Vector3(w, h, l) * 0.5, wall if i % 2 == 1 else team_color(1), 0.42, 6, 10)
 		y += l
 		i += 1
 	# A ledge of the theme's edge colour beyond the wall.

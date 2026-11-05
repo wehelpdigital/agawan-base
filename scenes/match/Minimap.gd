@@ -1,6 +1,6 @@
 class_name Minimap
 extends Control
-## The whole field in the corner of the screen, as a little picture of it: each team's half, walls, water, bushes and
+## The whole field in the corner of the screen, as a little picture of it: the line and each team's half, walls, water, bushes and
 ## every trick on the field, true-size bases and jails, crystals, and everyone you can see. Enemies have a green ring when you can tag
 ## them and a red one when they can tag you. The white box is what your camera can see. Hidden enemies don't appear,
 ## so it's no way around the tall grass.
@@ -82,11 +82,8 @@ func _draw_field() -> void:
 	var tile := whole / Vector2(_sim.w, _sim.h)
 	_field.draw_rect(Rect2(Vector2.ZERO, whole), Color(theme["floor"][0]))
 	# Each team's half carries a wash of its colour, with a dashed line down the middle.
-	_field.draw_rect(Rect2(Vector2.ZERO, Vector2(whole.x * 0.5, whole.y)), Color(ArenaBuilder.team_color(0), 0.2))
-	_field.draw_rect(Rect2(Vector2(whole.x * 0.5, 0), Vector2(whole.x * 0.5, whole.y)), Color(ArenaBuilder.team_color(1), 0.2))
-	var dash := whole.y / 15.0
-	for i in 8:
-		_field.draw_rect(Rect2(whole.x * 0.5 - 1.0, dash * (i * 2.0 + 0.5), 2.0, dash), Color(1, 1, 1, 0.5))
+	_field.draw_rect(Rect2(Vector2.ZERO, Vector2(whole.x * 0.5, whole.y)), Color(ArenaBuilder.team_color(0), 0.32))
+	_field.draw_rect(Rect2(Vector2(whole.x * 0.5, 0), Vector2(whole.x * 0.5, whole.y)), Color(ArenaBuilder.team_color(1), 0.32))
 	# Soft shapes run together where tiles of a kind touch, so walls and ponds read as one thing.
 	var overlap := tile.y * 0.2
 	var radius := int(tile.y * 0.34)
@@ -130,6 +127,9 @@ func _draw_field() -> void:
 					_field.draw_circle(rect.get_center(), tile.y * 0.18, Color("fff6e0"))
 				Maps.ALTAR:
 					_field.draw_circle(rect.get_center(), tile.y * 0.44, Color("7a6ad8"))
+	# The line, over everything but the players.
+	var thick := maxf(whole.y * 0.024, 3.0)
+	_field.draw_rect(Rect2(whole.x * 0.5 - thick * 0.5, 0, thick, whole.y), Color("fffdf4"))
 	# The flight of every jump pad.
 	for pad: int in _sim.jumps:
 		var from := Vector2(pad % _sim.w + 0.5, pad / _sim.w + 0.5) * tile

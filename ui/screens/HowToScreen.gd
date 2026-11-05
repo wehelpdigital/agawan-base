@@ -3,11 +3,11 @@ extends Control
 
 const CARDS: Array[Dictionary] = [
 	{"icon": "swords", "color": Color("ffb21f"), "title": "5 vs 5", "text": "Two teams, two bases. Touch an enemy and one of you goes to jail. The question is which one."},
-	{"icon": "flag", "color": Color("35d07f"), "title": "The Fresher Wins", "text": "Whoever left their base LAST is fresher, and tags the other. A green arrow over an enemy means you can tag them. A red sign means they can tag you. Touch your own base to get fresh again."},
+	{"icon": "flag", "color": Color("35d07f"), "title": "Your Side, Your Tag", "text": "A big line splits the field. On your side, you can tag any enemy. Over the line, on their side, they can tag you, so run back! A green arrow over an enemy means you can tag them, a red sign means they can tag you, and your own ring goes green or red to match."},
 	{"icon": "cage", "color": Color("ff4f6b"), "title": "Jail & Rescue", "text": "Tagged players go to the jail beside the enemy base. Tap to break out, or wait for a teammate: one touch of the jail frees everyone, and rescuers get a free walk home."},
 	{"icon": "crown", "color": Color("23a7ff"), "title": "Capture the Base", "text": "Stand on the enemy base to capture it. That's a point. First team to 3 wins. Jail the whole enemy team at once for a point too. Most points when time runs out wins."},
 	{"icon": "power", "color": Color("b768ff"), "title": "Grab Crystals", "text": "Rainbow crystals drop all over the map. Nobody knows what's inside: grab one, and a slot machine spins up a power card. Hold two at a time. Tap a card to use it, or drag it to aim. Fiesta Time, the last minute, rains them down."},
-	{"icon": "map", "color": Color("35d07f"), "title": "Use the Field", "text": "Bushes hide you unless an enemy is close, but running shakes the leaves. Arrow floors shoot you along. Jump pads throw you to their marked box. Gates rise and fall on a beat. Fountains make you fresh anywhere, then refill. Altars keep growing crystals. Dash to clear low fences. Bumpers knock you flying."},
+	{"icon": "map", "color": Color("35d07f"), "title": "Use the Field", "text": "Bushes hide you unless an enemy is close, but running shakes the leaves. Arrow floors shoot you along. Jump pads throw you to their marked box. Gates rise and fall on a beat. Fountains let you tag anyone for 6 seconds, even over the line, then refill. Altars keep growing crystals. Dash to clear low fences. Bumpers knock you flying."},
 	{"icon": "dash", "color": Color("19d3e6"), "title": "Controls", "text": "Touch: left thumb runs, right thumb uses buttons.\nKeyboard: WASD or arrows, Space to dash, E to use a card, 1-4 for emotes.\nController: left stick, A to dash, X to use."},
 ]
 

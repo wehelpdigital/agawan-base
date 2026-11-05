@@ -34,6 +34,8 @@ npm start                     # http://127.0.0.1:8787 (needs Node 22.13+)
 
 Then run the game with `-- --server=http://127.0.0.1:8787`, or enter the address in Settings > More.
 
+**The line.** The field is split down the middle. On your own side you can tag any enemy; over the line, they can tag you. A fountain or a Fresh card charges you for a few seconds, and then you can tag anyone anywhere.
+
 **Controls.** Touch: left thumb runs, right thumb dashes and plays cards (tap to auto-aim, drag to aim).
 Keyboard: WASD or arrows, Space to dash, E to use a card, right-click to aim, 1-4 for emotes.
 Controller: left stick, A to dash, X to use, right stick to aim.

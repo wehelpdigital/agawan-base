@@ -6,7 +6,7 @@ var _fails := 0
 
 
 func _init() -> void:
-	_test_fresher_rule()
+	_test_side_rule()
 	_test_jail_and_rescue()
 	_test_capture()
 	_test_wipeout()
@@ -54,49 +54,97 @@ func _park_others(sim: Sim, keep: Array) -> void:
 		i += 1
 
 
-func _test_fresher_rule() -> void:
+func _test_side_rule() -> void:
 	var sim := _new_sim()
-	var a: Sim.Player = sim.players[0]  # team 0
-	var b: Sim.Player = sim.players[1]  # team 1
+	var a: Sim.Player = sim.players[0]  # team 0, on the left
+	var b: Sim.Player = sim.players[1]  # team 1, on the right
 	_park_others(sim, [0, 1])
 	var mid := sim.arena_size() * 0.5
-	a.pos = mid
-	b.pos = mid + Vector2(0.5, 0)
-	a.fresh = 10.0
-	b.fresh = 5.0
 	sim.t = 20.0
-	_ok(sim.can_tag(a, b), "fresher player can tag")
-	_ok(not sim.can_tag(b, a), "staler player can't tag")
+	a.pos = mid - Vector2(4.0, 0)
+	b.pos = mid - Vector2(3.5, 0)
+	b.fresh = 19.0
 	sim.step()
-	_ok(b.state == Sim.State.JAIL, "touching the fresher player jails you")
-	_ok(a.state == Sim.State.PLAY, "the fresher player stays free")
+	_ok(b.state == Sim.State.JAIL, "on your side, you tag an invader")
+	_ok(a.state == Sim.State.PLAY, "and you stay free")
 	_ok(a.tags == 1, "the tag is counted")
 	_ok(b.pos.distance_to(sim.jail[a.team]) < Sim.JAIL_R, "prisoner stands in the tagger's jail")
 
-	# Your own base is safe, and makes you fresh.
+	# And the other way round, over on their side.
+	sim = _new_sim()
+	a = sim.players[0]
+	b = sim.players[1]
+	_park_others(sim, [0, 1])
+	mid = sim.arena_size() * 0.5
+	sim.t = 20.0
+	a.pos = mid + Vector2(3.5, 0)
+	b.pos = mid + Vector2(4.0, 0)
+	a.fresh = 19.0
+	sim.step()
+	_ok(a.state == Sim.State.JAIL, "over the line, they tag you")
+	_ok(b.tags == 1, "and they get the tag")
+
+	# Either side of the line, nose to nose, nobody can touch anybody.
+	sim = _new_sim()
+	a = sim.players[0]
+	b = sim.players[1]
+	_park_others(sim, [0, 1])
+	mid = sim.arena_size() * 0.5
+	sim.t = 20.0
+	a.pos = mid - Vector2(0.25, 0)
+	b.pos = mid + Vector2(0.25, 0)
+	for _i in 5:
+		sim.step()
+		_ok(a.state == Sim.State.PLAY and b.state == Sim.State.PLAY, "no tags across the line")
+
+	# Going home makes you safe again.
+	sim = _new_sim()
+	a = sim.players[0]
+	_park_others(sim, [0])
+	mid = sim.arena_size() * 0.5
+	sim.t = 20.0
+	a.pos = mid + Vector2(6.0, 0)
+	a.fresh = 10.0
+	sim.step()
+	_ok(not sim.on_home_side(a) and a.fresh < sim.t, "over the line, your clock runs")
+	a.pos = mid - Vector2(6.0, 0)
+	sim.step()
+	_ok(sim.on_home_side(a) and a.fresh >= sim.t - Sim.TICK, "back on your side, it stops")
+
+	# Charged by a fountain or a card, you can tag on their side too.
+	sim = _new_sim()
+	a = sim.players[0]
+	b = sim.players[1]
+	_park_others(sim, [0, 1])
+	mid = sim.arena_size() * 0.5
+	sim.t = 20.0
+	a.pos = mid + Vector2(3.5, 0)
+	b.pos = mid + Vector2(4.0, 0)
+	a.fresh = sim.t + Sim.CHARGE_TIME
+	_ok(sim.is_charged(a), "a charge shows")
+	sim.step()
+	_ok(b.state == Sim.State.JAIL and a.state == Sim.State.PLAY, "charged, you tag them on their own side")
+
+	# Your own base is safe.
 	sim = _new_sim()
 	a = sim.players[0]
 	b = sim.players[1]
 	_park_others(sim, [0, 1])
 	sim.t = 30.0
-	a.fresh = 1.0
-	b.fresh = 5.0
 	a.pos = sim.base[0]
 	b.pos = sim.base[0] + Vector2(0.6, 0)
+	b.fresh = sim.t + Sim.CHARGE_TIME
 	sim.step()
-	_ok(a.state == Sim.State.PLAY, "safe on your own base")
-	_ok(a.fresh > 29.0, "standing on base makes you fresh")
-	_ok(b.state == Sim.State.JAIL, "a fresh defender tags the intruder")
+	_ok(a.state == Sim.State.PLAY, "safe on your own base, even from a charged enemy")
 
 	# A shield eats one tag.
 	sim = _new_sim()
 	a = sim.players[0]
 	b = sim.players[1]
 	_park_others(sim, [0, 1])
-	var mid2 := sim.arena_size() * 0.5
-	a.pos = mid2
-	b.pos = mid2 + Vector2(0.4, 0)
-	a.fresh = 10.0
+	mid = sim.arena_size() * 0.5
+	a.pos = mid - Vector2(4.0, 0)
+	b.pos = mid - Vector2(3.6, 0)
 	b.fresh = 5.0
 	sim.t = 20.0
 	b.status["shield"] = 30.0
@@ -256,7 +304,7 @@ func _test_tricks() -> void:
 	sim.t = 50.0
 	a.pos = sim.tile_center(tile)
 	sim.step()
-	_ok(a.fresh >= 50.0, "a fountain makes you fresh")
+	_ok(sim.is_charged(a), "a fountain charges you")
 	_ok(not sim.fountain_ready(tile), "and then it's empty")
 	var copy := _new_sim()
 	copy.apply_snapshot(sim.to_snapshot())

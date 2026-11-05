@@ -124,7 +124,7 @@ func _team_list(result: Dictionary, team: int) -> Control:
 
 
 func _player_row(row: Dictionary, mvp: int) -> Control:
-	var card := UiKit.panel(UiKit.CARD if str(row["name"]) != Profile.player_name else Color("6f49e6"), 10, 2)
+	var card := UiKit.panel(UiKit.CARD if str(row["name"]) != Profile.player_name else Color("1fa35c"), 10, 2)
 	var box := UiKit.hbox(6)
 	card.add_child(box)
 	if int(row["id"]) == mvp:

@@ -435,6 +435,8 @@ func _update_players(delta: float) -> void:
 		_ices[i].position = shown
 		if not hidden and p.state == Sim.State.PLAY:
 			av.emit_effects(fx, delta, is_moving and not airborne)
+			if sim.is_charged(p) and randf() < delta * 16.0:
+				fx.spawn(shown + Vector3(randf_range(-0.6, 0.6), randf_range(0.4, 1.8), randf_range(-0.6, 0.6)), Vector3(0, 1.2, 0), 0.5, 0.28, Cosmetics.Fx.STAR, Color("ffd23f"), 2.0)
 		_status_particles(i, p, shown, delta, hidden)
 
 
@@ -474,6 +476,9 @@ func tile_is_grass(p: Sim.Player) -> bool:
 func _update_marker(i: int, p: Sim.Player, me: Sim.Player, shown: Vector3, scale: float, hidden: bool) -> void:
 	var mark := _markers[i]
 	var icon := ""
+	if p.id == local_id:  # Your own ring: green when you're the hunter, red when you're the hunted.
+		var ring_color := Color("ffd23f") if sim.is_charged(p) else (Color("3bff7a") if sim.on_home_side(p) else Color("ff3f5a"))
+		(_rings[i].material_override as ShaderMaterial).set_shader_parameter("color", ring_color)
 	if p.team != my_team and not hidden and p.state == Sim.State.PLAY and me and me.state == Sim.State.PLAY and not sim.is_free_walking(p):
 		if sim.can_tag(me, p):
 			icon = "catch"
@@ -989,7 +994,7 @@ func _event(ev: Array) -> void:
 				_avatars[a].react_any(Faces.CHEERING, 1.0)
 		"fountain":
 			fx.burst(_world(x, y, 1.0), 18, 4.0, 0.6, 0.3, Cosmetics.Fx.DROP, ["8fe3ff", "ffffff"], 5.0)
-			_float_text(_world(x, y, 2.2), "FRESH!", Color("8fe3ff"))
+			_float_text(_world(x, y, 2.2), "CHARGED!", Color("ffd23f"))
 			Audio.sfx("aura_water", _audible(at2) * 0.8)
 			if a >= 0:
 				_avatars[a].react("happy", 1.0)

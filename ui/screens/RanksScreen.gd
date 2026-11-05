@@ -95,11 +95,11 @@ func _fill_leagues() -> void:
 	for i in range(Ranks.LEAGUES.size() - 1, -1, -1):
 		var league: Dictionary = Ranks.LEAGUES[i]
 		var reached: bool = Profile.best_trophies >= int(league["min"])
-		var card := UiKit.panel(Color("6f49e6") if i == mine else UiKit.CARD, 14, 3)
+		var card := UiKit.panel(Color("1fa35c") if i == mine else UiKit.CARD, 14, 3)
 		var row := UiKit.hbox(10)
 		card.add_child(row)
 		var dot := PanelContainer.new()
-		dot.add_theme_stylebox_override("panel", UiKit.style(league["color"] if reached else Color("6e6b92"), 12, 3))
+		dot.add_theme_stylebox_override("panel", UiKit.style(league["color"] if reached else Color("7f91a5"), 12, 3))
 		dot.custom_minimum_size = Vector2(36, 36)
 		dot.add_child(UiKit.icon("trophy", 24))
 		row.add_child(dot)
@@ -157,7 +157,7 @@ func _fill_board(scope: String) -> void:
 
 func _board_row(rank: int, row: Dictionary, scope: String) -> Control:
 	var mine: bool = (scope == "players" and str(row.get("name", "")) == Profile.player_name) or (scope == "guilds" and int(row.get("id", 0)) == Profile.guild_id)
-	var card := UiKit.panel(Color("6f49e6") if mine else UiKit.CARD, 12, 3)
+	var card := UiKit.panel(Color("1fa35c") if mine else UiKit.CARD, 12, 3)
 	var box := UiKit.hbox(10)
 	card.add_child(box)
 	var medal_color: Color = [UiKit.YELLOW, Color("d6dff0"), Color("e08e45")][rank - 1] if rank <= 3 else UiKit.WHITE

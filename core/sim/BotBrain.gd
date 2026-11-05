@@ -43,7 +43,6 @@ func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 	var threats: Array[Sim.Player] = []
 	var prey: Array[Sim.Player] = []
 	var enemies_near := 0
-	var error := (1.0 - p.skill) * 3.0  # A low-skill bot misreads freshness by up to a few seconds.
 	for e: Sim.Player in sim.team_of(1 - p.team):
 		if e.state != Sim.State.PLAY or sim.is_hidden_from(e, p.team):
 			continue
@@ -51,12 +50,12 @@ func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 		if d > sight:
 			continue
 		enemies_near += 1
-		var fresh_gap := sim.fresh_value(e) - sim.fresh_value(p) + sim.rng.randf_range(-error, error)
+		var fresh_gap := sim.fresh_value(e) - sim.fresh_value(p)
 		if sim.has_status(e, "ghost") or sim.is_free_walking(e):
 			continue
-		if fresh_gap > 0.0 and not sim.is_held(e) and not p.on_base:
+		if fresh_gap > 0.01 and not sim.is_held(e) and not p.on_base:
 			threats.append(e)
-		elif fresh_gap < 0.0 and not e.on_base:
+		elif fresh_gap < -0.01 and not e.on_base:
 			prey.append(e)
 	var threat := _closest(p, threats)
 	var target := _closest(p, prey)
@@ -83,7 +82,7 @@ func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 	# Otherwise running for your life beats everything: home makes you safe and fresh again.
 	elif threat and threat_d < lerpf(4.0, 8.5, p.skill) and not sim.is_free_walking(p):
 		mode = "flee"
-		goal = _flee_point(sim, p, threat, home)
+		goal = _flee_point(sim, p, threat, _nearest_safety(sim, p))
 		if threat_d < 3.2 and p.dash_cd <= 0.0 and sim.rng.randf() < p.skill:
 			p.want_dash = true
 	elif sim.is_free_walking(p):
@@ -139,10 +138,16 @@ func _shortcut(sim: Sim, p: Sim.Player, goal: Vector2) -> Vector2:
 	return best
 
 
-## Home, or a full fountain if one's closer.
-func _nearest_refresh(sim: Sim, p: Sim.Player, home: Vector2) -> Vector2:
-	var best := home
-	var best_d := p.pos.distance_to(home)
+## Safety is just over the line. Across the field that's nearer than the base; deep in enemy ground, it still is.
+func _nearest_safety(sim: Sim, p: Sim.Player) -> Vector2:
+	var mid := sim.arena_size().x * 0.5
+	return Vector2(mid + (-2.5 if p.team == 0 else 2.5), p.pos.y)
+
+
+## Back over the line, or a full fountain if one's closer.
+func _nearest_refresh(sim: Sim, p: Sim.Player, _home: Vector2) -> Vector2:
+	var best := _nearest_safety(sim, p)
+	var best_d := p.pos.distance_to(best)
 	for tile: int in sim.fountains:
 		if sim.fountain_ready(tile):
 			var at := sim.tile_center(tile)
@@ -236,9 +241,9 @@ func _attack_point(sim: Sim, p: Sim.Player) -> Vector2:
 			guards += 1
 	if guards == 0 or free_enemies <= 2 or float(sim.wave_until[p.team]) > sim.t 			or sim.has_status(p, "ghost") or sim.has_status(p, "overcharge") or sim.has_status(p, "shield"):
 		return enemy_base
-	var from_base := (p.pos - enemy_base).normalized()
-	var wobble := sin(sim.t * 0.9 + p.id * 1.7) * 0.9
-	return enemy_base + from_base.rotated(wobble) * (Sim.BASE_R + lerpf(6.0, 4.0, p.skill))
+	var wobble := sin(sim.t * 0.9 + p.id * 1.7) * 7.0
+	var at_line := _nearest_safety(sim, p)
+	return Vector2(at_line.x, clampf(enemy_base.y + wobble, 1.5, sim.arena_size().y - 1.5))
 
 
 func _nearest_pickup(sim: Sim, p: Sim.Player) -> Vector2:
