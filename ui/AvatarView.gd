@@ -4,15 +4,20 @@ extends Control
 ## resolution, whatever the interface's scale, so it stays sharp on high-density phones.
 
 ## Where the camera goes for each kind of item, so you see what you're choosing: distance, height.
+## Zooming moves between these and WHOLE, the whole avatar.
+const WHOLE := [6.2, 0.82]
+const FACE := [3.7, 1.1]
+const ZOOM_OUT_MOST := -0.6  ## Past the whole avatar, for the widest hats and wings.
 const FOCUS := {
-	"mask": [3.0, 1.1], "hat": [3.5, 1.36], "top": [3.6, 0.5], "gloves": [3.6, 0.45], "pants": [3.1, 0.28],
-	"shoes": [2.7, 0.14], "back": [4.4, 0.7],
+	"mask": [3.7, 1.1], "hat": [4.6, 1.42], "top": [3.6, 0.5], "gloves": [3.8, 0.45], "pants": [3.1, 0.28],
+	"shoes": [2.7, 0.14], "back": [5.4, 0.8],
 }
 const MAX_SIDE := 1400.0
 
 var avatar: Avatar3D
 var fx: FxField
 var preview_slot := ""
+var zoomable := false  ## Shows zoom buttons, and lets the wheel and a pinch zoom too.
 var _viewport: SubViewport
 var _picture: TextureRect
 var _camera: Camera3D
@@ -29,6 +34,11 @@ var _want_distance := 6.2
 var _want_height := 0.82
 var _want_yaw := 0.3
 var _yaw_locked := false
+var _focus: Array = FACE
+var _zoom := -2.0  ## From ZOOM_OUT_MOST to 1, whole avatar at 0 and close up at 1. Until it's used, it follows the item.
+var _touches := {}
+var _pinch := 0.0
+var _turned := false
 
 
 func _init() -> void:
@@ -62,8 +72,8 @@ func _ready() -> void:
 	var kit := MeshKit.new()
 	kit.soften = true
 	kit.shells = false
-	kit.ball(Vector3(0, -0.14, 0), Vector3(1.32, 0.16, 1.32), Color("ffd23f"), 12, 40)
 	kit.outline = 0.0
+	kit.ball(Vector3(0, -0.14, 0), Vector3(1.32, 0.16, 1.32), Color("ffd23f"), 12, 40)
 	kit.ball(Vector3(0, 0.0, 0), Vector3(1.04, 0.022, 1.04), Color("ff9d2e"), 8, 40)
 	_pad = MeshInstance3D.new()
 	_pad.mesh = kit.to_mesh()
@@ -78,8 +88,12 @@ func _ready() -> void:
 		avatar.setup(_look, ArenaBuilder.team_color(0))
 	avatar.rotation.y = _yaw
 	resized.connect(_fit_viewport)
+	resized.connect(_apply_zoom)
 	get_viewport().size_changed.connect(_fit_viewport)
 	_fit_viewport()
+	if zoomable:
+		_add_zoom_buttons()
+	_apply_zoom()
 
 
 ## One picture pixel per screen pixel: the interface's scale must not make the avatar blurry.
@@ -97,14 +111,16 @@ func _fit_viewport() -> void:
 func set_look(look: Dictionary, slot := "") -> void:
 	var same := look == _look
 	_look = look.duplicate()
+	var same_slot := slot == preview_slot
 	preview_slot = slot
-	var focus: Array = FOCUS.get(slot, [6.2, 0.82])
-	_want_distance = focus[0]
-	_want_height = focus[1]
-	_yaw_locked = slot in ["mask", "hat", "back", "shoes", "pants", "top", "gloves"]
-	_want_yaw = PI + 0.5 if slot == "back" else 0.42
-	if slot != "":
-		_auto_yaw = not _yaw_locked
+	_focus = FOCUS.get(slot, FACE)
+	_apply_zoom()
+	if not (same_slot and _turned):  # Having turned the avatar to look at something, you keep that view.
+		_turned = false
+		_yaw_locked = slot in ["mask", "hat", "back", "shoes", "pants", "top", "gloves"]
+		_want_yaw = PI + 0.5 if slot == "back" else 0.42
+		if slot != "":
+			_auto_yaw = not _yaw_locked
 	if avatar == null:
 		return
 	if not same:
@@ -168,19 +184,98 @@ func _process(delta: float) -> void:
 				fx.burst(Vector3(0, 1.0, 0.4), 22, 3.0, 0.7, 0.26, int(def["fx"]), def["c"], 3.0)
 
 
-## Drag to turn the avatar round; a tap makes it smile.
+## How close the camera is right now: what you zoomed to, or else what suits the item.
+func zoom_level() -> float:
+	if _zoom >= ZOOM_OUT_MOST:
+		return _zoom
+	return 1.0 if FOCUS.has(preview_slot) else 0.0
+
+
+func zoom_by(amount: float) -> void:
+	_zoom = clampf(zoom_level() + amount, ZOOM_OUT_MOST, 1.0)
+	_apply_zoom()
+
+
+func _apply_zoom() -> void:
+	var t := zoom_level()
+	# A narrow picture needs the camera further back to get the whole width across it.
+	var fit: float = maxf(0.95 / maxf(size.x / maxf(size.y, 1.0), 0.1), 1.0) if size.y > 0.0 else 1.0
+	var whole: float = WHOLE[0] * fit
+	if t >= 0.0:
+		_want_distance = lerpf(whole, float(_focus[0]) * fit, t)
+		_want_height = lerpf(WHOLE[1], _focus[1], t)
+	else:
+		_want_distance = whole * (1.0 - t)
+		_want_height = WHOLE[1]
+
+
+func _add_zoom_buttons() -> void:
+	var row := UiKit.hbox(6)
+	row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	row.offset_right = -4
+	row.offset_bottom = -4
+	add_child(row)
+	for step: Dictionary in [{"text": "-", "by": -0.34, "name": "ZoomOut"}, {"text": "+", "by": 0.34, "name": "ZoomIn"}]:
+		var b := UiKit.button(step["text"], "ink", 24)
+		b.name = step["name"]
+		b.custom_minimum_size = Vector2(44, 44)
+		b.tooltip_text = "Zoom out" if step["by"] < 0.0 else "Zoom in"
+		var by: float = step["by"]
+		b.pressed.connect(func() -> void: zoom_by(by))
+		row.add_child(b)
+
+
+## Drag to turn the avatar round; a tap makes it smile. The wheel or two fingers zoom.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_dragging = event.pressed
-		_auto_yaw = false
-		if event.pressed and avatar:
-			avatar.react("happy", 1.2)
+	if event is InputEventMouseButton:
+		if zoomable and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			zoom_by(0.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -0.12)
+			accept_event()
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			_dragging = event.pressed
+			_auto_yaw = false
+			if event.pressed and avatar:
+				avatar.react("happy", 1.2)
 	elif event is InputEventMouseMotion and _dragging:
-		_yaw += event.relative.x * 0.012
+		if _touches.size() < 2:
+			_turn(event.relative.x)
+	elif event is InputEventMagnifyGesture:
+		if zoomable:
+			zoom_by((event.factor - 1.0) * 1.2)
+			accept_event()
 	elif event is InputEventScreenTouch:
+		if event.pressed:
+			_touches[event.index] = event.position
+		else:
+			_touches.erase(event.index)
+		_pinch = _touch_gap()
 		_dragging = event.pressed
 		_auto_yaw = false
 		if event.pressed and avatar:
 			avatar.react("happy", 1.2)
 	elif event is InputEventScreenDrag:
-		_yaw += event.relative.x * 0.012
+		_touches[event.index] = event.position
+		if _touches.size() >= 2:
+			var gap := _touch_gap()
+			if zoomable and _pinch > 0.0:
+				zoom_by((gap - _pinch) * 0.006)
+			_pinch = gap
+		else:
+			_turn(event.relative.x)
+
+
+func _turn(pixels: float) -> void:
+	_yaw += pixels * 0.012
+	if absf(pixels) > 0.5:
+		_turned = true
+		_yaw_locked = false
+		_auto_yaw = false
+
+
+func _touch_gap() -> float:
+	if _touches.size() < 2:
+		return 0.0
+	var points: Array = _touches.values()
+	return (points[0] as Vector2).distance_to(points[1])

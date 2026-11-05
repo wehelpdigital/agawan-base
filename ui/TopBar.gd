@@ -33,7 +33,7 @@ func _build() -> void:
 		child.queue_free()
 	_built = true
 	var height := 40.0 if _compact else 46.0
-	_row = UiKit.hbox(8)
+	_row = UiKit.hbox(4 if _narrow else 8)
 	_row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_row.offset_left = 8
 	_row.offset_right = -8
@@ -96,7 +96,7 @@ func _build() -> void:
 	_gem_pill = UiKit.stat_pill("gem", "0", UiKit.GEM, pill_h)
 	_row.add_child(_gem_pill)
 	var gear := UiKit.button("", "ink", 16, "gear")
-	gear.custom_minimum_size = Vector2(height + 4.0, height)
+	gear.custom_minimum_size = Vector2(height - 2.0 if _narrow else height + 4.0, height)
 	gear.pressed.connect(func() -> void: UiRoot.instance.show_screen("settings", {}, true))
 	_row.add_child(gear)
 	refresh()
@@ -108,14 +108,25 @@ func _set_value(pill: PanelContainer, text: String) -> void:
 		value.text = text
 
 
+## 12,400 is 12.4K on a phone, where there isn't room for all of it.
+func _amount(value: int) -> String:
+	if not _narrow or value < 1000:
+		return UiKit.format_number(value)
+	if value >= 1000000:
+		return "%.1fM" % (value / 1000000.0)
+	if value >= 100000:
+		return "%dK" % (value / 1000)
+	return "%.1fK" % (value / 1000.0)
+
+
 func refresh() -> void:
 	if _name_label == null or not is_instance_valid(_name_label):
 		return
 	_name_label.text = Profile.player_name
 	_level_label.text = str(Profile.level)
-	_set_value(_trophy_pill, UiKit.format_number(Profile.trophies))
-	_set_value(_coin_pill, UiKit.format_number(Profile.coins))
-	_set_value(_gem_pill, UiKit.format_number(Profile.gems))
+	_set_value(_trophy_pill, _amount(Profile.trophies))
+	_set_value(_coin_pill, _amount(Profile.coins))
+	_set_value(_gem_pill, _amount(Profile.gems))
 	var on := Net.online
 	_status_dot.add_theme_stylebox_override("panel", UiKit.style(UiKit.MINT if on else Color("8f8cb0"), 5, 2))
 	var state := find_child("State", true, false) as Label

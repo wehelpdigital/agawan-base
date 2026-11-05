@@ -47,33 +47,44 @@ const RARITY := {
 ## Atlas cells in assets/fx/atlas.png.
 enum Fx { SOFT, STAR, HEART, SPARK, RING, FLAME, LEAF, NOTE, PIXEL, PUFF, SNOW, COIN, BOLT, PETAL, DROP, CONFETTI }
 
-## Worn over the face or the whole head. `tall` lifts head gear so it sits on top.
+## Worn over the face or the whole head. `cover` says how much of the head they hide: "eyes", "low" (nose and
+## mouth), "plate" (the whole face) or "whole" (they replace the head). `no_hat`: they already are a hat.
 const MASKS: Array[Dictionary] = [
 	{"id": "", "name": "No Mask", "rarity": "free"},
-	{"id": "shades", "name": "Cool Shades", "rarity": "free"},
-	{"id": "bandana", "name": "Bandit Bandana", "rarity": "free"},
-	{"id": "domino", "name": "Hero Mask", "rarity": "common"},
-	{"id": "ninja", "name": "Ninja Wrap", "rarity": "common"},
-	{"id": "snorkel", "name": "Snorkel", "rarity": "common"},
-	{"id": "panda", "name": "Panda Face", "rarity": "common"},
-	{"id": "tiger", "name": "Tiger Face", "rarity": "rare"},
-	{"id": "luchador", "name": "Luchador", "rarity": "rare"},
-	{"id": "clown", "name": "Clown Face", "rarity": "rare"},
-	{"id": "tiki", "name": "Tiki Mask", "rarity": "rare"},
-	{"id": "kitsune", "name": "Fox Spirit", "rarity": "rare"},
-	{"id": "pixel", "name": "Pixel Visor", "rarity": "rare"},
-	{"id": "oni", "name": "Ogre Mask", "rarity": "epic"},
-	{"id": "skull", "name": "Skull Face", "rarity": "epic"},
-	{"id": "plague", "name": "Beak Mask", "rarity": "epic"},
-	{"id": "knight", "name": "Knight Visor", "rarity": "epic"},
-	{"id": "robot", "name": "Robo Face", "rarity": "epic"},
-	{"id": "pumpkin", "name": "Pumpkin Head", "rarity": "epic", "tall": true},
-	{"id": "masskara", "name": "MassKara Smile", "rarity": "legend", "blurb": "The smiling festival mask of Bacolod."},
-	{"id": "higante", "name": "Higante Giant", "rarity": "legend", "tall": true, "blurb": "A papier-mache giant head, as paraded in Angono."},
-	{"id": "moriones", "name": "Roman Morion", "rarity": "legend", "tall": true, "blurb": "After the carved Holy Week helmets of Marinduque."},
-	{"id": "golden", "name": "Golden Face", "rarity": "legend"},
-	{"id": "galaxy", "name": "Starfield Face", "rarity": "legend"},
+	{"id": "shades", "name": "Cool Shades", "cover": "eyes", "rarity": "free"},
+	{"id": "bandana", "name": "Bandit Bandana", "cover": "low", "rarity": "free"},
+	{"id": "domino", "name": "Hero Mask", "cover": "eyes", "rarity": "common"},
+	{"id": "ninja", "name": "Ninja Wrap", "cover": "whole", "rarity": "common"},
+	{"id": "snorkel", "name": "Snorkel", "cover": "eyes", "rarity": "common"},
+	{"id": "panda", "name": "Panda Face", "cover": "whole", "rarity": "common"},
+	{"id": "tiger", "name": "Tiger Face", "cover": "whole", "rarity": "rare"},
+	{"id": "luchador", "name": "Luchador", "cover": "whole", "rarity": "rare"},
+	{"id": "clown", "name": "Clown Face", "cover": "plate", "rarity": "rare"},
+	{"id": "tiki", "name": "Tiki Mask", "cover": "whole", "rarity": "rare"},
+	{"id": "kitsune", "name": "Fox Spirit", "cover": "plate", "rarity": "rare"},
+	{"id": "pixel", "name": "Pixel Visor", "cover": "eyes", "rarity": "rare"},
+	{"id": "oni", "name": "Ogre Mask", "cover": "plate", "rarity": "epic"},
+	{"id": "skull", "name": "Skull Face", "cover": "plate", "rarity": "epic"},
+	{"id": "plague", "name": "Beak Mask", "cover": "plate", "rarity": "epic"},
+	{"id": "knight", "name": "Knight Visor", "cover": "whole", "rarity": "epic"},
+	{"id": "robot", "name": "Robo Face", "cover": "whole", "rarity": "epic"},
+	{"id": "pumpkin", "name": "Pumpkin Head", "cover": "whole", "rarity": "epic"},
+	{"id": "masskara", "name": "MassKara Smile", "cover": "plate", "rarity": "legend", "blurb": "The smiling festival mask of Bacolod."},
+	{"id": "higante", "name": "Higante Giant", "cover": "whole", "rarity": "legend", "blurb": "A papier-mache giant head, as paraded in Angono."},
+	{"id": "moriones", "name": "Roman Morion", "cover": "whole", "no_hat": true, "rarity": "legend", "blurb": "After the carved Holy Week helmets of Marinduque."},
+	{"id": "golden", "name": "Golden Face", "cover": "plate", "rarity": "legend"},
+	{"id": "galaxy", "name": "Starfield Face", "cover": "plate", "rarity": "legend"},
 ]
+
+## Hats that can't go with this mask: it is a helmet already, or the hat is a helmet too.
+static func wearing_clash(mask_id: String, hat_id: String) -> bool:
+	if mask_id == "" or hat_id == "":
+		return false
+	var mask := item("mask", mask_id)
+	if mask.get("no_hat", false):
+		return true
+	return hat_id == "astronaut" and String(mask.get("cover", "")) in ["plate", "whole"]
+
 
 ## Style sets the shape; c and c2 are its colours.
 const TOPS: Array[Dictionary] = [

@@ -34,10 +34,7 @@ func setup(text: String, p_kind := "yellow", font_size := 24, icon_name := "") -
 		_icon = UiKit.icon(icon_name, font_size * 1.25)
 		_row.add_child(_icon)
 	if text != "":
-		_label = UiKit.label(text, font_size, Color.WHITE, 0, true)
-		_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_row.add_child(_label)
+		_make_label(text)
 	set_kind(p_kind)
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -62,6 +59,13 @@ func setup(text: String, p_kind := "yellow", font_size := 24, icon_name := "") -
 	_box_focus.set_border_width_all(3)
 
 
+func _make_label(text: String) -> void:
+	_label = UiKit.label(text, _font_size, Color.WHITE, 0, true)
+	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_row.add_child(_label)
+
+
 func set_kind(p_kind: String) -> void:
 	kind = p_kind
 	_colors = UiKit.BUTTON_COLORS.get(kind, UiKit.BUTTON_COLORS["yellow"])
@@ -82,6 +86,9 @@ func set_text(text: String) -> void:
 	_text = text
 	if _label:
 		_label.text = text
+	elif text != "":
+		_make_label(text)
+		set_kind(kind)
 	_refresh_min()
 
 

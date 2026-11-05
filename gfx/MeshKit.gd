@@ -26,6 +26,8 @@ var detail := 1.0
 ## Avatars draw their outline in the shader, so they build no outline shells: overlapping parts would
 ## cross each other's lines. `outline` then only says "line" (above zero) or "paint" (zero).
 var shells := true
+## Gives a cap() a scalloped edge instead of a smooth one: how deep the scallops are, and how many there are.
+var cap_wave := Vector2.ZERO
 var _stack: Array[Transform3D] = []
 
 
@@ -443,6 +445,7 @@ func decal_box(center: Vector3, size: Vector3, color: Color) -> void:
 ## Paint on the front (or back) of an ellipsoid, following its curve: pockets, panels, badges. The x and y
 ## limits are measured from the ellipsoid's centre.
 func patch(center: Vector3, r: Vector3, x0: float, x1: float, y0: float, y1: float, color: Color, back := false, lift := 0.006, steps := 6) -> void:
+	color = _marked(color)
 	var side := -1.0 if back else 1.0
 	var point := func(x: float, y: float) -> Vector3:
 		var q := maxf(1.0 - pow(x / r.x, 2.0) - pow(y / r.y, 2.0), 0.0)
@@ -469,9 +472,9 @@ func patch(center: Vector3, r: Vector3, x0: float, x1: float, y0: float, y1: flo
 
 
 ## A stripe all the way round an ellipsoid, between two heights measured from its centre.
-func band(center: Vector3, r: Vector3, y0: float, y1: float, color: Color, lift := 0.006, segs := 24) -> void:
+func band(center: Vector3, r: Vector3, y0: float, y1: float, color: Color, lift := 0.006, segs := 24, rings := 3) -> void:
 	segs = maxi(int(segs * detail), 12)
-	var rings := 3
+	color = _marked(color)
 	for i in rings:
 		var ya := lerpf(y1, y0, float(i) / rings)
 		var yb := lerpf(y1, y0, float(i + 1) / rings)
@@ -495,6 +498,7 @@ func band(center: Vector3, r: Vector3, y0: float, y1: float, color: Color, lift 
 ## A round patch of paint on the front of an ellipsoid, with a smooth edge: bellies, faces, badges. It
 ## follows the curve, so it never shows the jagged line two intersecting shapes do.
 func round_patch(center: Vector3, r: Vector3, cx: float, cy: float, px: float, py: float, color: Color, lift := 0.006, segs := 28) -> void:
+	color = _marked(color)
 	var point := func(x: float, y: float) -> Vector3:
 		var q := maxf(1.0 - pow(x / r.x, 2.0) - pow(y / r.y, 2.0), 0.0)
 		return center + Vector3(x, y, r.z * sqrt(q) + lift)
@@ -515,6 +519,177 @@ func round_patch(center: Vector3, r: Vector3, cx: float, cy: float, px: float, p
 			_tri(p1, p2, p3, normal.call(p1), normal.call(p2), normal.call(p3), color, color, color, false)
 			if i > 0:
 				_tri(p1, p3, p4, normal.call(p1), normal.call(p3), normal.call(p4), color, color, color, false)
+
+
+## Part of an ellipsoid around its +Z pole: a mask or a visor, hugging whatever shares that ellipsoid. `ax` and `ay`
+## are how far it reaches sideways and up and down from the pole, in radians, and `tilt` turns the pole up (plus) or
+## down (minus). `rim` rolls a soft edge round it. With `hole` it is everything except that part: a helmet with its
+## face open. `cut` stops it flat below a height (a fraction of r.y), and `inside` turns it inside out, for a lining.
+func cap(center: Vector3, r: Vector3, color: Color, ax: float, ay: float, tilt := 0.0, rim := 0.0, rim_color := Color(0, 0, 0, 0), hole := false, cut := -1.0, inside := false) -> void:
+	var rings := maxi(int(10 * detail), 6)
+	var segs := maxi(int((36 if cap_wave.x == 0.0 else 72) * detail), 18)
+	var col := _marked(color)
+	if inside:
+		col.a = 0.0
+	var low := col * Color(0.86, 0.86, 0.86, 1.0)
+	var turn := Basis(Vector3.RIGHT, -tilt)
+	var inv := Vector3(1.0 / r.x, 1.0 / r.y, 1.0 / r.z)
+	for i in rings:
+		var f0 := float(i) / rings
+		var f1 := float(i + 1) / rings
+		for j in segs:
+			var t0 := TAU * float(j) / segs
+			var t1 := TAU * float(j + 1) / segs
+			var u1 := _cap_unit(t0, f0, ax, ay, turn, hole, cut)
+			var u2 := _cap_unit(t0, f1, ax, ay, turn, hole, cut)
+			var u3 := _cap_unit(t1, f1, ax, ay, turn, hole, cut)
+			var u4 := _cap_unit(t1, f0, ax, ay, turn, hole, cut)
+			var c1 := col.lerp(low, 0.5 - u1.y * 0.5)
+			var c2 := col.lerp(low, 0.5 - u2.y * 0.5)
+			var c3 := col.lerp(low, 0.5 - u3.y * 0.5)
+			var c4 := col.lerp(low, 0.5 - u4.y * 0.5)
+			var p1 := center + u1 * r
+			var p2 := center + u2 * r
+			var p3 := center + u3 * r
+			var p4 := center + u4 * r
+			var n1 := (u1 * inv).normalized()
+			var n2 := (u2 * inv).normalized()
+			var n3 := (u3 * inv).normalized()
+			var n4 := (u4 * inv).normalized()
+			_tri(p1, p2, p3, n1, n2, n3, c1, c2, c3, inside)
+			_tri(p1, p3, p4, n1, n3, n4, c1, c3, c4, inside)
+	if rim > 0.0:
+		var edge := PackedVector3Array()
+		for j in segs:
+			edge.append(center + _cap_unit(TAU * float(j) / segs, 0.0 if hole else 1.0, ax, ay, turn, hole, cut) * r)
+		var saved := outline
+		outline = 0.0
+		tube(edge, rim, color.darkened(0.1) if rim_color.a == 0.0 else rim_color, true)
+		outline = saved
+
+
+func _cap_unit(theta: float, f: float, ax: float, ay: float, turn: Basis, hole: bool, cut: float) -> Vector3:
+	var reach := 1.0 / sqrt(pow(cos(theta) / ax, 2.0) + pow(sin(theta) / ay, 2.0))
+	reach *= 1.0 + cap_wave.x * cos(cap_wave.y * theta)
+	var a := lerpf(reach, PI, f) if hole else reach * f
+	var u := turn * Vector3(sin(a) * cos(theta), sin(a) * sin(theta), cos(a))
+	if u.y < cut:  # Slide up to the cut line, staying on the surface, so it ends in a clean ring.
+		var flat := Vector2(u.x, u.z)
+		var length := flat.length()
+		if length > 0.0001:
+			flat = flat / length * sqrt(maxf(1.0 - cut * cut, 0.0))
+		u = Vector3(flat.x, cut, flat.y)
+	return u
+
+
+## The top half of an ellipsoid, closed underneath with a flat disc: the crown of a hat.
+func dome(center: Vector3, r: Vector3, color: Color, rings := 10, segs := 28) -> void:
+	rings = maxi(int(rings * detail), 6)
+	segs = maxi(int(segs * detail), 14)
+	var col := _marked(color)
+	var low := col * Color(0.86, 0.86, 0.86, 1.0)
+	var inv := Vector3(1.0 / r.x, 1.0 / r.y, 1.0 / r.z)
+	for i in rings:
+		var phi0 := PI * 0.5 * float(i) / rings
+		var phi1 := PI * 0.5 * float(i + 1) / rings
+		for j in segs:
+			var t0 := TAU * float(j) / segs
+			var t1 := TAU * float(j + 1) / segs
+			var u1 := Vector3(sin(phi0) * cos(t0), cos(phi0), sin(phi0) * sin(t0))
+			var u2 := Vector3(sin(phi0) * cos(t1), cos(phi0), sin(phi0) * sin(t1))
+			var u3 := Vector3(sin(phi1) * cos(t1), cos(phi1), sin(phi1) * sin(t1))
+			var u4 := Vector3(sin(phi1) * cos(t0), cos(phi1), sin(phi1) * sin(t0))
+			var c1 := col.lerp(low, 0.5 - u1.y * 0.5)
+			var c2 := col.lerp(low, 0.5 - u2.y * 0.5)
+			var c3 := col.lerp(low, 0.5 - u3.y * 0.5)
+			var c4 := col.lerp(low, 0.5 - u4.y * 0.5)
+			_tri(center + u1 * r, center + u2 * r, center + u3 * r, (u1 * inv).normalized(), (u2 * inv).normalized(), (u3 * inv).normalized(), c1, c2, c3, false)
+			_tri(center + u1 * r, center + u3 * r, center + u4 * r, (u1 * inv).normalized(), (u3 * inv).normalized(), (u4 * inv).normalized(), c1, c3, c4, false)
+			if i == rings - 1:
+				_tri(center, center + u4 * r, center + u3 * r, Vector3.DOWN, Vector3.DOWN, Vector3.DOWN, low, low, low, false)
+
+
+## Cloth: a smooth two-sided surface through a grid of points, rows running down and columns to the right as seen
+## from its front, with a soft rolled hem. Capes and flags.
+func sheet(grid: Array[PackedVector3Array], color: Color, hem := 0.016) -> void:
+	var col := _marked(color)
+	var rows := grid.size()
+	var cols := grid[0].size()
+	var normals: Array[PackedVector3Array] = []
+	for i in rows:
+		var row := PackedVector3Array()
+		for j in cols:
+			var down := grid[mini(i + 1, rows - 1)][j] - grid[maxi(i - 1, 0)][j]
+			var across := grid[i][mini(j + 1, cols - 1)] - grid[i][maxi(j - 1, 0)]
+			row.append(down.cross(across).normalized())
+		normals.append(row)
+	for i in rows - 1:
+		for j in cols - 1:
+			var a := grid[i][j]
+			var b := grid[i + 1][j]
+			var c := grid[i + 1][j + 1]
+			var d := grid[i][j + 1]
+			var na := normals[i][j]
+			var nb := normals[i + 1][j]
+			var nc := normals[i + 1][j + 1]
+			var nd := normals[i][j + 1]
+			_tri(a, b, c, na, nb, nc, col, col, col, false)
+			_tri(a, c, d, na, nc, nd, col, col, col, false)
+			_tri(a, b, c, -na, -nb, -nc, col, col, col, true)
+			_tri(a, c, d, -na, -nc, -nd, col, col, col, true)
+	if hem > 0.0:
+		var edge := PackedVector3Array()
+		for j in cols:
+			edge.append(grid[0][j])
+		for i in range(1, rows):
+			edge.append(grid[i][cols - 1])
+		for j in range(cols - 2, -1, -1):
+			edge.append(grid[rows - 1][j])
+		for i in range(rows - 2, 0, -1):
+			edge.append(grid[i][0])
+		var saved := outline
+		outline = 0.0
+		tube(edge, hem, color.darkened(0.12), true, 6)
+		outline = saved
+
+
+## A round tube along a path: straps, rims, handles, strings. Its ends are rounded unless it's `closed`.
+func tube(path: PackedVector3Array, radius: float, color: Color, closed := false, sides := 8, end_radius := -1.0) -> void:
+	sides = maxi(int(sides * detail), 5)
+	if end_radius < 0.0:
+		end_radius = radius
+	color = _marked(color)
+	var count := path.size()
+	var rims: Array[PackedVector3Array] = []
+	var dirs: Array[PackedVector3Array] = []
+	var normal := Vector3.ZERO
+	for i in count:
+		var before := path[(i - 1 + count) % count] if closed or i > 0 else path[i]
+		var after := path[(i + 1) % count] if closed or i < count - 1 else path[i]
+		var along := (after - before).normalized()
+		if normal == Vector3.ZERO:
+			normal = along.cross(Vector3.UP)
+			if normal.length() < 0.01:
+				normal = along.cross(Vector3.RIGHT)
+		normal = (normal - along * normal.dot(along)).normalized()
+		var side := along.cross(normal)
+		var rim := PackedVector3Array()
+		var dir := PackedVector3Array()
+		for k in sides + 1:
+			var b := TAU * float(k) / sides
+			var d := normal * cos(b) + side * sin(b)
+			dir.append(d)
+			rim.append(path[i] + d * lerpf(radius, end_radius, float(i) / maxi(count - 1, 1)))
+		rims.append(rim)
+		dirs.append(dir)
+	for i in (count if closed else count - 1):
+		var next := (i + 1) % count
+		for k in sides:
+			_tri(rims[i][k], rims[i][k + 1], rims[next][k + 1], dirs[i][k], dirs[i][k + 1], dirs[next][k + 1], color, color, color, false)
+			_tri(rims[i][k], rims[next][k + 1], rims[next][k], dirs[i][k], dirs[next][k + 1], dirs[next][k], color, color, color, false)
+	if not closed:
+		_ball(path[0], Vector3.ONE * radius, color, 6, sides + 2, false, false)
+		_ball(path[count - 1], Vector3.ONE * end_radius, color, 6, sides + 2, false, false)
 
 
 ## A round dot sitting on the surface of an ellipsoid.

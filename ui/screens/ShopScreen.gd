@@ -53,6 +53,7 @@ func _build_landscape() -> void:
 	left.custom_minimum_size.x = minf(size.x * 0.32, 360.0)
 	row.add_child(left)
 	_avatar = AvatarView.new()
+	_avatar.zoomable = true
 	left.add_child(_avatar)
 	left.add_child(_info_panel())
 	var right := UiKit.vbox(6)
@@ -74,6 +75,7 @@ func _build_portrait() -> void:
 	top.custom_minimum_size.y = minf(size.y * 0.3, 280.0)
 	col.add_child(top)
 	_avatar = AvatarView.new()
+	_avatar.zoomable = true
 	top.add_child(_avatar)
 	var info := _info_panel()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -118,7 +120,7 @@ func _info_panel() -> Control:
 	_info_label = UiKit.body("", 15, UiKit.MUTED)
 	_info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_info_label)
-	_action = UiKit.button("", "green", 19)
+	_action = UiKit.button("", "green", 15 if root.portrait else 19)
 	_action.pressed.connect(_on_action)
 	col.add_child(_action)
 	return card
@@ -281,6 +283,7 @@ func _show_item(slot: String, id: String) -> void:
 	_preview = Profile.look.duplicate()
 	if slot != "" and slot != "emote":
 		_preview[slot] = id
+		_drop_clash(_preview, slot)
 	_avatar.set_look(_preview, slot)
 	if slot == "emote":
 		_avatar.show_emote(String(Cosmetics.item(slot, id).get("text", "")))
@@ -316,6 +319,12 @@ func _show_item(slot: String, id: String) -> void:
 	_action.set_meta("id", id)
 
 
+## Some masks and hats can't be worn together. Trying one on takes the other off, in the preview and for real.
+func _drop_clash(look: Dictionary, slot: String) -> void:
+	if slot in ["mask", "hat"] and Cosmetics.wearing_clash(str(look.get("mask", "")), str(look.get("hat", ""))):
+		look["hat" if slot == "mask" else "mask"] = ""
+
+
 func _price_now(slot: String, id: String) -> Dictionary:
 	var price := Cosmetics.price(slot, id)
 	for deal in _deals():
@@ -341,5 +350,7 @@ func _on_action() -> void:
 			return
 		Audio.sfx("ui_purchase")
 		root.toast("%s is yours!" % Cosmetics.item(slot, id)["name"], UiKit.YELLOW)
+	if slot in ["mask", "hat"] and Cosmetics.wearing_clash(str(Profile.look.get("mask", "")), str(Profile.look.get("hat", ""))):
+		Profile.equip("hat" if slot == "mask" else "mask", "")
 	_refill()
 	_show_item(slot, id)
