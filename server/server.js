@@ -207,6 +207,8 @@ class ApiError extends Error {
 }
 
 function clientIp(req) {
+  const edge = req.headers['cf-connecting-ip'];
+  if (typeof edge === 'string' && edge) return edge;
   const forwarded = req.headers['x-forwarded-for'];
   return (typeof forwarded === 'string' && forwarded.split(',')[0].trim()) || req.socket.remoteAddress || '?';
 }

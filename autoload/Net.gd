@@ -27,6 +27,7 @@ const BIN_SNAPSHOT := 1
 const BIN_INPUT := 2
 const RECONNECT_SECONDS := 5.0
 const SYNC_DELAY := 2.0
+const LOGIN_RETRY_MAX := 120.0
 
 var online := false
 var players_online := 0
@@ -42,6 +43,7 @@ var _sync_timer := -1.0
 var _in_match := false
 var _queueing := false
 var _pending_login := false
+var _login_wait := RECONNECT_SECONDS  ## Grows after each failed login, so a broken server isn't hammered.
 
 
 func _ready() -> void:
@@ -102,9 +104,11 @@ func _login_on_start() -> void:
 				_after_auth(again["data"])
 	_pending_login = false
 	if Profile.token != "":
+		_login_wait = RECONNECT_SECONDS
 		_connect_ws()
 	else:
-		_retry = RECONNECT_SECONDS
+		_retry = _login_wait
+		_login_wait = minf(_login_wait * 2.0, LOGIN_RETRY_MAX)
 
 
 func _after_auth(data: Dictionary) -> void:
@@ -173,6 +177,10 @@ func request(method: String, path: String, body: Variant = null) -> Dictionary:
 		return {"ok": false, "code": 0, "data": {"error": "offline"}}
 	var http := HTTPRequest.new()
 	http.timeout = 12.0
+	# Browsers unzip replies by themselves, and left on, this would try to unzip them a second time and get
+	# nothing. Hosts behind Cloudflare compress replies, so that would break every call there. The replies
+	# here are small, so native builds lose nothing by asking for them plain.
+	http.accept_gzip = false
 	add_child(http)
 	var headers := PackedStringArray(["Content-Type: application/json", "Accept: application/json"])
 	if Profile.token != "":
@@ -194,7 +202,8 @@ func request(method: String, path: String, body: Variant = null) -> Dictionary:
 	var data: Dictionary = parsed if parsed is Dictionary else {}
 	if int(response[0]) != HTTPRequest.RESULT_SUCCESS:
 		return {"ok": false, "code": 0, "data": {"error": "offline"}}
-	return {"ok": code >= 200 and code < 300, "code": code, "data": data}
+	# A reply that isn't the JSON we expect is a failure, not an empty success.
+	return {"ok": code >= 200 and code < 300 and parsed is Dictionary, "code": code, "data": data}
 
 
 func leaderboard(scope: String, limit := 100) -> Dictionary:
@@ -310,7 +319,6 @@ func _process(delta: float) -> void:
 			elif _base_url != "":
 				_retry -= delta
 				if _retry <= 0.0:
-					_retry = RECONNECT_SECONDS * 3.0
 					_login_on_start()
 
 
