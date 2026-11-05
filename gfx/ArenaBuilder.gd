@@ -299,17 +299,15 @@ static func _altar(k: MeshKit, at: Vector3) -> void:
 	k.outline = 0.02
 
 
-## A low picket fence, along whichever way its neighbours run.
+## A low striped barrier, along whichever way its neighbours run: too high to walk over, low enough to dash over.
 static func _fence(k: MeshKit, at: Vector3, upright: bool) -> void:
 	var half := Maps.TILE * 0.5
-	var white := Color("fff6e0")
 	var along := Vector3(0, 0, 1) if upright else Vector3(1, 0, 0)
-	for i in 5:
-		var f := lerpf(-0.85, 0.85, i / 4.0)
-		k.soft_box(at + along * half * f + Vector3(0, 0.3, 0), Vector3(0.09, 0.3, 0.09), white, 0.6, 5, 8)
-	var rail_half := Vector3(0.05, 0.05, half) if upright else Vector3(half, 0.05, 0.05)
-	k.soft_box(at + Vector3(0, 0.38, 0), rail_half, Color("ff9d2e"), 0.6, 4, 8)
-	k.soft_box(at + Vector3(0, 0.2, 0), rail_half, Color("ff9d2e"), 0.6, 4, 8)
+	var size := Vector3(0.34, 0.27, half) if upright else Vector3(half, 0.27, 0.34)
+	k.soft_box(at + Vector3(0, 0.27, 0), size, Color("ff9d2e"), 0.5, 6, 12)
+	for f: float in [-0.5, 0.5]:
+		var stripe := Vector3(0.36, 0.285, half * 0.2) if upright else Vector3(half * 0.2, 0.285, 0.36)
+		k.soft_box(at + along * half * f + Vector3(0, 0.27, 0), stripe, Color("fff6e0"), 0.5, 5, 10)
 
 
 ## A big bouncy mushroom. It looks like it would hurt, and it does.
