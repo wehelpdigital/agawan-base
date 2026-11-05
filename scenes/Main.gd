@@ -242,7 +242,7 @@ func _on_pause() -> void:
 	resume.pressed.connect(_close_pause)
 	_pause_col.add_child(resume)
 	var music_row := UiKit.hbox(8)
-	var sound := UiKit.button("Sound: %s" % ("On" if Settings.sfx_volume > 0.0 else "Off"), "purple", 17)
+	var sound := UiKit.button("Sound: %s" % ("On" if Settings.sfx_volume > 0.0 else "Off"), "teal", 17)
 	sound.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sound.pressed.connect(func() -> void:
 		var on := Settings.sfx_volume <= 0.0

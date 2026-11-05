@@ -27,16 +27,14 @@ func _draw() -> void:
 	var font := UiKit.font_title()
 	var font_size := 13 if _compact else 15
 	var rect := Rect2(Vector2.ZERO, size)
-	var plate := UiKit.VIOLET_LIGHT if _on else (Color(1, 1, 1, 0.08) if is_hovered() or has_focus() else Color(0, 0, 0, 0))
 	if _on:
-		draw_style_box(UiKit.style(plate, 14, 3, Color("120a3a")), rect)
-	elif plate.a > 0.0:
-		draw_style_box(UiKit.style(plate, 14), rect)
+		draw_style_box(UiKit.style(UiKit.YELLOW, 14, 3, UiKit.ORANGE), rect)
+	elif is_hovered() or has_focus():
+		draw_style_box(UiKit.style(Color(UiKit.SKY_LIGHT, 0.22), 14), rect)
 	var label_room := float(font_size) + 4.0
 	var side := minf(size.y - label_room - 6.0, 38.0)
 	var at := Vector2((size.x - side) * 0.5, 4.0)
-	draw_texture_rect(_icon, Rect2(at, Vector2(side, side)), false, Color.WHITE if _on else Color(1, 1, 1, 0.85))
+	draw_texture_rect(_icon, Rect2(at, Vector2(side, side)), false)
 	var w := font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	var text_at := Vector2((size.x - w) * 0.5, size.y - 6.0)
-	draw_string_outline(font, text_at, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, UiKit.INK)
-	draw_string(font, text_at, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE if _on else Color(1, 1, 1, 0.85))
+	draw_string(font, text_at, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, UiKit.INK)

@@ -73,8 +73,8 @@ func _ready() -> void:
 	kit.soften = true
 	kit.shells = false
 	kit.outline = 0.0
-	kit.ball(Vector3(0, -0.14, 0), Vector3(1.32, 0.16, 1.32), Color("ffd23f"), 12, 40)
-	kit.ball(Vector3(0, 0.0, 0), Vector3(1.04, 0.022, 1.04), Color("ff9d2e"), 8, 40)
+	kit.ball(Vector3(0, -0.14, 0), Vector3(1.32, 0.16, 1.32), Color("5cc94f"), 12, 40)
+	kit.ball(Vector3(0, 0.0, 0), Vector3(1.04, 0.022, 1.04), Color("9be36a"), 8, 40)
 	_pad = MeshInstance3D.new()
 	_pad.mesh = kit.to_mesh()
 	_pad.material_override = Avatar3D._material("normal")

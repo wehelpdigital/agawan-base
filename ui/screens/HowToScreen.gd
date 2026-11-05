@@ -7,6 +7,7 @@ const CARDS: Array[Dictionary] = [
 	{"icon": "cage", "color": Color("ff4f6b"), "title": "Jail & Rescue", "text": "Tagged players go to the jail beside the enemy base. Tap to break out, or wait for a teammate: one touch of the jail frees everyone, and rescuers get a free walk home."},
 	{"icon": "crown", "color": Color("23a7ff"), "title": "Capture the Base", "text": "Stand on the enemy base to capture it. That's a point. First team to 3 wins. Jail the whole enemy team at once for a point too. Most points when time runs out wins."},
 	{"icon": "power", "color": Color("b768ff"), "title": "Grab Crystals", "text": "Rainbow crystals drop all over the map. Nobody knows what's inside: grab one, and a slot machine spins up a power card. Hold two at a time. Tap a card to use it, or drag it to aim. Fiesta Time, the last minute, rains them down."},
+	{"icon": "map", "color": Color("35d07f"), "title": "Use the Field", "text": "Bushes hide you unless an enemy is close, but running shakes the leaves. Arrow floors shoot you along. Jump pads throw you to their marked box. Gates rise and fall on a beat. Fountains make you fresh anywhere, then refill. Altars keep growing crystals. Dash to clear low fences. Bumpers knock you flying."},
 	{"icon": "dash", "color": Color("19d3e6"), "title": "Controls", "text": "Touch: left thumb runs, right thumb uses buttons.\nKeyboard: WASD or arrows, Space to dash, E to use a card, 1-4 for emotes.\nController: left stick, A to dash, X to use."},
 ]
 

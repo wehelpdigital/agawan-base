@@ -67,6 +67,7 @@ const HINTS: Array[String] = [
 	"Stand on the enemy base to capture it. First team to 3 captures wins!",
 	"In jail? Tap to break out. Or a free teammate can touch the jail and spring everyone.",
 	"Grab the crystals! Each one spins up a random power card. Tap the card to use it, or drag to aim.",
+	"Hide in the bushes to ambush someone. Arrow floors, jump pads and fountains are all there to be used!",
 ]
 
 
@@ -293,23 +294,25 @@ func _relayout() -> void:
 	_roster_box.size = roster_size
 	var below := roster_y + roster_size.y + 4.0
 	# Minimap: in the corner on wide screens; below the roster on upright ones.
-	var mini_w := clampf(short * (0.27 if _portrait else 0.34), 110.0, 240.0)
+	var mini_w := clampf(short * (0.44 if _portrait else 0.5), 150.0, 320.0)
+	if not _portrait:  # Never under the scoreboard.
+		mini_w = minf(mini_w, board.position.x - left - Minimap.FRAME * 2.0 - 8.0)
 	var aspect := sim.arena_size().y / sim.arena_size().x
 	_mini.size = Vector2(mini_w, mini_w * aspect)
 	_mini.custom_minimum_size = _mini.size
 	if _portrait:
 		_mini.set_rotated(true)
 		_mini.size = Vector2(mini_w * aspect, mini_w)
-		_mini.position = Vector2(left, below)
+		_mini.position = Vector2(left + Minimap.FRAME, below + Minimap.FRAME)
 	else:
 		_mini.set_rotated(false)
-		_mini.position = Vector2(left, top)
+		_mini.position = Vector2(left + Minimap.FRAME, top + Minimap.FRAME)
 	# Feed: under the minimap on wide screens; opposite it on upright ones.
 	_feed_box.custom_minimum_size = Vector2(minf(280.0, view_size.x * 0.46), 0)
 	if _portrait:
 		_feed_box.position = Vector2(right - _feed_box.custom_minimum_size.x, below + 62.0)
 	else:
-		_feed_box.position = Vector2(left, top + _mini.size.y + 8.0)
+		_feed_box.position = Vector2(left, top + _mini.size.y + 16.0)
 	_feed_box.size = _feed_box.custom_minimum_size
 	var center_w := minf(view_size.x - 40.0, 760.0)
 	var mid_y := view_size.y * (0.3 if _portrait else 0.26)
@@ -386,6 +389,7 @@ func refresh() -> void:
 	_refresh_status(me)
 	_refresh_hints(delta, me)
 	_refresh_countdown()
+	_mini.view_rect = view.ground_view()
 	_mini.queue_redraw()
 	if Settings.fps_counter:
 		_fps.text = "%d fps" % Engine.get_frames_per_second()
@@ -449,6 +453,8 @@ func _refresh_status(me: Sim.Player) -> void:
 			text = "YOU ARE FRESH, GET OUT THERE!"
 		elif me.camp > 3.0:
 			text = "THE PAD IS ABOUT TO POP YOU!"
+		elif sim.tile_at(me.pos) == Maps.GRASS:
+			text = "HIDDEN! Stay still, or the leaves give you away."
 	_status_label.text = text
 	_set_blind(sim.has_status(me, "blind"))
 	_reverse_flash.visible = sim.has_status(me, "reverse")

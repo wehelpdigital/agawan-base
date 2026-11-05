@@ -28,8 +28,8 @@ const JAIL_TIME := 9.0
 const MASH_SAVE := 0.2  ## Seconds off your sentence per tap while in jail.
 const MASH_GAP := 0.12
 const FREE_WALK := 4.0
-const BASE_R := 2.8
-const JAIL_R := 2.2
+const BASE_R := 4.2  ## Too wide to guard from one spot, with open ground all round it.
+const JAIL_R := 2.6
 const CAPTURE_TIME := 1.4
 const CAMP_LIMIT := 5.0  ## Seconds on your own base before the pad pops you off it.
 const MATCH_TIME := 180.0
@@ -37,6 +37,13 @@ const FIESTA_AT := 60.0  ## Seconds left when powerups start to rain faster.
 const OVERTIME := 45.0
 const WIN_POINTS := 3
 const SPIN_TIME := 1.3  ## How long a new power spins before you can use it.
+const FLOOR_DASH_TIME := 0.34  ## How long a dash floor shoots you.
+const GATE_CYCLE := 11.0  ## A gate is shut for the first GATE_SHUT seconds of every cycle.
+const GATE_SHUT := 4.5
+const FOUNTAIN_REFILL := 16.0
+const ALTAR_REGROW := 13.0
+const BUMPER_KICK := 26.0
+const BUSH_SIGHT := 3.5  ## Enemies this close can see you in a bush. Walk in too and you find each other.
 const COUNTDOWN := 3.0
 const SCORED_PAUSE := 3.2
 const MAX_POWERS := 2
@@ -94,6 +101,7 @@ class Player:
 	var captures := 0
 	var times_jailed := 0
 	var powers_used := 0
+	var bump_cd := 0.0
 	var spin_left := 0.0  ## The newest power, while its reel is still spinning.
 	var brain := {}  ## The bot's memory (BotBrain.gd).
 	var away := false  ## An online player whose connection dropped: a bot plays for them.
@@ -139,6 +147,11 @@ var _pickup_tiles := PackedInt32Array()
 var _flow := {}
 var _brain := BotBrain.new()
 var _team_cache: Array = [[], []]
+var jumps := {}  ## Jump pad tile -> landing box tile.
+var fountains := {}  ## Fountain tile -> when it's full again.
+var altars := {}  ## Altar tile -> when it grows its next crystal.
+var _bumpers := PackedInt32Array()
+var _vaulting := false  ## A dash is going over a low fence right now.
 
 
 ## seats: [{name, team?, bot, skill, look}], up to 10; missing seats become bots at `difficulty`.
@@ -156,6 +169,15 @@ func setup(p_map_id: String, seats: Array, seed_value := 0, p_difficulty := 0.6)
 	base = grid["base"]
 	jail = grid["jail"]
 	tele = grid["tele"]
+	jumps = grid["jumps"]
+	fountains = {}
+	altars = {}
+	_bumpers = PackedInt32Array()
+	for i in w * h:
+		match tiles[i]:
+			Maps.FOUNTAIN: fountains[i] = 0.0
+			Maps.ALTAR: altars[i] = rng.randf_range(2.0, 8.0)
+			Maps.BUMPER: _bumpers.append(i)
 	_collect_pickup_tiles()
 	wave_next = [rng.randf_range(10.0, 20.0), rng.randf_range(10.0, 20.0)]
 	players.clear()
@@ -192,7 +214,7 @@ func _collect_pickup_tiles() -> void:
 	for y in h:
 		for x in w:
 			var code := tiles[y * w + x]
-			if code in [Maps.FLOOR, Maps.GRASS, Maps.ICE, Maps.MUD]:
+			if code in [Maps.FLOOR, Maps.GRASS, Maps.ICE, Maps.MUD, Maps.LAND]:
 				var at := tile_center(y * w + x)
 				if at.distance_to(base[0]) > BASE_R + 3.0 and at.distance_to(base[1]) > BASE_R + 3.0 \
 						and at.distance_to(jail[0]) > JAIL_R + 1.0 and at.distance_to(jail[1]) > JAIL_R + 1.0:
@@ -230,7 +252,7 @@ func _reset_round(first := false) -> void:
 
 func _spawn_point(team: int, i: int, count: int) -> Vector2:
 	var angle := TAU * float(i) / maxf(count, 1)
-	return base[team] + Vector2.RIGHT.rotated(angle) * 1.3
+	return base[team] + Vector2.RIGHT.rotated(angle) * 2.2
 
 
 # --- Map queries ----------------------------------------------------------------------------------
@@ -253,12 +275,35 @@ func tile_at(at: Vector2) -> int:
 
 
 func _blocks_feet(i: int) -> bool:
-	var code := tiles[i]
-	return code == Maps.SOLID or code == Maps.PIT or (walls.has(i) and walls[i] > t)
+	match tiles[i]:
+		Maps.SOLID, Maps.PIT, Maps.BUMPER:
+			return true
+		Maps.GATE:
+			if gates_shut():
+				return true
+		Maps.FENCE:
+			if not _vaulting:
+				return true
+	return walls.has(i) and walls[i] > t
 
 
 func _blocks_shots(i: int) -> bool:
-	return tiles[i] == Maps.SOLID or (walls.has(i) and walls[i] > t)
+	return tiles[i] == Maps.SOLID or (tiles[i] == Maps.GATE and gates_shut()) or (walls.has(i) and walls[i] > t)
+
+
+## Every gate on the field moves together, so you can learn the beat.
+func gates_shut() -> bool:
+	return fmod(t, GATE_CYCLE) < GATE_SHUT
+
+
+## Seconds until the gates next move.
+func gates_change_in() -> float:
+	var at := fmod(t, GATE_CYCLE)
+	return GATE_SHUT - at if at < GATE_SHUT else GATE_CYCLE - at
+
+
+func fountain_ready(i: int) -> bool:
+	return float(fountains.get(i, INF)) <= t
 
 
 func arena_size() -> Vector2:
@@ -305,7 +350,8 @@ func flow_field(target: int) -> PackedInt32Array:
 			if dist[ni] >= 0:
 				continue
 			var code := tiles[ni]
-			if code == Maps.SOLID or code == Maps.PIT:
+			# Bots walk round anything that throws them about; they choose to use those (see BotBrain).
+			if code in [Maps.SOLID, Maps.PIT, Maps.BUMPER, Maps.FENCE, Maps.DASH_R, Maps.DASH_L, Maps.DASH_U, Maps.DASH_D, Maps.JUMP]:
 				continue
 			dist[ni] = next
 			queue.append(ni)
@@ -497,6 +543,7 @@ func _tick_player(p: Player, dt: float) -> void:
 	p.tag_cd = maxf(p.tag_cd - dt, 0.0)
 	p.dash_cd = maxf(p.dash_cd - dt * (6.0 if has_status(p, "dashboost") else 1.0), 0.0)
 	p.pad_cd = maxf(p.pad_cd - dt, 0.0)
+	p.bump_cd = maxf(p.bump_cd - dt, 0.0)
 	p.mash_cd = maxf(p.mash_cd - dt, 0.0)
 	p.spin_left = maxf(p.spin_left - dt, 0.0)
 	if p.state == State.JAIL:
@@ -626,12 +673,32 @@ func _move(p: Player, dt: float) -> void:
 	p.kb *= exp(-7.0 * dt)
 	if p.kb.length() < 0.05:
 		p.kb = Vector2.ZERO
+	_vaulting = p.dash_left > 0.0
 	p.pos = move_circle(p.pos, total * dt, radius_of(p), ghost)
-	if ghost or p.pad_cd > 0.0:
+	_vaulting = false
+	if ghost:
+		return
+	_touch_bumpers(p)
+	if p.pad_cd > 0.0:
 		return
 	var here := tile_index(p.pos)
 	if here < 0:
 		return
+	match tiles[here]:
+		Maps.DASH_R: _floor_dash(p, Vector2.RIGHT)
+		Maps.DASH_L: _floor_dash(p, Vector2.LEFT)
+		Maps.DASH_U: _floor_dash(p, Vector2.UP)
+		Maps.DASH_D: _floor_dash(p, Vector2.DOWN)
+		Maps.JUMP:
+			if jumps.has(here):
+				var land := tile_center(jumps[here])
+				_launch(p, land, clampf(p.pos.distance_to(land) / 15.0, 0.6, 1.2))
+				_event("jump", p.id, -1, p.pos.x, p.pos.y)
+		Maps.FOUNTAIN:
+			if fountain_ready(here):
+				fountains[here] = t + FOUNTAIN_REFILL
+				p.fresh = t
+				_event("fountain", p.id, -1, p.pos.x, p.pos.y)
 	if tiles[here] == Maps.BOUNCE:
 		_launch(p, tile_center(_mirror_tile(here)), 0.8)
 		_event("bounce", p.id, -1, p.pos.x, p.pos.y)
@@ -640,6 +707,27 @@ func _move(p: Player, dt: float) -> void:
 		p.pos = tile_center(out)
 		p.pad_cd = 1.0
 		_event("warp", p.id, -1, p.pos.x, p.pos.y)
+
+
+func _floor_dash(p: Player, dir: Vector2) -> void:
+	p.dash_dir = dir
+	p.dash_left = FLOOR_DASH_TIME
+	p.pad_cd = 0.14
+	p.status.erase("invis")
+	_event("boost", p.id, -1, p.pos.x, p.pos.y)
+
+
+## A bumper knocks anyone who touches it flying, straight away from it.
+func _touch_bumpers(p: Player) -> void:
+	for i in _bumpers:
+		var c := tile_center(i)
+		var reach := Maps.TILE * 0.5 + radius_of(p) + 0.12
+		var d := p.pos - c
+		if absf(d.x) < reach and absf(d.y) < reach and d.length() < reach * 1.3 and p.bump_cd <= 0.0:
+			p.kb = (d.normalized() if d.length() > 0.01 else Vector2.RIGHT) * BUMPER_KICK
+			p.dash_left = 0.0
+			p.bump_cd = 0.28
+			_event("bump", p.id, -1, c.x, c.y)
 
 
 func _mirror_tile(i: int) -> int:
@@ -890,10 +978,22 @@ func _check_wipeout() -> void:
 # --- Pickups --------------------------------------------------------------------------------------
 
 func _tick_pickups(dt: float) -> void:
+	for tile: int in altars:
+		if float(altars[tile]) <= t:
+			altars[tile] = t + ALTAR_REGROW
+			var at := tile_center(tile)
+			var taken := false
+			for item: Dictionary in pickups:
+				if at.distance_squared_to(item["pos"]) < 1.0:
+					taken = true
+					break
+			if not taken:
+				pickups.append({"uid": _next_uid(), "pos": at, "born": t})
+				_event("drop", -1, -1, at.x, at.y)
 	_spawn_timer -= dt
 	if _spawn_timer <= 0.0 and _pickup_tiles.size() > 0:
-		_spawn_timer = rng.randf_range(1.5, 3.0) if fiesta else rng.randf_range(3.0, 5.5)
-		if pickups.size() < (12 if fiesta else 8):
+		_spawn_timer = rng.randf_range(1.0, 2.0) if fiesta else rng.randf_range(2.0, 3.8)
+		if pickups.size() < (18 if fiesta else 12):
 			_spawn_pickup()
 	for p in players:
 		if p.state != State.PLAY or p.powers.size() >= MAX_POWERS or is_airborne(p):
@@ -1516,7 +1616,7 @@ func to_snapshot() -> Dictionary:
 		stats.append(PackedInt32Array([p.tags, p.rescues, p.captures, p.times_jailed, p.powers_used]))
 	return {"t": t, "ph": phase, "pl": phase_left, "tl": time_left, "ot": overtime, "fi": fiesta, "sc": score, "cap": cap, "cg": capturing,
 		"lk": base_lock, "ra": radar, "w": winner, "er": end_reason, "p": floats, "st": statuses, "pw": powers, "ss": stats,
-		"pk": pickups, "zn": zones, "sh": _pack_shots(), "en": ents, "wl": walls, "ev": take_events(), "uid": _uid}
+		"pk": pickups, "fo": fountains, "zn": zones, "sh": _pack_shots(), "en": ents, "wl": walls, "ev": take_events(), "uid": _uid}
 
 
 func _pack_shots() -> Array:
@@ -1575,6 +1675,7 @@ func apply_snapshot(snap: Dictionary) -> void:
 		p.times_jailed = st[3]
 		p.powers_used = st[4]
 	pickups.assign(snap["pk"])
+	fountains = snap["fo"]
 	zones.assign(snap["zn"])
 	shots.assign(snap["sh"])
 	ents.assign(snap["en"])

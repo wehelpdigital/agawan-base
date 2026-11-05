@@ -4,98 +4,109 @@ extends RefCounted
 ## Layouts are drawn as the left half of the field and mirrored, so both teams always get the same
 ## ground: "x" mirrors left to right, "rot" turns the half 180 degrees.
 ##
-## Tiles: . floor   # wall   ~ water/lava/void (blocks feet, not shots)   g tall grass (hides you)
-##        i ice     m mud    b bounce pad     t teleporter (joined to its mirror)
+## Tiles: . floor   # wall   ~ water/lava/void (blocks feet, not shots)   g bushes (hide you)
+##        i ice     m mud    b bounce pad (flies you to its mirror)    t teleporter (joined to its mirror)
 ##        > < ^ v conveyor   A your base      J the jail where you keep prisoners
+##        R L U D dash floor: shoots you that way
+##        1 2     jump pad: throws you to the landing box with the same number ! @
+##        =       gate: rises and falls on a timer
+##        f       fountain: makes whoever touches it fresh, then needs time to refill
+##        * crystal altar: always grows a new crystal
+##        %       low fence: stops a walk, but a dash goes over it
+##        o       bumper: knocks you flying
 
-const TILE := 1.5  ## Metres per tile.
+const TILE := 2.0  ## Metres per tile.
+const CLEAR_BASE := 5.8  ## Nothing stands this close to the middle of a base...
+const CLEAR_JAIL := 3.2  ## ...or of a jail.
 
-enum { FLOOR, SOLID, PIT, GRASS, ICE, MUD, BOUNCE, TELE, CON_R, CON_L, CON_U, CON_D }
+enum { FLOOR, SOLID, PIT, GRASS, ICE, MUD, BOUNCE, TELE, CON_R, CON_L, CON_U, CON_D, DASH_R, DASH_L, DASH_U, DASH_D, JUMP, LAND, GATE, FOUNTAIN, ALTAR, FENCE, BUMPER }
+
+const JUMP_PADS := {"1": "!", "2": "@"}
 
 const LAYOUTS := {
 	"plaza": {"name": "Plaza", "mirror": "x", "blurb": "Wide open. Good for your first game.", "rows": [
 		"..............",
-		"..J...........",
+		"..J...RR...*..",
 		"..............",
 		"......##......",
 		"......##..ggg.",
 		"..........ggg.",
 		"..............",
-		"..A.......##..",
+		"..A....1..##!f",
 		"..............",
 		"..........ggg.",
 		"......##..ggg.",
 		"......##......",
 		"..............",
-		"..............",
+		".....RR....*..",
 		"..............",
 	]},
 	"crossroads": {"name": "Crossroads", "mirror": "x", "blurb": "Four walled blocks and a busy junction.", "rows": [
 		"..............",
-		"..J...........",
+		"..J.........*.",
 		"......####....",
 		"......####..gg",
 		"......##....gg",
-		"..............",
+		"..........=...",
 		"..........#...",
-		"..A.......#...",
+		"..A.......#.of",
 		"..........#...",
-		"..............",
+		"..........=...",
 		"......##....gg",
 		"......####..gg",
 		"......####....",
-		"..............",
-		"..............",
+		".......RRR....",
+		"............*.",
 	]},
 	"twin_ponds": {"name": "Twin Ponds", "mirror": "x", "blurb": "Two ponds squeeze the middle of the field.", "rows": [
 		"..............",
 		"..J......gg...",
-		".........gg...",
+		"......1..gg...",
 		"......~~~~....",
-		".....~~~~~~...",
+		".....~~~~~~.*.",
 		"......~~~~....",
-		"..............",
-		"..A...........",
-		"..............",
+		"........!.....",
+		"..A.....RRR..f",
+		"........@.....",
 		"......~~~~....",
-		".....~~~~~~...",
+		".....~~~~~~.*.",
 		"......~~~~....",
-		".........gg...",
+		"......2..gg...",
 		".........gg...",
 		"..............",
 	]},
 	"zigzag": {"name": "Zigzag", "mirror": "rot", "blurb": "Slanted walls that bend every chase.", "rows": [
 		"..............",
 		"..J.....##....",
-		"........##....",
-		"......##......",
+		"........##..f.",
+		"......##..D...",
 		"......##...gg.",
 		"....##.....gg.",
-		"....##........",
-		"..A.......##..",
-		"..........##..",
-		"........##....",
+		"....##.%....o.",
+		"..A....%..##.*",
+		".......%..##..",
+		"........##.U..",
 		".gg.....##....",
 		".gg...##......",
 		"......##......",
-		"....##........",
-		"....##........",
+		"....##.R......",
+		"....##.R......",
 	]},
 	"fortress": {"name": "Fortress", "mirror": "x", "blurb": "Your base sits behind walls with two gates.", "rows": [
 		"..............",
-		"..J...........",
+		"..J.....*.RR..",
 		"..............",
 		"#####.........",
 		"....#.....gg..",
 		"....#.....gg..",
-		"..............",
-		"..A.......##..",
-		"..............",
+		".....=........",
+		"..A..=....##.f",
+		".....=........",
 		"....#.....gg..",
 		"....#.....gg..",
 		"#####.........",
 		"..............",
-		"..............",
+		"........*RR...",
 		"..............",
 	]},
 	"conveyors": {"name": "Conveyor Alley", "mirror": "x", "blurb": "Belts carry you to the front or sweep you home.", "rows": [
@@ -103,13 +114,13 @@ const LAYOUTS := {
 		"..J...........",
 		"....>>>>>>>>>>",
 		"..............",
-		"......##......",
-		"......##......",
+		"......##.gg.*.",
+		"......##.gg...",
 		"..............",
-		"..A...........",
+		"..A.....o..o.f",
 		"..............",
-		"......##......",
-		"......##......",
+		"......##.gg...",
+		"......##.gg.*.",
 		"..............",
 		"....<<<<<<<<<<",
 		"..............",
@@ -117,85 +128,85 @@ const LAYOUTS := {
 	]},
 	"bouncy": {"name": "Bounce Canal", "mirror": "x", "blurb": "A canal down the middle. Bounce pads fly you over it.", "rows": [
 		"...........~~~",
-		"..J........~~~",
-		"...........~~~",
+		"..J....gg..~~~",
+		".......gg..~~~",
 		".........b.~~~",
 		"...........~~~",
-		"...........~~~",
+		".........*.~~~",
 		"..............",
-		"..A...........",
+		"..A.....RR...f",
 		"..............",
-		"...........~~~",
+		".........*.~~~",
 		"...........~~~",
 		".........b.~~~",
-		"...........~~~",
-		"...........~~~",
+		".......gg..~~~",
+		".......gg..~~~",
 		"...........~~~",
 	]},
 	"teleports": {"name": "Warp Yard", "mirror": "x", "blurb": "Step in a warp and step out on the far side.", "rows": [
 		"..............",
 		"..J.....##....",
 		"........##....",
-		".....t........",
+		".....t......*.",
 		"..............",
-		"..........gg..",
+		"......==..gg..",
 		"......##..gg..",
-		"..A...##......",
+		"..A...##..o..f",
 		"......##..gg..",
-		"..........gg..",
+		"......==..gg..",
 		"..............",
-		".....t........",
+		".....t......*.",
 		"........##....",
 		"........##....",
 		"..............",
 	]},
 	"rink": {"name": "Skating Rink", "mirror": "x", "blurb": "The whole middle is slippery. Mind the turns.", "rows": [
-		"..............",
-		"..J...........",
+		".........R....",
+		"..J.......*...",
 		".......iiiiiii",
-		"......iiiiiiii",
+		"......iiiiiioi",
 		".....iii##iiii",
 		".....iii##iiii",
 		".....iiiiiiiii",
-		"..A..iiiiiiiii",
+		"..A..iiiioiiif",
 		".....iiiiiiiii",
 		".....iii##iiii",
 		".....iii##iiii",
-		"......iiiiiiii",
+		"......iiiiiioi",
 		".......iiiiiii",
-		"..............",
-		"..............",
+		"..........*...",
+		".........R....",
 	]},
 	"mudflats": {"name": "Mud Flats", "mirror": "x", "blurb": "Sticky patches slow you down. The dry lanes are worth it.", "rows": [
-		"..............",
+		"...........*..",
 		"..J......mmmmm",
 		".........mmmmm",
 		"......##.mmmmm",
-		"......##......",
+		"......##.RRR..",
 		"..............",
 		"........mmmm..",
-		"..A.....mmmm..",
+		"..A...1.mmmm!f",
 		"........mmmm..",
 		"..............",
-		"......##......",
+		"......##.RRR..",
 		"......##.mmmmm",
 		".........mmmmm",
 		".........mmmmm",
-		"..............",
+		"...........*..",
 	]},
 	"hideout": {"name": "Hide & Seek", "mirror": "x", "blurb": "Tall grass everywhere. Who's in there?", "rows": [
 		".......gggggg.",
 		"..J....gggggg.",
 		"......ggg..gg.",
-		"......gg......",
+		"......gg..*.!.",
 		"....ggg..##...",
 		"....gg...##.gg",
 		".........gggg.",
-		"..A......gggg.",
+		"..A...1..ggggf",
 		".........gggg.",
 		"....gg...##.gg",
 		"....ggg..##...",
-		"......gg......",
+		"......gg..*...",
 		"......ggg..gg.",
 		".......gggggg.",
 		".......gggggg.",
@@ -203,87 +214,87 @@ const LAYOUTS := {
 	"pillars": {"name": "Pillars", "mirror": "x", "blurb": "A forest of pillars. Perfect for shaking off a chaser.", "rows": [
 		"..............",
 		"..J...#...#...",
+		".....%....*...",
+		"....#%..#...#.",
 		"..............",
-		"....#...#...#.",
+		"......#.o.#...",
 		"..............",
-		"......#...#...",
+		"..A.#...#...#f",
 		"..............",
-		"..A.#...#...#.",
+		"......#.o.#...",
 		"..............",
-		"......#...#...",
-		"..............",
-		"....#...#...#.",
-		"..............",
+		"....#%..#...#.",
+		".....%....*...",
 		"......#...#...",
 		"..............",
 	]},
 	"bridges": {"name": "Three Bridges", "mirror": "x", "blurb": "A river cuts the field. Hold the bridges.", "rows": [
 		"..........~~~~",
-		"..J.......~~~~",
+		"..J.....*.~~~~",
 		"..........~~~~",
-		"..............",
+		"...........=..",
 		"..........~~~~",
+		"........b.~~~~",
 		"..........~~~~",
+		"..A..........f",
 		"..........~~~~",
-		"..A...........",
+		"........b.~~~~",
 		"..........~~~~",
+		"...........=..",
 		"..........~~~~",
-		"..........~~~~",
-		"..............",
-		"..........~~~~",
-		"..........~~~~",
+		"........*.~~~~",
 		"..........~~~~",
 	]},
 	"ringroad": {"name": "Ring Road", "mirror": "x", "blurb": "A great block in the centre. Go round, left or right.", "rows": [
 		"..............",
-		"..J...........",
+		"..J.....RRR..f",
 		"..............",
-		".........#####",
+		".......*.#####",
 		".........#####",
 		".........#####",
 		"...gg....#####",
-		"..A.gg...#####",
+		"..A.gg.b.#####",
 		"...gg....#####",
 		".........#####",
 		".........#####",
-		".........#####",
+		".......*.#####",
 		"..............",
-		"..............",
+		"........RRR..f",
 		"..............",
 	]},
 	"pinwheel": {"name": "Pinwheel", "mirror": "rot", "blurb": "Walls spin around the centre. No two lanes are the same.", "rows": [
 		"..............",
 		"..J.......####",
 		"..........#...",
-		"...gg.....#...",
-		"...gg.........",
+		"...gg.....#.*.",
+		"...gg...D.....",
 		".......###....",
 		".......#......",
-		"..A....#......",
+		"..A....#.....f",
 		".......#......",
 		"....####......",
-		"..............",
+		"...........U..",
+		".....o...gg...",
 		".........gg...",
-		".........gg...",
-		"..............",
+		"........RR....",
 		"..............",
 	]},
 	"gauntlet": {"name": "The Gauntlet", "mirror": "x", "blurb": "Long corridors, tight corners, nowhere to hide.", "rows": [
-		"..............",
+		"........gg....",
 		"..J...........",
 		"....##########",
-		"..............",
-		"..............",
-		"....########..",
-		"..............",
-		"..A...........",
+		"......RRR....*",
 		"..............",
 		"....########..",
 		"..............",
+		"..A.....%....f",
 		"..............",
+		"....########..",
+		"..............",
+		"......RRR....*",
 		"....##########",
 		"..............",
-		"..............",
+		"........gg....",
 	]},
 }
 
@@ -320,6 +331,14 @@ const THEMES := {
 }
 
 const THEME_ORDER := ["barrio", "beach", "schoolyard", "terraces", "terminal", "mangrove", "halo", "glacier", "ruins", "cove", "volcano", "spooky", "arcade", "moon"]
+## The ground behind each base, added to the far edge of every layout, with a clear row above and below the field:
+## room to come round the back of a base, and hedges, cover and crystals to bring you there.
+const YARDS := [
+	[".....", ".ggg.", ".ggg.", ".....", ".....", ".....", "..#..", "..#..", ".*...", "..#..", "..#..", ".....", ".....", ".....", ".ggg.", ".ggg.", "....."],
+	[".....", "..#..", "..#..", ".....", ".....", ".gg..", ".gg..", ".gg..", ".gg..", ".gg..", ".gg..", ".gg..", ".....", ".....", "..#..", "..#..", "....."],
+	[".....", ".....", ".#.#.", ".....", ".....", ".#.#.", ".....", ".....", ".....", ".....", ".....", ".#.#.", ".....", ".....", ".#.#.", ".....", "....."],
+	[".....", ".~~..", ".~~..", ".....", ".....", "..gg.", "..gg.", ".....", ".....", ".....", "..gg.", "..gg.", ".....", ".....", ".~~..", ".~~..", "....."],
+]
 const LAYOUT_ORDER := ["plaza", "crossroads", "twin_ponds", "zigzag", "fortress", "conveyors", "bouncy", "teleports", "rink", "mudflats", "hideout", "pillars", "bridges", "ringroad", "pinwheel", "gauntlet"]
 const MAPS_PER_THEME := 4
 
@@ -366,7 +385,7 @@ static func build_grid(map_id: String) -> Dictionary:
 	if map.is_empty():
 		map = all()[0]
 	var layout: Dictionary = LAYOUTS[map["layout"]]
-	var rows: Array = layout["rows"]
+	var rows := _with_yard(layout["rows"], YARDS[LAYOUT_ORDER.find(map["layout"]) % YARDS.size()])
 	var half_w: int = String(rows[0]).length()
 	var h: int = rows.size()
 	var w := half_w * 2
@@ -376,6 +395,8 @@ static func build_grid(map_id: String) -> Dictionary:
 	var base := [Vector2.ZERO, Vector2.ZERO]
 	var jail := [Vector2.ZERO, Vector2.ZERO]
 	var tele_half: Array[Vector2i] = []
+	var pads := {}
+	var landings := {}
 	for y in h:
 		var row: String = rows[y]
 		for x in half_w:
@@ -392,19 +413,40 @@ static func build_grid(map_id: String) -> Dictionary:
 				c = "."
 			elif c == "t":
 				tele_half.append(Vector2i(x, y))
+			elif JUMP_PADS.has(c):
+				pads[c] = Vector2i(x, y)
+			elif JUMP_PADS.values().has(c):
+				landings[c] = Vector2i(x, y)
 			tiles[y * w + x] = _code(c)
 			tiles[my * w + mx] = _mirror_code(_code(c), rot)
 	# Bases and jails always stand on clear ground.
 	for team in 2:
-		_clear(tiles, w, h, base[team], 3.2)
-		_clear(tiles, w, h, jail[team], 2.4)
+		_clear(tiles, w, h, base[team], CLEAR_BASE)
+		_clear(tiles, w, h, jail[team], CLEAR_JAIL)
 	var tele := {}
 	for t: Vector2i in tele_half:
 		var a := t.y * w + t.x
 		var b := (h - 1 - t.y if rot else t.y) * w + (w - 1 - t.x)
 		tele[a] = b
 		tele[b] = a
-	return {"w": w, "h": h, "tiles": tiles, "base": base, "jail": jail, "tele": tele}
+	# A jump pad and its landing box, on each half of the field.
+	var jumps := {}
+	for c: String in pads:
+		var from: Vector2i = pads[c]
+		var to: Vector2i = landings[JUMP_PADS[c]]
+		jumps[from.y * w + from.x] = to.y * w + to.x
+		jumps[(h - 1 - from.y if rot else from.y) * w + (w - 1 - from.x)] = (h - 1 - to.y if rot else to.y) * w + (w - 1 - to.x)
+	return {"w": w, "h": h, "tiles": tiles, "base": base, "jail": jail, "tele": tele, "jumps": jumps}
+
+
+static func _with_yard(rows: Array, yard: Array) -> Array:
+	var out: Array = []
+	var width := String(rows[0]).length()
+	out.append(String(yard[0]) + ".".repeat(width))
+	for i in rows.size():
+		out.append(String(yard[i + 1]) + String(rows[i]))
+	out.append(String(yard[rows.size() + 1]) + ".".repeat(width))
+	return out
 
 
 static func _center(x: int, y: int) -> Vector2:
@@ -431,6 +473,17 @@ static func _code(c: String) -> int:
 		"<": return CON_L
 		"^": return CON_U
 		"v": return CON_D
+		"R": return DASH_R
+		"L": return DASH_L
+		"U": return DASH_U
+		"D": return DASH_D
+		"1", "2": return JUMP
+		"!", "@": return LAND
+		"=": return GATE
+		"f": return FOUNTAIN
+		"*": return ALTAR
+		"%": return FENCE
+		"o": return BUMPER
 	return FLOOR
 
 
@@ -440,4 +493,8 @@ static func _mirror_code(code: int, rot: bool) -> int:
 		CON_L: return CON_R
 		CON_U: return CON_D if rot else CON_U
 		CON_D: return CON_U if rot else CON_D
+		DASH_R: return DASH_L
+		DASH_L: return DASH_R
+		DASH_U: return DASH_D if rot else DASH_U
+		DASH_D: return DASH_U if rot else DASH_D
 	return code

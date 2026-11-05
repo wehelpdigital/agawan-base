@@ -42,5 +42,5 @@ The icons and power cards are original to this game, drawn by `tools/gen_icons.p
 
 ## Fonts
 
-Titan One by Rodrigo Fuenzalida and Fredoka by Milena Brandão and Hafontia, both SIL Open Font License (texts
+Rammetto One by Vernon Adams and Nunito by Vernon Adams, Cyreal and Jacques Le Bailly, both SIL Open Font License (texts
 beside the fonts in `assets/fonts`).

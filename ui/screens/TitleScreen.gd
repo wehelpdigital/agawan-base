@@ -26,7 +26,7 @@ func _ready() -> void:
 	_tap = UiKit.title("TAP TO PLAY", 34 if not root.compact else 26)
 	_tap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_tap)
-	var note := UiKit.label("5 vs 5 tag, from the Filipino game of Agawan Base", 16 if root.phone_narrow else 18, Color(1, 1, 1, 0.85))
+	var note := UiKit.label("5 vs 5 tag, from the Filipino game of Agawan Base", 16 if root.phone_narrow else 18, UiKit.WHITE)
 	note.add_theme_color_override("font_outline_color", UiKit.INK)
 	note.add_theme_constant_override("outline_size", 5)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -1,7 +1,7 @@
 class_name GameButton
 extends BaseButton
-## A chunky button: ink outline, thick lip below, a gloss across the top. It sinks into its lip when
-## pressed, and works with mouse, touch, keyboard and controller focus.
+## A glossy plastic toy of a button: a white rim, a thick lip below, and a shine across the top. It sinks into
+## its lip when pressed, and works with mouse, touch, keyboard and controller focus.
 
 const LIP := 7.0
 const OUTLINE := 4.0
@@ -48,7 +48,6 @@ func setup(text: String, p_kind := "yellow", font_size := 24, icon_name := "") -
 	mouse_exited.connect(queue_redraw)
 	resized.connect(_layout_row)
 	toggled.connect(func(_on: bool) -> void: queue_redraw())
-	_box_ink.bg_color = UiKit.INK
 	_box_ink.corner_detail = 6
 	_box_lip.corner_detail = 6
 	_box_body.corner_detail = 6
@@ -73,8 +72,8 @@ func set_kind(p_kind: String) -> void:
 	if _label:
 		_label.add_theme_color_override("font_color", text_color)
 		if text_color == UiKit.WHITE:
-			_label.add_theme_color_override("font_outline_color", UiKit.INK)
-			_label.add_theme_constant_override("outline_size", maxi(int(_font_size * 0.25), 5))
+			_label.add_theme_color_override("font_outline_color", (_colors["lip"] as Color).darkened(0.15))
+			_label.add_theme_constant_override("outline_size", maxi(int(_font_size * 0.28), 5))
 		else:
 			_label.add_theme_constant_override("outline_size", 0)
 	queue_redraw()
@@ -133,13 +132,17 @@ func _paint() -> void:
 	var top: Color = _colors["top"]
 	var lip: Color = _colors["lip"]
 	if grey:
-		low = Color("6e6b92")
-		top = Color("8f8cb0")
-		lip = Color("474466")
+		low = Color("a9b8c8")
+		top = Color("c6d2de")
+		lip = Color("7f91a5")
 	if is_hovered() and not grey and not pressed_now:
 		top = top.lightened(0.08)
 		low = low.lightened(0.08)
+	# A soft shadow on the ground, then the white rim.
+	_box_ink.bg_color = Color(UiKit.INK, 0.3)
 	_box_ink.set_corner_radius_all(r + 2)
+	draw_style_box(_box_ink, Rect2(0, body_top + 3.0, w, h - body_top))
+	_box_ink.bg_color = Color("f3f9ff") if not grey else Color("dfe7ef")
 	draw_style_box(_box_ink, Rect2(0, body_top, w, h - body_top))
 	_box_lip.bg_color = lip
 	_box_lip.set_corner_radius_all(r)
@@ -148,11 +151,17 @@ func _paint() -> void:
 	_box_body.set_corner_radius_all(r)
 	var body_rect := Rect2(OUTLINE, body_top + OUTLINE, w - OUTLINE * 2.0, body_h - OUTLINE * 2.0 + 2.0 - (0.0 if not pressed_now else 0.0))
 	draw_style_box(_box_body, body_rect)
-	_box_gloss.bg_color = Color(top, 0.85)
+	_box_gloss.bg_color = top
 	_box_gloss.set_corner_radius_all(r)
 	_box_gloss.corner_radius_bottom_left = int(r * 0.6)
 	_box_gloss.corner_radius_bottom_right = int(r * 0.6)
 	draw_style_box(_box_gloss, Rect2(body_rect.position, Vector2(body_rect.size.x, body_rect.size.y * 0.52)))
+	# The shine: a soft bright bar along the top edge.
+	if not grey and body_rect.size.y > 26.0:
+		_box_gloss.bg_color = Color(1, 1, 1, 0.42)
+		_box_gloss.set_corner_radius_all(int(r * 0.6))
+		var inset := minf(r * 0.7, body_rect.size.x * 0.12)
+		draw_style_box(_box_gloss, Rect2(body_rect.position + Vector2(inset, 3.0), Vector2(body_rect.size.x - inset * 2.0, maxf(body_rect.size.y * 0.15, 3.0))))
 	if has_focus() and focus_mode != Control.FOCUS_NONE and Input.get_connected_joypads().size() > 0:
 		_box_focus.set_corner_radius_all(r + 3)
 		draw_style_box(_box_focus, Rect2(-3, body_top - 3, w + 6, h - body_top + 6))

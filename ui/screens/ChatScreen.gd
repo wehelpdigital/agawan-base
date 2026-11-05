@@ -30,7 +30,7 @@ func _show() -> void:
 		child.queue_free()
 	for entry: Array in [["global", "Global"], ["guild", Profile.guild_name if Profile.guild_id != 0 else "Guild"]]:
 		var id: String = entry[0]
-		var b := UiKit.button(entry[1], "yellow" if id == _channel else "purple", 17)
+		var b := UiKit.button(entry[1], "yellow" if id == _channel else "teal", 17)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size.y = 48
 		b.pressed.connect(func() -> void:

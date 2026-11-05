@@ -143,7 +143,9 @@ func _bake_maps() -> void:
 		world.add_child(camera)
 		var arena := sim.arena_size()
 		var center := Vector3(arena.x * 0.5, 0, arena.y * 0.5)
-		camera.position = center + Vector3(0, 62, 36)
+		var aspect := float(MAP_SIZE.x) / MAP_SIZE.y
+		var reach := arena.x * 0.5 / (tan(deg_to_rad(camera.fov) * 0.5) * aspect) * 1.06
+		camera.position = center + Vector3(0, 62, 36).normalized() * reach
 		camera.look_at(center)
 		camera.make_current()
 		await RenderingServer.frame_post_draw

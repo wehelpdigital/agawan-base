@@ -9,7 +9,7 @@ extends RefCounted
 ##
 
 
-const INK := Color("24135f")
+const INK := Color("123a6b")
 
 var verts := PackedVector3Array()
 var norms := PackedVector3Array()
@@ -97,7 +97,7 @@ func _quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, n: Vector3, ca: Color
 ## A flat one-sided quad (no outline), corners counter-clockwise seen from its front.
 func quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color) -> void:
 	var n := (b - a).cross(d - a).normalized()
-	var col := color
+	var col := _marked(color)
 	_quad(a, b, c, d, n, col, col, col, col, false)
 
 
@@ -580,6 +580,30 @@ func _cap_unit(theta: float, f: float, ax: float, ay: float, turn: Basis, hole: 
 			flat = flat / length * sqrt(maxf(1.0 - cut * cut, 0.0))
 		u = Vector3(flat.x, cut, flat.y)
 	return u
+
+
+## A quick round puff, open underneath, shading from `low` at its foot to `top` at its crown: leaves and bushes.
+## Few enough triangles that a field can have thousands.
+func puff(center: Vector3, r: Vector3, top: Color, low: Color, rings := 4, segs := 10) -> void:
+	var inv := Vector3(1.0 / r.x, 1.0 / r.y, 1.0 / r.z)
+	for i in rings:
+		var phi0 := PI * 0.5 * float(i) / rings
+		var phi1 := PI * 0.5 * float(i + 1) / rings
+		var c0 := low.lerp(top, cos(phi0))
+		var c1 := low.lerp(top, cos(phi1))
+		for j in segs:
+			var t0 := TAU * float(j) / segs
+			var t1 := TAU * float(j + 1) / segs
+			var u1 := Vector3(sin(phi0) * cos(t0), cos(phi0), sin(phi0) * sin(t0))
+			var u2 := Vector3(sin(phi0) * cos(t1), cos(phi0), sin(phi0) * sin(t1))
+			var u3 := Vector3(sin(phi1) * cos(t1), cos(phi1), sin(phi1) * sin(t1))
+			var u4 := Vector3(sin(phi1) * cos(t0), cos(phi1), sin(phi1) * sin(t0))
+			var n1 := (u1 * inv).normalized()
+			var n2 := (u2 * inv).normalized()
+			var n3 := (u3 * inv).normalized()
+			var n4 := (u4 * inv).normalized()
+			_tri(center + u1 * r, center + u2 * r, center + u3 * r, n1, n2, n3, c0, c0, c1, false)
+			_tri(center + u1 * r, center + u3 * r, center + u4 * r, n1, n3, n4, c0, c1, c1, false)
 
 
 ## The top half of an ellipsoid, closed underneath with a flat disc: the crown of a hat.

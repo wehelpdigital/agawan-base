@@ -66,7 +66,7 @@ def publish() -> None:
     shutil.copyfile(brand / "icon.ico", PUBLIC / "favicon.ico")
     manifest = {
         "name": "Capture the Base", "short_name": "Capture Base", "start_url": "/", "display": "fullscreen",
-        "background_color": "#24135f", "theme_color": "#24135f",
+        "background_color": "#123a6b", "theme_color": "#123a6b",
         "icons": [{"src": "/icon_512.png", "sizes": "512x512", "type": "image/png"}],
     }
     (PUBLIC / "manifest.webmanifest").write_text(json.dumps(manifest), encoding="utf-8")

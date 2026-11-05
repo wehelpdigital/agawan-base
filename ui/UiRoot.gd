@@ -65,7 +65,7 @@ func _ready() -> void:
 	_bg = ColorRect.new()
 	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_bg_mat = ShaderMaterial.new()
-	_bg_mat.shader = preload("res://gfx/shaders/sunburst.gdshader")
+	_bg_mat.shader = preload("res://gfx/shaders/sky.gdshader")
 	_bg.material = _bg_mat
 	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bg)
@@ -139,9 +139,12 @@ func _build_tabs() -> void:
 		child.queue_free()
 	var bar := Panel.new()
 	bar.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var box := UiKit.style(Color(UiKit.INK, 0.96), 0)
+	var box := UiKit.style(UiKit.PAPER, 0)
 	box.border_width_top = 4
-	box.border_color = Color("120a3a")
+	box.border_color = Color("a9d6ff")
+	box.shadow_color = Color(UiKit.INK, 0.25)
+	box.shadow_size = 6
+	box.shadow_offset = Vector2(0, -2)
 	bar.add_theme_stylebox_override("panel", box)
 	_tabs.add_child(bar)
 	var row := UiKit.hbox(4)
@@ -252,7 +255,7 @@ func popup(title_text: String, wide := false) -> VBoxContainer:
 	var holder := CenterContainer.new()
 	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.add_child(holder)
-	var card := UiKit.panel(UiKit.VIOLET, 26, 5)
+	var card := UiKit.panel(UiKit.SKY, 26, 5)
 	card.custom_minimum_size = Vector2(width, 0)
 	holder.add_child(card)
 	var col := UiKit.vbox(12)

@@ -663,7 +663,7 @@ func _draw_mouth(k: MeshKit, info: Dictionary, kind: String) -> void:
 		"none":
 			pass
 		"boo":
-			k.ball(Vector3(0, y - w * 0.4, z - 0.01), Vector3(w * 0.9, w * 1.2, 0.018), Color("24135f"), 5, 8)
+			k.ball(Vector3(0, y - w * 0.4, z - 0.01), Vector3(w * 0.9, w * 1.2, 0.018), Color("123a6b"), 5, 8)
 		"smile":
 			_open_mouth(k, y, z, w)
 		"big":
@@ -1041,7 +1041,7 @@ func _head_animal(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cove
 			else:
 				k.round_patch(Vector3.ZERO, Vector3(0.5, 0.46, 0.46), 0.0, -0.17, 0.16, 0.115, belly)
 				k.outline = 0.0
-				k.ball(Vector3(0, -0.11, 0.436), Vector3(0.038, 0.028, 0.02), Color("24135f"), 2, 6)
+				k.ball(Vector3(0, -0.11, 0.436), Vector3(0.038, 0.028, 0.02), Color("123a6b"), 2, 6)
 				k.outline = 0.02
 				_smile(k, -0.15, 0.445, 0.07)
 
@@ -1067,7 +1067,7 @@ func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, acce
 			if muzzle:
 				k.outline = 0.0
 				for s: float in [-1.0, 1.0]:
-					k.box(Vector3(s * 0.34, -0.1, 0.34), Vector3(0.22, 0.015, 0.015), Color("24135f"))
+					k.box(Vector3(s * 0.34, -0.1, 0.34), Vector3(0.22, 0.015, 0.015), Color("123a6b"))
 				k.outline = 0.02
 		"buffalo":
 			if hat < 2:  # Horns come down and out from under a hat's brim.
@@ -1148,7 +1148,7 @@ func _head_mascot(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cove
 			k.outline = 0.02
 		"ghost":
 			k.ball(Vector3(0, -0.02, 0), Vector3(0.5, 0.5, 0.46), main, 16, 24)
-			_eyes(k, 0.05, 0.36, 0.18, 0.13, Color("24135f"), Color("24135f"))
+			_eyes(k, 0.05, 0.36, 0.18, 0.13, Color("123a6b"), Color("123a6b"))
 			_smile(k, -0.17, 0.43, 0.075)
 			_eye_seen["rest_mouth"] = "boo"
 			k.outline = 0.0
@@ -1228,10 +1228,10 @@ func _build_hat(k: MeshKit, id: String) -> void:
 			for i in 25:
 				var a := lerpf(-1.42, 1.42, i / 24.0)
 				arch.append(Vector3(sin(a) * 0.64, -0.2 + cos(a) * 0.59, 0.0))
-			k.tube(arch, 0.036, Color("24135f"))
+			k.tube(arch, 0.036, Color("123a6b"))
 			for s: float in [-1.0, 1.0]:
 				k.ball(Vector3(s * 0.62, -0.24, 0), Vector3(0.08, 0.17, 0.18), Color("ff4f8b"), 10, 14)
-				k.ball(Vector3(s * 0.695, -0.24, 0), Vector3(0.03, 0.105, 0.11), Color("24135f"), 8, 12)
+				k.ball(Vector3(s * 0.695, -0.24, 0), Vector3(0.03, 0.105, 0.11), Color("123a6b"), 8, 12)
 		"bow":
 			var pink := Color("ff5a9a")
 			k.push(Transform3D(Basis(Vector3.UP, 0.5) * Basis(Vector3.RIGHT, -0.5), Vector3(0.25, 0.27, 0.26)))
@@ -1274,7 +1274,7 @@ func _build_hat(k: MeshKit, id: String) -> void:
 			k.outline = 0.0
 			k.ball(Vector3(0, 0.555, 0), Vector3(0.2, 0.03, 0.3), leather.darkened(0.16), 4, 10)
 			k.outline = 0.02
-			k.torus(Vector3(0, 0.1, 0), 0.59, 0.034, Color("24135f"), 28, 6)
+			k.torus(Vector3(0, 0.1, 0), 0.59, 0.034, Color("123a6b"), 28, 6)
 		"propeller":
 			k.dome(Vector3.ZERO, Vector3(0.585, 0.39, 0.585), Color("ff5a4e"))
 			k.torus(Vector3.ZERO, 0.585, 0.024, Color("ffd23f"), 24, 6)

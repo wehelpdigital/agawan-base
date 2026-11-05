@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://cbdl3cnxgf4fg"
-path="res://.godot/imported/TitanOne-Regular.ttf-464d635f0aff86f04a099d6238fda35f.fontdata"
+uid="uid://dn5snsfi5b3x4"
+path="res://.godot/imported/Nunito.ttf-9a0d659c7c014361f3d844547f0a9ee8.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/TitanOne-Regular.ttf"
-dest_files=["res://.godot/imported/TitanOne-Regular.ttf-464d635f0aff86f04a099d6238fda35f.fontdata"]
+source_file="res://assets/fonts/Nunito.ttf"
+dest_files=["res://.godot/imported/Nunito.ttf-9a0d659c7c014361f3d844547f0a9ee8.fontdata"]
 
 [params]
 

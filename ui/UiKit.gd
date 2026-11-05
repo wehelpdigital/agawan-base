@@ -1,39 +1,40 @@
 class_name UiKit
 extends RefCounted
 ## The look of the interface: colours, fonts, panels and the small factories every screen builds from.
-## Thick ink outlines, chunky rounded shapes and big bouncy letters, all generated in code.
+## Bright glossy toys under a blue sky: white-rimmed plastic panels and buttons, and fat bouncy letters.
 
-const INK := Color("24135f")
-const INK_SOFT := Color("3a2a86")
-const VIOLET := Color("5b2fd6")
-const VIOLET_LIGHT := Color("7c4dff")
-const PAPER := Color("fff8ea")
-const CARD := Color("3d2a9e")
-const CARD_LIGHT := Color("4c37b8")
+const INK := Color("123a6b")
+const INK_SOFT := Color("1d5a9c")
+const SKY := Color("2f8fff")
+const SKY_LIGHT := Color("5fb6ff")
+const PAPER := Color("fffdf4")
+const CARD := Color("1f77e0")
+const CARD_LIGHT := Color("3b90f0")
+const RIM := Color("eef8ff")
 const YELLOW := Color("ffd23f")
 const ORANGE := Color("ff9d2e")
-const CORAL := Color("ff4f6b")
+const CORAL := Color("ff5247")
 const PINK := Color("ff6fb5")
-const MINT := Color("35d07f")
+const MINT := Color("5ff0a0")
 const AQUA := Color("19d3e6")
 const BLUE := Color("3aa6ff")
-const PURPLE := Color("b768ff")
+const PURPLE := Color("a98bff")
 const WHITE := Color("ffffff")
-const MUTED := Color("bcb2ec")
+const MUTED := Color("d6ebff")
 const COIN := Color("ffc21f")
 const GEM := Color("5ce8ff")
 const TROPHY := Color("ffd23f")
 
 const BUTTON_COLORS := {
-	"yellow": {"top": Color("ffe25a"), "low": Color("ffb31f"), "lip": Color("c96a0a"), "text": INK},
-	"green": {"top": Color("5ff0a0"), "low": Color("22c46e"), "lip": Color("0f7f49"), "text": WHITE},
-	"blue": {"top": Color("69c4ff"), "low": Color("2b8cf0"), "lip": Color("1456ad"), "text": WHITE},
-	"pink": {"top": Color("ff8fc8"), "low": Color("ff4f9a"), "lip": Color("b52366"), "text": WHITE},
-	"coral": {"top": Color("ff8a78"), "low": Color("f5413f"), "lip": Color("a81f2a"), "text": WHITE},
-	"purple": {"top": Color("a689ff"), "low": Color("7a55ee"), "lip": Color("4726a8"), "text": WHITE},
-	"gray": {"top": Color("8f8cb0"), "low": Color("6e6b92"), "lip": Color("474466"), "text": WHITE},
-	"ink": {"top": Color("4a3aa8"), "low": Color("362a8a"), "lip": Color("1c1259"), "text": WHITE},
-	"white": {"top": Color("ffffff"), "low": Color("e8e4f8"), "lip": Color("a9a1d8"), "text": INK},
+	"yellow": {"top": Color("ffe45c"), "low": Color("ffbc1f"), "lip": Color("d98208"), "text": INK},
+	"green": {"top": Color("6bef8f"), "low": Color("2cc75e"), "lip": Color("168a3f"), "text": WHITE},
+	"blue": {"top": Color("6cc8ff"), "low": Color("2b8ff5"), "lip": Color("1a5fc0"), "text": WHITE},
+	"pink": {"top": Color("ff9ccb"), "low": Color("ff5aa5"), "lip": Color("c42a78"), "text": WHITE},
+	"coral": {"top": Color("ff8f7a"), "low": Color("f44a3c"), "lip": Color("b52a22"), "text": WHITE},
+	"teal": {"top": Color("62e6e0"), "low": Color("1fc0c4"), "lip": Color("0f8791"), "text": WHITE},
+	"gray": {"top": Color("c3d0de"), "low": Color("95a8bd"), "lip": Color("6b7f96"), "text": WHITE},
+	"ink": {"top": Color("3f8fe8"), "low": Color("1f6fd0"), "lip": Color("124a96"), "text": WHITE},
+	"white": {"top": Color("ffffff"), "low": Color("e8f2fb"), "lip": Color("a9c4de"), "text": INK},
 }
 
 static var _title_font: Font
@@ -46,26 +47,30 @@ static var _markers := {}
 
 static func font_title() -> Font:
 	if _title_font == null:
-		_title_font = load("res://assets/fonts/TitanOne-Regular.ttf")
+		# A fat, friendly face, drawn a little narrower, so words fit on buttons on small phones.
+		var variation := FontVariation.new()
+		variation.base_font = load("res://assets/fonts/RammettoOne-Regular.ttf")
+		variation.variation_transform = Transform2D(Vector2(0.88, 0), Vector2(0, 1), Vector2.ZERO)
+		_title_font = variation
 	return _title_font
 
 
 static func font_body() -> Font:
 	if _body_font == null:
-		var base: Font = load("res://assets/fonts/Fredoka.ttf")
+		var base: Font = load("res://assets/fonts/Nunito.ttf")
 		var variation := FontVariation.new()
 		variation.base_font = base
-		variation.variation_opentype = {"wght": 500}
+		variation.variation_opentype = {"wght": 700}
 		_body_font = variation
 	return _body_font
 
 
 static func font_bold() -> Font:
 	if _body_bold == null:
-		var base: Font = load("res://assets/fonts/Fredoka.ttf")
+		var base: Font = load("res://assets/fonts/Nunito.ttf")
 		var variation := FontVariation.new()
 		variation.base_font = base
-		variation.variation_opentype = {"wght": 700}
+		variation.variation_opentype = {"wght": 900}
 		_body_bold = variation
 	return _body_bold
 
@@ -81,7 +86,7 @@ static func theme() -> Theme:
 	scroll.bg_color = Color(1, 1, 1, 0.1)
 	scroll.set_corner_radius_all(6)
 	var grabber := StyleBoxFlat.new()
-	grabber.bg_color = Color(1, 1, 1, 0.45)
+	grabber.bg_color = Color(1, 1, 1, 0.75)
 	grabber.set_corner_radius_all(6)
 	for kind: String in ["VScrollBar", "HScrollBar"]:
 		t.set_stylebox("scroll", kind, scroll)
@@ -124,7 +129,7 @@ static func theme() -> Theme:
 
 
 static func _knob_texture() -> Texture2D:
-	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='17' fill='#24135f'/><circle cx='20' cy='20' r='12' fill='#fff'/></svg>"
+	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='17' fill='#123a6b'/><circle cx='20' cy='20' r='12' fill='#fff'/></svg>"
 	return _svg_texture(svg)
 
 
@@ -145,10 +150,12 @@ static func style(bg: Color, radius := 18, border := 0, border_color := INK) -> 
 	return box
 
 
-## A card with an ink border and a darker lip at the bottom.
+## A glossy plastic panel: a white rim, and a soft shadow on whatever it sits on.
 static func card_style(bg := CARD, radius := 20, border := 4) -> StyleBoxFlat:
-	var box := style(bg, radius, border, INK)
-	box.border_width_bottom = border + 4
+	var box := style(bg, radius, border, RIM)
+	box.shadow_color = Color(INK, 0.32)
+	box.shadow_size = 3
+	box.shadow_offset = Vector2(0, 4)
 	box.content_margin_left = 14
 	box.content_margin_right = 14
 	box.content_margin_top = 10
@@ -187,6 +194,14 @@ static func title(text: String, size := 34, color := WHITE) -> Label:
 static func body(text: String, size := 18, color := WHITE) -> Label:
 	var l := label(text, size, color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+
+## Body text with no panel behind it: outlined, so it can be read against the sky and the hills.
+static func open_text(text: String, size := 18, color := WHITE) -> Label:
+	var l := body(text, size, color)
+	l.add_theme_color_override("font_outline_color", INK)
+	l.add_theme_constant_override("outline_size", maxi(int(size * 0.34), 5))
 	return l
 
 
@@ -258,10 +273,13 @@ static func image(path: String, size: Vector2) -> TextureRect:
 	return r
 
 
-## A number with a little icon, in a dark pill: coins, gems, trophies.
+## A number with a little icon, in a white pill: coins, gems, trophies.
 static func stat_pill(icon_name: String, text: String, color: Color, height := 40.0) -> PanelContainer:
 	var pill := PanelContainer.new()
-	var box := style(Color(INK, 0.85), int(height * 0.5), 3, INK)
+	var box := style(PAPER, int(height * 0.5), 3, Color("a9d6ff"))
+	box.shadow_color = Color(INK, 0.28)
+	box.shadow_size = 2
+	box.shadow_offset = Vector2(0, 3)
 	box.content_margin_left = 8
 	box.content_margin_right = 14
 	box.content_margin_top = 2
@@ -269,7 +287,7 @@ static func stat_pill(icon_name: String, text: String, color: Color, height := 4
 	pill.add_theme_stylebox_override("panel", box)
 	var row := hbox(6)
 	row.add_child(icon(icon_name, height * 0.68))
-	var value := title(text, int(height * 0.48))
+	var value := label(text, int(height * 0.46), INK, 0, true)
 	value.name = "Value"
 	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(value)
@@ -300,11 +318,11 @@ static func marker_texture(kind: String) -> Texture2D:
 	var svg := ""
 	match kind:
 		"catch":  # A green hand-free "get them" arrow: you can tag this enemy.
-			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 88 L10 42 H30 V8 H66 V42 H86 Z' fill='#24135f' stroke='#24135f' stroke-width='10' stroke-linejoin='round'/><path d='M48 80 L19 46 H37 V15 H59 V46 H77 Z' fill='#3bff7a'/><path d='M37 15 H59 V30 H37 Z' fill='#b6ffcf'/></svg>"
+			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 88 L10 42 H30 V8 H66 V42 H86 Z' fill='#123a6b' stroke='#123a6b' stroke-width='10' stroke-linejoin='round'/><path d='M48 80 L19 46 H37 V15 H59 V46 H77 Z' fill='#3bff7a'/><path d='M37 15 H59 V30 H37 Z' fill='#b6ffcf'/></svg>"
 		"danger":  # A red warning sign: this enemy can tag you.
-			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 84 H6 Z' fill='#24135f' stroke='#24135f' stroke-width='10' stroke-linejoin='round'/><path d='M48 17 L80 77 H16 Z' fill='#ff3f5a'/><rect x='42' y='36' width='12' height='23' rx='5' fill='#fff'/><circle cx='48' cy='68' r='6.5' fill='#fff'/></svg>"
+			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 84 H6 Z' fill='#123a6b' stroke='#123a6b' stroke-width='10' stroke-linejoin='round'/><path d='M48 17 L80 77 H16 Z' fill='#ff3f5a'/><rect x='42' y='36' width='12' height='23' rx='5' fill='#fff'/><circle cx='48' cy='68' r='6.5' fill='#fff'/></svg>"
 		"free":  # A white house: walk home, nobody can touch you.
-			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 46 H74 V86 H22 V46 H6 Z' fill='#24135f' stroke='#24135f' stroke-width='8' stroke-linejoin='round'/><path d='M48 16 L78 42 H66 V78 H30 V42 H18 Z' fill='#fff'/><rect x='41' y='52' width='14' height='26' fill='#24135f'/></svg>"
+			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 46 H74 V86 H22 V46 H6 Z' fill='#123a6b' stroke='#123a6b' stroke-width='8' stroke-linejoin='round'/><path d='M48 16 L78 42 H66 V78 H30 V42 H18 Z' fill='#fff'/><rect x='41' y='52' width='14' height='26' fill='#123a6b'/></svg>"
 	_markers[kind] = _svg_texture(svg)
 	return _markers[kind]
 

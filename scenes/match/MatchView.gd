@@ -10,10 +10,12 @@ signal stat_flash(kind: String)
 const CAM_PITCH := deg_to_rad(52.0)
 const AVATAR_SCALE := 1.2  ## Heroes are drawn bigger than their footprint: they are the show.
 const SCORED_FACE_SECONDS := 3.0
+const GATE_HEIGHT := 1.5
+const GATE_WARNING := 1.0
 const STATUS_ICONS := {
 	"stun": [Cosmetics.Fx.STAR, "ffd23f"], "freeze": [Cosmetics.Fx.SNOW, "bff3ff"], "root": [Cosmetics.Fx.RING, "c9b95c"],
 	"slow": [Cosmetics.Fx.DROP, "62e0a0"], "slip": [Cosmetics.Fx.RING, "bff3ff"], "reverse": [Cosmetics.Fx.SPARK, "b768ff"],
-	"fear": [Cosmetics.Fx.DROP, "9fe6ff"], "blind": [Cosmetics.Fx.DROP, "24135f"], "stale": [Cosmetics.Fx.PUFF, "8a8a6a"],
+	"fear": [Cosmetics.Fx.DROP, "9fe6ff"], "blind": [Cosmetics.Fx.DROP, "123a6b"], "stale": [Cosmetics.Fx.PUFF, "8a8a6a"],
 	"overcharge": [Cosmetics.Fx.BOLT, "fff176"], "firetrail": [Cosmetics.Fx.FLAME, "ff7a1f"], "chain": [Cosmetics.Fx.BOLT, "7ee8ff"],
 	"speed": [Cosmetics.Fx.PUFF, "ffffff"], "speed2": [Cosmetics.Fx.PUFF, "ffffff"], "dashboost": [Cosmetics.Fx.BOLT, "35d07f"],
 	"fastcap": [Cosmetics.Fx.STAR, "ffc21f"],
@@ -58,6 +60,10 @@ var _blob_mat: StandardMaterial3D
 var _quad_cache := {}
 var _shield_mesh: ArrayMesh
 var _ice_mesh: ArrayMesh
+var _grass_mat: ShaderMaterial
+var _gates: Array[MeshInstance3D] = []
+var _gates_were_shut := false
+var _fountain_jets := {}  # Tile -> the water standing up out of it.
 var _theme_id := ""
 var _sound_cd := {}
 var _tick_second := -1
@@ -73,7 +79,13 @@ func setup(p_sim: Sim, p_local_id: int) -> void:
 	var map := Maps.by_id(sim.map_id)
 	_theme_id = map["theme"]
 	var theme: Dictionary = Maps.THEMES[_theme_id]
-	add_child(ArenaBuilder.build(sim, low_detail))
+	var arena_node := ArenaBuilder.build(sim, low_detail)
+	add_child(arena_node)
+	var grass_node := arena_node.get_node_or_null("Grass") as MeshInstance3D
+	if grass_node:
+		_grass_mat = grass_node.material_override
+	_build_gates()
+	_build_fountains()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(theme["sky"])
@@ -185,7 +197,7 @@ func _build_players() -> void:
 		label.outline_size = 10
 		label.pixel_size = 0.0098
 		label.modulate = Color("ffe9a8") if is_me else (Color("c9f1ff") if p.team == my_team else Color("ffc4bd"))
-		label.outline_modulate = Color("24135f")
+		label.outline_modulate = Color("123a6b")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.no_depth_test = true
 		label.render_priority = 1
@@ -243,7 +255,7 @@ func _build_base_markers() -> void:
 		jail_label.pixel_size = 0.012
 		jail_label.text = "JAIL"
 		jail_label.modulate = Color("fff3d6")
-		jail_label.outline_modulate = Color("24135f")
+		jail_label.outline_modulate = Color("123a6b")
 		jail_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		jail_label.position = Vector3(sim.jail[team].x, 2.4, sim.jail[team].y - Sim.JAIL_R)
 		add_child(jail_label)
@@ -279,8 +291,8 @@ func _reset_camera() -> void:
 func _update_distance() -> void:
 	var size := get_viewport().get_visible_rect().size
 	var aspect := size.x / maxf(size.y, 1.0)
-	# Keep about 24 m across on wide screens and about 15 m on narrow ones, so phones see enough.
-	var want_width := 25.0 if aspect >= 1.2 else 16.0
+	# Keep about 29 m across on wide screens and about 18 m on narrow ones, so phones see enough.
+	var want_width := 29.0 if aspect >= 1.2 else 18.0
 	var half_h := tan(deg_to_rad(camera.fov) * 0.5)
 	_dist = want_width * 0.5 / (half_h * aspect)
 	_dist = clampf(_dist, 16.0, 46.0)
@@ -328,6 +340,17 @@ func _follow_camera(delta: float) -> void:
 	_place_camera()
 
 
+## Roughly what the camera can see of the field, for the box on the minimap.
+func ground_view() -> Rect2:
+	var view_size := get_viewport().get_visible_rect().size
+	var half_h := tan(deg_to_rad(camera.fov) * 0.5) * _dist
+	var half_w := half_h * view_size.x / maxf(view_size.y, 1.0)
+	var across := Vector2(half_w, half_h * 1.15)
+	if _portrait:
+		across = Vector2(across.y, across.x)
+	return Rect2(Vector2(_cam_target.x, _cam_target.z) - across, across * 2.0)
+
+
 func shake(amount: float) -> void:
 	if Settings.camera_shake:
 		_shake = minf(_shake + amount, 1.0)
@@ -347,6 +370,9 @@ func _process(delta: float) -> void:
 	_update_shots(delta)
 	_update_ents(delta)
 	_update_walls()
+	_update_gates(delta)
+	_update_fountains(delta)
+	_update_bushes()
 	_update_bases()
 	_update_emotes(delta)
 	_follow_camera(delta)
@@ -432,8 +458,6 @@ func _anim_state(p: Sim.Player, airborne: bool, is_moving: bool) -> String:
 
 func _update_material(p: Sim.Player, av: Avatar3D) -> void:
 	var ghosted := sim.has_status(p, "ghost") or sim.is_free_walking(p) or sim.has_status(p, "invis")
-	if p.team == my_team and tile_is_grass(p):
-		ghosted = true
 	if sim.has_status(p, "freeze"):
 		av.set_material_kind("frozen")
 	elif ghosted:
@@ -725,6 +749,97 @@ func _make_ent(ent: Dictionary) -> Node3D:
 	return node
 
 
+func _build_gates() -> void:
+	var mesh := ArenaBuilder.block_mesh(Color("e8574a"), GATE_HEIGHT, true)
+	var mat := Avatar3D._material("normal")
+	for i in sim.w * sim.h:
+		if sim.tiles[i] == Maps.GATE:
+			var inst := MeshInstance3D.new()
+			inst.mesh = mesh
+			inst.material_override = mat
+			inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var at := sim.tile_center(i)
+			inst.position = Vector3(at.x, -GATE_HEIGHT - 0.1, at.y)
+			add_child(inst)
+			_gates.append(inst)
+
+
+## Gates are shut or open by the clock. Just before they rise, their tops poke out, as a warning.
+func _update_gates(delta: float) -> void:
+	if _gates.is_empty():
+		return
+	var shut := sim.gates_shut()
+	var left := sim.gates_change_in()
+	var goal := 0.0
+	if not shut:
+		goal = -GATE_HEIGHT * 0.72 if left < GATE_WARNING else -GATE_HEIGHT - 0.1
+	for gate in _gates:
+		gate.position.y = lerpf(gate.position.y, goal, clampf(delta * 12.0, 0.0, 1.0))
+	if shut != _gates_were_shut:
+		_gates_were_shut = shut
+		var loudest := 0.0
+		for gate in _gates:
+			loudest = maxf(loudest, _audible(Vector2(gate.position.x, gate.position.z)))
+		Audio.sfx("entrance_stamp" if shut else "piece_place", loudest * 0.7)
+
+
+func _build_fountains() -> void:
+	var kit := MeshKit.new()
+	kit.soften = true
+	kit.shells = false
+	kit.outline = 0.0
+	kit.ball(Vector3(0, 0.46, 0), Vector3(0.14, 0.46, 0.14), Color("8fe3ff"), 8, 12)
+	kit.ball(Vector3(0, 0.92, 0), Vector3(0.3, 0.16, 0.3), Color("d8f6ff"), 6, 12)
+	var mesh := kit.to_mesh()
+	var mat := Avatar3D._material("normal")
+	for tile: int in sim.fountains:
+		var inst := MeshInstance3D.new()
+		inst.mesh = mesh
+		inst.material_override = mat
+		inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var at := sim.tile_center(tile)
+		inst.position = Vector3(at.x, 0.5, at.y)
+		add_child(inst)
+		_fountain_jets[tile] = inst
+
+
+## A full fountain plays, so you can see from across the field that it's ready. An empty one has only a trickle.
+func _update_fountains(delta: float) -> void:
+	var now := Time.get_ticks_msec() * 0.001
+	for tile: int in _fountain_jets:
+		var jet: MeshInstance3D = _fountain_jets[tile]
+		var ready := sim.fountain_ready(tile)
+		var height := (1.0 + sin(now * 7.0 + tile) * 0.1) if ready else 0.06
+		jet.scale = jet.scale.lerp(Vector3(1.0 if ready else 0.5, height, 1.0 if ready else 0.5), clampf(delta * 8.0, 0.0, 1.0))
+		if ready and randf() < delta * 5.0:
+			var at := jet.position + Vector3(randf_range(-0.2, 0.2), 0.9, randf_range(-0.2, 0.2))
+			fx.spawn(at, Vector3(randf_range(-0.8, 0.8), 1.6, randf_range(-0.8, 0.8)), 0.6, 0.2, Cosmetics.Fx.DROP, Color("8fe3ff"), 0.0)
+
+
+## Lets you see into the bushes wherever you're allowed to see someone. Anyone unseen rustles the leaves as they run.
+func _update_bushes() -> void:
+	if _grass_mat == null:
+		return
+	var spots := PackedVector3Array()
+	spots.resize(6)
+	spots.fill(Vector3(-1000, 0, -1000))
+	var count := 0
+	var me := sim.player_by_id(local_id)
+	if me and me.state == Sim.State.PLAY:
+		spots[0] = Vector3(_shown_pos[me.id].x, 0, _shown_pos[me.id].z)
+		count = 1
+	for p: Sim.Player in sim.players:
+		if p.id == local_id or p.state != Sim.State.PLAY or not tile_is_grass(p):
+			continue
+		if sim.is_hidden_from(p, my_team):
+			if p.vel.length() > Sim.SPEED * 0.6 and randf() < 0.1:
+				fx.spawn(Vector3(p.pos.x, 1.0, p.pos.y), Vector3(randf_range(-1.5, 1.5), 1.4, randf_range(-1.5, 1.5)), 0.55, 0.24, Cosmetics.Fx.LEAF, Color(Maps.THEMES[_theme_id]["grass"]).lightened(0.2), 3.0)
+		elif count < 6:
+			spots[count] = Vector3(_shown_pos[p.id].x, 0, _shown_pos[p.id].z)
+			count += 1
+	_grass_mat.set_shader_parameter("reveals", spots)
+
+
 func _update_walls() -> void:
 	var seen := {}
 	for tile: int in sim.walls:
@@ -862,6 +977,31 @@ func _event(ev: Array) -> void:
 				_avatars[a].squash(0.4)
 			if mine:
 				Audio.sfx("piece_place", 0.7)
+		"boost":
+			fx.burst(_world(x, y, 0.4), 6, 2.5, 0.28, 0.42, Cosmetics.Fx.PUFF, ["ffffff", "fff176"], 0.0)
+			if mine or _audible(at2) > 0.6:
+				Audio.sfx("trail_whoosh", _audible(at2) * 0.8)
+		"jump":
+			fx.burst(_world(x, y, 0.6), 12, 4.5, 0.4, 0.34, Cosmetics.Fx.STAR, ["ffd23f", "ffffff"], 2.0)
+			Audio.sfx("move_bounce", _audible(at2))
+			if a >= 0:
+				_avatars[a].squash(0.55)
+				_avatars[a].react_any(Faces.CHEERING, 1.0)
+		"fountain":
+			fx.burst(_world(x, y, 1.0), 18, 4.0, 0.6, 0.3, Cosmetics.Fx.DROP, ["8fe3ff", "ffffff"], 5.0)
+			_float_text(_world(x, y, 2.2), "FRESH!", Color("8fe3ff"))
+			Audio.sfx("aura_water", _audible(at2) * 0.8)
+			if a >= 0:
+				_avatars[a].react("happy", 1.0)
+		"bump":
+			fx.burst(_world(x, y, 1.0), 14, 6.0, 0.35, 0.36, Cosmetics.Fx.STAR, ["ff5a4e", "ffffff", "ffd23f"], 2.0)
+			_float_text(_world(x, y, 2.0), "BOING!", Color("ffd23f"))
+			Audio.sfx("move_bounce", _audible(at2) * 0.9, 1.3)
+			if a >= 0:
+				_avatars[a].squash(0.7)
+				_avatars[a].react_any(Faces.TAGGED, 0.9)
+			if mine:
+				shake(0.14)
 		"bounce":
 			Audio.sfx("move_bounce", _audible(at2))
 			if a >= 0:
@@ -967,6 +1107,7 @@ func _on_tag(tagger: Sim.Player, tagged: Sim.Player, at2: Vector2) -> void:
 	fx.shock_ring(_world(at2.x, at2.y, 0.2), 2.2, Cosmetics.Fx.PUFF, Color("ffffff"), 16)
 	_float_text(_world(at2.x, at2.y, 2.2), String(burst_def["text"]), ArenaBuilder.team_color(tagger.team).lightened(0.3))
 	_avatars[tagged.id].flash()
+	_avatars[tagged.id].squash(1.0)
 	_avatars[tagger.id].squash(0.3)
 	_avatars[tagger.id].react_any(Faces.TAGGING, 1.6)
 	_avatars[tagged.id].react_any(Faces.TAGGED, 1.2)
@@ -1028,7 +1169,7 @@ func _float_text(at: Vector3, text: String, color: Color) -> void:
 	label.outline_size = 18
 	label.pixel_size = 0.013
 	label.modulate = color
-	label.outline_modulate = Color("24135f")
+	label.outline_modulate = Color("123a6b")
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.render_priority = 3
@@ -1057,7 +1198,7 @@ func show_emote(player_id: int, text: String) -> void:
 	label.outline_size = 16
 	label.pixel_size = 0.013
 	label.modulate = Color("ffffff")
-	label.outline_modulate = Color("24135f")
+	label.outline_modulate = Color("123a6b")
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.render_priority = 3

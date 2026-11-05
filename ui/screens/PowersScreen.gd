@@ -59,7 +59,7 @@ func _refresh() -> void:
 
 
 func _chip(text: String, cat: String) -> Control:
-	var b := UiKit.button(text, "yellow" if cat == _cat else "purple", 15)
+	var b := UiKit.button(text, "yellow" if cat == _cat else "teal", 15)
 	b.custom_minimum_size.y = 44
 	b.pressed.connect(func() -> void:
 		_cat = cat
@@ -84,7 +84,7 @@ func _card(def: Dictionary) -> Control:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	text.add_child(head)
-	var tier := UiKit.label("%s %s" % [Powerups.TIER_NAMES[int(def["tier"])], Powerups.CATS[def["cat"]]["name"]], 13, (Powerups.CATS[def["cat"]]["color"] as Color).lightened(0.3))
+	var tier := UiKit.label("%s %s" % [Powerups.TIER_NAMES[int(def["tier"])], Powerups.CATS[def["cat"]]["name"]], 13, (Powerups.CATS[def["cat"]]["color"] as Color).lightened(0.72))
 	text.add_child(tier)
 	text.add_child(UiKit.body(String(def["desc"]), 15))
 	row.add_child(text)

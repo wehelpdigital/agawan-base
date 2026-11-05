@@ -13,6 +13,7 @@ func _init() -> void:
 	_test_every_power()
 	_test_crystals()
 	_test_faces()
+	_test_tricks()
 	_test_maps()
 	_test_snapshot()
 	_test_full_matches()
@@ -172,6 +173,141 @@ func _test_crystals() -> void:
 	_ok(a.powers.is_empty(), "once it stops, it can be used")
 
 
+## A bare sim with one tile of a kind just ahead of player 0, and everyone else out of the way.
+func _trick_sim(code: int) -> Array:
+	var sim := _new_sim()
+	var a: Sim.Player = sim.players[0]
+	_park_others(sim, [0])
+	sim.pickups.clear()
+	var x := sim.w / 2 - 3
+	var y := sim.h - 2
+	var tile := y * sim.w + x
+	sim.tiles[tile] = code
+	sim.tiles[y * sim.w + x + 1] = Maps.FLOOR
+	sim.tiles[y * sim.w + x - 1] = Maps.FLOOR
+	a.pos = sim.tile_center(tile - 1)
+	a.on_base = false
+	a.mv = Vector2.ZERO
+	a.fresh = 0.0
+	return [sim, a, tile]
+
+
+func _test_tricks() -> void:
+	# Dash floors shoot you the way they point, even standing still.
+	var parts := _trick_sim(Maps.DASH_L)
+	var sim: Sim = parts[0]
+	var a: Sim.Player = parts[1]
+	var tile: int = parts[2]
+	a.pos = sim.tile_center(tile)
+	var from_x := a.pos.x
+	for _i in 10:
+		sim.step()
+	_ok(a.pos.x < from_x - 3.0, "a dash floor shoots you along it")
+	# Jump pads land you exactly on their landing box, untouchable on the way.
+	parts = _trick_sim(Maps.JUMP)
+	sim = parts[0]
+	a = parts[1]
+	tile = parts[2]
+	var land := tile - sim.w * 6
+	sim.tiles[land] = Maps.LAND
+	sim.jumps = {tile: land}
+	a.pos = sim.tile_center(tile)
+	sim.step()
+	_ok(sim.is_airborne(a), "a jump pad throws you in the air")
+	for _i in 60:
+		sim.step()
+	_ok(not sim.is_airborne(a) and sim.tile_index(a.pos) == land, "and you land on its box")
+	# A low fence stops a walk and not a dash.
+	parts = _trick_sim(Maps.FENCE)
+	sim = parts[0]
+	a = parts[1]
+	tile = parts[2]
+	a.mv = Vector2.RIGHT
+	for _i in 40:
+		a.mv = Vector2.RIGHT
+		sim.step()
+	_ok(a.pos.x < sim.tile_center(tile).x, "you can't walk through a low fence")
+	a.mv = Vector2.RIGHT
+	a.dash_cd = 0.0
+	a.want_dash = true
+	for _i in 16:
+		a.mv = Vector2.RIGHT
+		sim.step()
+	_ok(a.pos.x > sim.tile_center(tile).x + 0.5, "but a dash goes over it")
+	# Gates open and shut, and a gate shutting on you moves you out.
+	parts = _trick_sim(Maps.GATE)
+	sim = parts[0]
+	a = parts[1]
+	tile = parts[2]
+	sim.t = Sim.GATE_SHUT + 0.5
+	_ok(not sim._blocks_feet(tile), "an open gate lets you through")
+	a.pos = sim.tile_center(tile)
+	sim.t = Sim.GATE_CYCLE - 0.01
+	for _i in 3:
+		sim.step()
+	_ok(sim._blocks_feet(tile), "then it shuts")
+	_ok(sim.tile_index(a.pos) != tile, "and it moves you out of the way")
+	# A fountain makes you fresh once, then needs refilling.
+	parts = _trick_sim(Maps.FOUNTAIN)
+	sim = parts[0]
+	a = parts[1]
+	tile = parts[2]
+	sim.fountains = {tile: 0.0}
+	sim.t = 50.0
+	a.pos = sim.tile_center(tile)
+	sim.step()
+	_ok(a.fresh >= 50.0, "a fountain makes you fresh")
+	_ok(not sim.fountain_ready(tile), "and then it's empty")
+	var copy := _new_sim()
+	copy.apply_snapshot(sim.to_snapshot())
+	_ok(not copy.fountain_ready(tile), "which goes over the network")
+	# Altars grow crystals, but only one at a time.
+	parts = _trick_sim(Maps.ALTAR)
+	sim = parts[0]
+	a = parts[1]
+	tile = parts[2]
+	sim.altars = {tile: 0.0}
+	sim._spawn_timer = 999.0
+	a.pos = sim.tile_center(tile) + Vector2(0, 12)
+	a.pos = a.pos.clamp(Vector2.ONE, sim.arena_size() - Vector2.ONE)
+	sim.step()
+	_ok(sim.pickups.size() == 1, "an altar grows a crystal")
+	sim.altars[tile] = 0.0
+	sim.step()
+	_ok(sim.pickups.size() == 1, "but not a second on top of it")
+	# Bumpers knock you away.
+	parts = _trick_sim(Maps.BUMPER)
+	sim = parts[0]
+	a = parts[1]
+	tile = parts[2]
+	sim._bumpers = PackedInt32Array([tile])
+	a.mv = Vector2.RIGHT
+	var start := a.pos.x
+	for _i in 6:
+		a.mv = Vector2.RIGHT
+		sim.step()
+	for _i in 10:
+		a.mv = Vector2.ZERO
+		sim.step()
+	_ok(a.pos.x < start - 1.0, "a bumper knocks you flying")
+	# Every map's jump pads lead to real landing boxes, and every map has some tricks in it.
+	for id: String in Maps.LAYOUT_ORDER:
+		var whole := Sim.new()
+		var map_id := ""
+		for map: Dictionary in Maps.all():
+			if map["layout"] == id:
+				map_id = map["id"]
+				break
+		whole.setup(map_id, [], 1)
+		for pad: int in whole.jumps:
+			_ok(whole.tiles[pad] == Maps.JUMP and whole.tiles[whole.jumps[pad]] == Maps.LAND, "%s: jump pad and box" % id)
+		_ok(not whole.fountains.is_empty() or not whole.altars.is_empty(), "%s has things to fight over" % id)
+		# Both bases can still reach each other on foot, for anyone.
+		var field := whole.flow_field(whole.tile_index(whole.base[1]))
+		_ok(field[whole.tile_index(whole.base[0])] >= 0, "%s: you can walk from base to base" % id)
+		_ok(field[whole.tile_index(whole.jail[0])] >= 0, "%s: you can walk to the jail" % id)
+
+
 ## Everything the game asks an avatar's face to do has to exist.
 func _test_faces() -> void:
 	for entry: Dictionary in Cosmetics.FACES:
@@ -266,7 +402,7 @@ func _test_every_power() -> void:
 		a.mv = Vector2.RIGHT
 		for _i in 90:
 			sim.step()
-		_ok(a.powers.is_empty(), "%s was used" % id)
+		_ok(a.powers_used == 1, "%s was used" % id)
 		_ok(a.pos.x >= 0.0 and a.pos.y >= 0.0 and a.pos.x <= sim.arena_size().x, "%s keeps the player in the arena" % id)
 
 

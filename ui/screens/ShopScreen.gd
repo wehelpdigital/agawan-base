@@ -151,7 +151,7 @@ func _build_tabs() -> void:
 
 
 func _group_button(id: String, text: String, icon_name: String) -> Control:
-	var b := UiKit.button(text, "yellow" if id == _group else "purple", 16, icon_name)
+	var b := UiKit.button(text, "yellow" if id == _group else "teal", 16, icon_name)
 	b.custom_minimum_size.y = 50
 	b.pressed.connect(func() -> void:
 		_group = id
@@ -206,7 +206,7 @@ func _refill() -> void:
 		_grid.add_child(_card(_slot, entry["id"], cell, false))
 		shown += 1
 	if shown == 0:
-		var empty := UiKit.body("Nothing here yet. Win coins, then visit the Shop!", 18)
+		var empty := UiKit.open_text("Nothing here yet. Win coins, then visit the Shop!", 18)
 		_grid.add_child(empty)
 
 
@@ -224,7 +224,7 @@ func _card(slot: String, id: String, cell: float, deal: bool) -> Control:
 	card.pressed.connect(func() -> void: _on_card(slot, id))
 	var box := PanelContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var style := UiKit.card_style(UiKit.CARD if not equipped else Color("2a7a58"), 14, 3)
+	var style := UiKit.card_style(UiKit.CARD if not equipped else Color("1f9c5c"), 14, 3)
 	style.border_color = rarity["color"]
 	style.content_margin_left = 4
 	style.content_margin_right = 4

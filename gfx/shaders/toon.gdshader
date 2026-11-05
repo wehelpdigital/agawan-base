@@ -26,11 +26,11 @@ void fragment() {
 	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	float rim = pow(1.0 - facing, 3.0);
 	vec3 sun_view = normalize((VIEW_MATRIX * vec4(sun, 0.0)).xyz);
-	float shine = pow(max(dot(NORMAL, normalize(sun_view + VIEW)), 0.0), 48.0) * soft * 0.1;
+	float shine = pow(max(dot(NORMAL, normalize(sun_view + VIEW)), 0.0), 48.0) * soft * 0.17;
 	vec3 surface = lit + rim * 0.1 * band * col * (1.0 - soft) + vec3(shine);
 	// Avatars' outline: a dark edge where a round surface turns away, smooth at any distance. Vertex alpha
 	// switches it off for paint (cheeks, spots, mouths).
 	float line = soft * COLOR.a * smoothstep(0.7, 0.8, 1.0 - facing);
-	surface = mix(surface, mix(col * 0.32, vec3(0.13, 0.06, 0.3), 0.55), line);
+	surface = mix(surface, mix(col * 0.32, vec3(0.05, 0.15, 0.3), 0.55), line);
 	ALBEDO = mix(surface, vec3(1.0), flash);
 }

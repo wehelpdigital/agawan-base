@@ -70,11 +70,11 @@ func _ready() -> void:
 	var info := _section("More")
 	body.add_child(info)
 	var row := UiKit.hbox(8)
-	var how := UiKit.button("Rules", "purple", 17)
+	var how := UiKit.button("Rules", "teal", 17)
 	how.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	how.pressed.connect(func() -> void: root.show_screen("howto", {}, true))
 	row.add_child(how)
-	var credits := UiKit.button("Credits", "purple", 17)
+	var credits := UiKit.button("Credits", "teal", 17)
 	credits.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	credits.pressed.connect(func() -> void: root.show_screen("credits", {}, true))
 	row.add_child(credits)

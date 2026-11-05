@@ -21,7 +21,7 @@ func _ready() -> void:
 	back.custom_minimum_size = Vector2(56, 48)
 	back.pressed.connect(func() -> void: root.go_back())
 	head.add_child(back)
-	var heading := UiKit.title("MAPS (%d)" % Maps.all().size(), 28 if not root.compact else 22)
+	var heading := UiKit.title("MAPS" if root.phone_narrow else "MAPS (%d)" % Maps.all().size(), 28 if not root.compact else 22)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(heading)
@@ -51,7 +51,7 @@ func _ready() -> void:
 
 
 func _chip(text: String, theme_id: String) -> Control:
-	var chip := UiKit.button(text, "purple" if theme_id != _filter else "yellow", 15)
+	var chip := UiKit.button(text, "teal" if theme_id != _filter else "yellow", 15)
 	chip.custom_minimum_size.y = 44
 	chip.pressed.connect(func() -> void:
 		_filter = theme_id

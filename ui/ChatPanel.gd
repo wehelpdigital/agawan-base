@@ -40,7 +40,7 @@ func _ready() -> void:
 	var quick := UiKit.hbox(6)
 	quick_scroll.add_child(quick)
 	for text: String in QUICK:
-		var b := UiKit.button(text, "purple", 14)
+		var b := UiKit.button(text, "teal", 14)
 		b.custom_minimum_size.y = 42
 		b.pressed.connect(func() -> void: _send(text))
 		quick.add_child(b)

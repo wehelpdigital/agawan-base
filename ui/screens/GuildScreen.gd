@@ -48,7 +48,7 @@ func _refresh() -> void:
 
 
 func _message(text: String) -> void:
-	var line := UiKit.body(text, 18)
+	var line := UiKit.open_text(text, 18)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.add_theme_color_override("font_outline_color", UiKit.INK)
 	line.add_theme_constant_override("outline_size", 5)
@@ -90,7 +90,7 @@ func _show_browser(search: String) -> void:
 		return
 	var rows: Array = (result["data"] as Dictionary).get("guilds", []) if result["ok"] else []
 	if rows.is_empty():
-		var empty := UiKit.body("No guilds found. Start your own!" if result["ok"] else "Couldn't load guilds. Try again soon.", 18)
+		var empty := UiKit.open_text("No guilds found. Start your own!" if result["ok"] else "Couldn't load guilds. Try again soon.", 18)
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		list.add_child(empty)
 		return
@@ -216,7 +216,7 @@ func _create_popup() -> void:
 # --- My guild -------------------------------------------------------------------------------------
 
 func _show_my_guild() -> void:
-	var loading := UiKit.body("Loading your guild...", 18)
+	var loading := UiKit.open_text("Loading your guild...", 18)
 	loading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_body.add_child(loading)
 	var request := _request

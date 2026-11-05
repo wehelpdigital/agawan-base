@@ -67,7 +67,7 @@ func _build_tabs() -> void:
 		child.queue_free()
 	for entry: Array in [["leagues", "Leagues"], ["players", "Top Players"], ["guilds", "Top Guilds"]]:
 		var id: String = entry[0]
-		var b := UiKit.button(entry[1], "yellow" if id == _tab else "purple", 16)
+		var b := UiKit.button(entry[1], "yellow" if id == _tab else "teal", 16)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size.y = 48
 		b.pressed.connect(func() -> void:
@@ -187,7 +187,7 @@ func _board_row(rank: int, row: Dictionary, scope: String) -> Control:
 
 
 func _note(text: String) -> void:
-	var line := UiKit.body(text, 18)
+	var line := UiKit.open_text(text, 18)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.add_theme_color_override("font_outline_color", UiKit.INK)
 	line.add_theme_constant_override("outline_size", 5)

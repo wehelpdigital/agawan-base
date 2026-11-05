@@ -33,13 +33,13 @@ func think(sim: Sim, p: Sim.Player, dt: float) -> void:
 ## Every so often a team pushes together: one bot alone only feeds the jail.
 func _tick_wave(sim: Sim, team: int) -> void:
 	if sim.t >= float(sim.wave_next[team]):
-		sim.wave_until[team] = sim.t + sim.rng.randf_range(7.0, 11.0)
-		sim.wave_next[team] = sim.t + sim.rng.randf_range(16.0, 26.0)
+		sim.wave_until[team] = sim.t + sim.rng.randf_range(14.0, 20.0)
+		sim.wave_next[team] = sim.t + sim.rng.randf_range(24.0, 34.0)
 
 
 func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 	_tick_wave(sim, p.team)
-	var sight := lerpf(10.0, 18.0, p.skill)
+	var sight := lerpf(12.0, 22.0, p.skill)
 	var threats: Array[Sim.Player] = []
 	var prey: Array[Sim.Player] = []
 	var enemies_near := 0
@@ -74,7 +74,7 @@ func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 	var mode := "roam"
 	# On a final run at the enemy base it's too late to turn back: a capture is worth a trip to jail.
 	var enemy_base_d: float = p.pos.distance_to(sim.base[1 - p.team])
-	var all_in := enemy_base_d < 10.0 and not sim.is_free_walking(p) 			and (float(sim.wave_until[p.team]) > sim.t or float(sim.cap[1 - p.team]) > 0.25 or enemy_base_d < Sim.BASE_R + 1.0)
+	var all_in := enemy_base_d < 16.0 and not sim.is_free_walking(p) 			and (float(sim.wave_until[p.team]) > sim.t or float(sim.cap[1 - p.team]) > 0.25 or enemy_base_d < Sim.BASE_R + 1.0)
 	if all_in:
 		mode = "capture"
 		goal = sim.base[1 - p.team]
@@ -108,14 +108,48 @@ func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 			"pickup":
 				goal = _nearest_pickup(sim, p)
 			"refresh":
-				goal = home
+				goal = _nearest_refresh(sim, p, home)
 			_:
 				goal = _roam_point(sim, p, mem)
+	if mode in ["attack", "home", "refresh", "rescue", "guard", "pickup"]:
+		goal = _shortcut(sim, p, goal)
 	mem["goal"] = goal
 	mem["mode"] = mode
 	# A blocked goal (a target across water) falls back on walking round by the flow field.
 	mem["direct"] = sim.clear_line(p.pos, goal)
 	mem["flow_at"] = sim.tile_index(goal)
+
+
+## A jump pad or dash floor nearby that really does get a bot closer to where it's going, or else the goal itself.
+func _shortcut(sim: Sim, p: Sim.Player, goal: Vector2) -> Vector2:
+	if sim.rng.randf() > lerpf(0.2, 0.9, p.skill):
+		return goal
+	var straight := p.pos.distance_to(goal)
+	var best := goal
+	var best_saved := 6.0
+	for pad: int in sim.jumps:
+		var at := sim.tile_center(pad)
+		var to_pad := p.pos.distance_to(at)
+		if to_pad > 12.0:
+			continue
+		var saved := straight - (to_pad + sim.tile_center(sim.jumps[pad]).distance_to(goal))
+		if saved > best_saved:
+			best_saved = saved
+			best = at
+	return best
+
+
+## Home, or a full fountain if one's closer.
+func _nearest_refresh(sim: Sim, p: Sim.Player, home: Vector2) -> Vector2:
+	var best := home
+	var best_d := p.pos.distance_to(home)
+	for tile: int in sim.fountains:
+		if sim.fountain_ready(tile):
+			var at := sim.tile_center(tile)
+			if at.distance_to(p.pos) < best_d:
+				best_d = at.distance_to(p.pos)
+				best = at
+	return best
 
 
 ## How far a bot will go after someone: not far while its team is pushing on the enemy base.
@@ -142,7 +176,7 @@ func _job(sim: Sim, p: Sim.Player, jailed: int, intruders: int) -> String:
 	role = seat
 	var stale_for := sim.t - p.fresh
 	var waving := float(sim.wave_until[p.team]) > sim.t
-	if intruders > 0 and (role == 0 or p.pos.distance_to(sim.base[p.team]) < 7.0):
+	if intruders > 0 and (role == 0 or p.pos.distance_to(sim.base[p.team]) < 11.0):
 		return "guard"
 	if jailed >= 1 and (role == 2 or role == 3 or jailed >= 2) and stale_for < 22.0:
 		return "rescue"
@@ -150,7 +184,7 @@ func _job(sim: Sim, p: Sim.Player, jailed: int, intruders: int) -> String:
 		return "attack"
 	if p.powers.size() < Sim.MAX_POWERS and not sim.pickups.is_empty():
 		var near := _nearest_pickup(sim, p)
-		if near.distance_to(p.pos) < lerpf(8.0, 15.0, p.skill):
+		if near.distance_to(p.pos) < lerpf(10.0, 19.0, p.skill):
 			return "pickup"
 	if stale_for > lerpf(26.0, 14.0, p.skill) and sim.rng.randf() < 0.5:
 		return "refresh"
@@ -164,7 +198,7 @@ func _job(sim: Sim, p: Sim.Player, jailed: int, intruders: int) -> String:
 func _intruders(sim: Sim, team: int) -> int:
 	var count := 0
 	for e: Sim.Player in sim.team_of(1 - team):
-		if e.state == Sim.State.PLAY and not sim.is_hidden_from(e, team) and e.pos.distance_to(sim.base[team]) < 9.0:
+		if e.state == Sim.State.PLAY and not sim.is_hidden_from(e, team) and e.pos.distance_to(sim.base[team]) < Sim.BASE_R + 7.0:
 			count += 1
 	return count
 
@@ -198,13 +232,13 @@ func _attack_point(sim: Sim, p: Sim.Player) -> Vector2:
 		if e.state != Sim.State.PLAY:
 			continue
 		free_enemies += 1
-		if e.pos.distance_to(enemy_base) < 6.0 and sim.fresh_value(e) > sim.fresh_value(p):
+		if e.pos.distance_to(enemy_base) < Sim.BASE_R + 3.0 and sim.fresh_value(e) > sim.fresh_value(p):
 			guards += 1
 	if guards == 0 or free_enemies <= 2 or float(sim.wave_until[p.team]) > sim.t 			or sim.has_status(p, "ghost") or sim.has_status(p, "overcharge") or sim.has_status(p, "shield"):
 		return enemy_base
 	var from_base := (p.pos - enemy_base).normalized()
 	var wobble := sin(sim.t * 0.9 + p.id * 1.7) * 0.9
-	return enemy_base + from_base.rotated(wobble) * lerpf(9.0, 7.0, p.skill)
+	return enemy_base + from_base.rotated(wobble) * (Sim.BASE_R + lerpf(6.0, 4.0, p.skill))
 
 
 func _nearest_pickup(sim: Sim, p: Sim.Player) -> Vector2:
@@ -230,10 +264,10 @@ func _roam_point(sim: Sim, p: Sim.Player, mem: Dictionary) -> Vector2:
 ## Don't chase someone onto their own doorstep, where fresh defenders wait.
 func _safe_chase(sim: Sim, p: Sim.Player, target: Sim.Player) -> bool:
 	var their_base: Vector2 = sim.base[target.team]
-	if target.pos.distance_to(their_base) > 7.0 or sim.has_status(p, "overcharge"):
+	if target.pos.distance_to(their_base) > Sim.BASE_R + 4.0 or sim.has_status(p, "overcharge"):
 		return true
 	for e: Sim.Player in sim.team_of(target.team):
-		if e != target and e.state == Sim.State.PLAY and e.pos.distance_to(their_base) < 5.0:
+		if e != target and e.state == Sim.State.PLAY and e.pos.distance_to(their_base) < Sim.BASE_R + 2.0:
 			return false
 	return true
 
@@ -254,7 +288,7 @@ func _steer(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 		p.mv = Vector2.ZERO
 		return
 	var dir := Vector2.ZERO
-	if bool(mem.get("direct", true)):
+	if bool(mem.get("direct", true)) and not _pad_ahead(sim, p, goal):
 		dir = (goal - p.pos).normalized()
 	else:
 		dir = _flow_dir(sim, p, int(mem.get("flow_at", -1)), goal)
@@ -263,6 +297,33 @@ func _steer(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 		dir = dir.rotated(sin(sim.t * 3.0 + p.id) * 0.9)
 	p.mv = dir
 	p.aim = Vector2.ZERO
+
+
+## Is there a pad just ahead that the bot didn't mean to step on, and that would throw it away from its goal?
+func _pad_ahead(sim: Sim, p: Sim.Player, goal: Vector2) -> bool:
+	var to_goal := goal - p.pos
+	var length := to_goal.length()
+	if length < 0.01:
+		return false
+	var dir := to_goal / length
+	for step: float in [1.0, 2.2]:
+		if step > length:
+			break
+		var i := sim.tile_index(p.pos + dir * step)
+		if i < 0 or sim.tile_center(i).distance_to(goal) < 1.0:
+			continue
+		match sim.tiles[i]:
+			Maps.JUMP:
+				return true
+			Maps.DASH_R:
+				if dir.x < 0.2: return true
+			Maps.DASH_L:
+				if dir.x > -0.2: return true
+			Maps.DASH_U:
+				if dir.y > -0.2: return true
+			Maps.DASH_D:
+				if dir.y < 0.2: return true
+	return false
 
 
 func _flow_dir(sim: Sim, p: Sim.Player, target: int, goal: Vector2) -> Vector2:

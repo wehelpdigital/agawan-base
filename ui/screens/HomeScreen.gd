@@ -98,7 +98,7 @@ func _side_buttons() -> Control:
 	]
 	var small: bool = root.compact
 	for entry: Dictionary in entries:
-		var b := UiKit.button(entry["text"] if not (small or root.phone_narrow) else "", "purple", 16, entry["icon"])
+		var b := UiKit.button(entry["text"] if not (small or root.phone_narrow) else "", "teal", 16, entry["icon"])
 		b.custom_minimum_size = Vector2(66, 48) if small or root.phone_narrow else Vector2(132, 50)
 		b.pressed.connect(entry["action"])
 		if entry["dot"]:

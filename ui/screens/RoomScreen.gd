@@ -65,7 +65,7 @@ func _refresh() -> void:
 
 
 func _note(text: String) -> void:
-	var line := UiKit.body(text, 18)
+	var line := UiKit.open_text(text, 18)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.add_theme_color_override("font_outline_color", UiKit.INK)
 	line.add_theme_constant_override("outline_size", 5)
@@ -137,7 +137,7 @@ func _build_room(room: Dictionary) -> void:
 		DisplayServer.clipboard_set(_share_text(code))
 		root.toast("Invite copied. Send it to a friend!", UiKit.MINT))
 	top_row.add_child(share)
-	var post := UiKit.button("To Chat", "purple", 17)
+	var post := UiKit.button("To Chat", "teal", 17)
 	post.pressed.connect(func() -> void:
 		Net.send_chat("guild" if Profile.guild_id != 0 else "global", "Join my room! Code: %s" % code)
 		root.toast("Posted in %s chat." % ("guild" if Profile.guild_id != 0 else "global"), UiKit.MINT))
@@ -162,7 +162,7 @@ func _build_room(room: Dictionary) -> void:
 		start.pressed.connect(func() -> void: Net.room_start())
 		row.add_child(start)
 	else:
-		var wait := UiKit.body("Waiting for the host to start...", 17)
+		var wait := UiKit.open_text("Waiting for the host to start...", 17)
 		wait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		wait.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		wait.add_theme_color_override("font_outline_color", UiKit.INK)
@@ -229,7 +229,7 @@ func _host_controls(room: Dictionary) -> Control:
 	card.add_child(row)
 	var map_id := str(room.get("map", ""))
 	var map_name := String(Maps.by_id(map_id).get("name", "Random Map"))
-	var map_btn := UiKit.button(map_name, "purple", 15, "map")
+	var map_btn := UiKit.button(map_name, "teal", 15, "map")
 	map_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_btn.pressed.connect(func() -> void:
 		root.show_screen("maps", {"room": true}, true))

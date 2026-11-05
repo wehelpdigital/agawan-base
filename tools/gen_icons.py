@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-INK = "#24135f"
+INK = "#123a6b"
 OUTLINE = 34
 W = "#ffffff"
 CREAM = "#fff6dd"
