@@ -10,7 +10,7 @@ signal changed
 signal item_unlocked(slot: String, id: String)
 signal leveled_up(level: int)
 
-const FILE := "user://profile.json"
+const DEFAULT_FILE := "user://profile.json"
 const VERSION := 1
 const START_COINS := 300
 const START_GEMS := 20
@@ -55,17 +55,24 @@ var guild_name := ""
 var saved_at := 0
 
 
+var _file := DEFAULT_FILE
+
+
 func _ready() -> void:
+	# Tests can play several accounts on one machine: -- --profile=name
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--profile="):
+			_file = "user://profile_%s.json" % arg.trim_prefix("--profile=").validate_filename()
 	load_profile()
 
 
 func load_profile() -> void:
-	if not FileAccess.file_exists(FILE):
+	if not FileAccess.file_exists(_file):
 		player_name = Names.new_player()
 		_ensure_quests()
 		save()
 		return
-	var text := FileAccess.get_file_as_string(FILE)
+	var text := FileAccess.get_file_as_string(_file)
 	var data: Variant = JSON.parse_string(text)
 	if data is Dictionary:
 		apply_data(data)
@@ -141,7 +148,7 @@ func save() -> void:
 	data["account"] = account
 	data["guild_id"] = guild_id
 	data["guild_name"] = guild_name
-	var file := FileAccess.open(FILE, FileAccess.WRITE)
+	var file := FileAccess.open(_file, FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
 		file.close()
