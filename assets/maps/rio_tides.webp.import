@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/rio_tides.webp-da2f7691c5119deac77e70c7c9da5d
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.8
+compress/lossy_quality=0.72
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

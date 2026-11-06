@@ -61,7 +61,8 @@ func _show_faces(world: Node3D, camera: Camera3D) -> void:
 	for child in world.get_children():
 		if child is Avatar3D:
 			child.free()
-	var names := ["normal", "blink", "happy", "focus", "shock", "dizzy", "sad"]
+	var names: Array = Faces.PARTS.keys()
+	var columns := 10
 	for i in names.size():
 		var look := Cosmetics.default_look()
 		for slot_name: String in ["mask", "top", "pants", "shoes"]:
@@ -70,11 +71,13 @@ func _show_faces(world: Node3D, camera: Camera3D) -> void:
 		var avatar := Avatar3D.new()
 		world.add_child(avatar)
 		avatar.setup(look, Color("ffb21f"))
-		avatar.position = Vector3(i * 1.8, 0, 0)
-		avatar.rotation.y = -0.15
+		avatar.position = Vector3((i % columns) * 1.5, -(i / columns) * 1.5, 0)
+		avatar.rotation.y = -0.1
+		avatar.calm = true
 		avatar.react(names[i], 999.0)
-	var center := Vector3((names.size() - 1) * 0.9, 0.9, 0)
-	camera.position = center + Vector3(0, 0.9, 13.0)
+	var rows := ceili(names.size() / float(columns))
+	var center := Vector3((columns - 1) * 0.75, 1.1 - (rows - 1) * 0.75, 0)
+	camera.position = center + Vector3(0, 0.3, 4.0 + rows * 3.7)
 	camera.look_at(center)
 	await get_tree().create_timer(0.4).timeout
 	await RenderingServer.frame_post_draw

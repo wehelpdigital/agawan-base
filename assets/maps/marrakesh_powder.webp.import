@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/marrakesh_powder.webp-6d2bbbc6683034799b26870
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.8
+compress/lossy_quality=0.72
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

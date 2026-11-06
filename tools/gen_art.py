@@ -100,11 +100,11 @@ def make_icons():
 
 
 def make_atlas():
-    """36 white particle shapes on a 6x6 grid; the game tints them."""
+    """64 white particle shapes on an 8x8 grid; the game tints them."""
     cell = 128
     scale = 4
     big = cell * scale
-    grid = 6
+    grid = 8
     atlas = Image.new("RGBA", (cell * grid, cell * grid), (0, 0, 0, 0))
 
     def cell_img(draw_fn, soft=0.0):
@@ -308,8 +308,209 @@ def make_atlas():
         d.ellipse((s * 0.26, s * 0.08, s * 0.56, s * 0.42), fill=210)
         d.ellipse((s * 0.5, s * 0.1, s * 0.8, s * 0.42), fill=210)
 
+    def bamboo(d, s):
+        d.rounded_rectangle((s * 0.4, s * 0.04, s * 0.58, s * 0.96), radius=int(s * 0.05), fill=255)
+        for y in (0.3, 0.62):
+            d.rectangle((s * 0.36, s * y, s * 0.62, s * (y + 0.045)), fill=150)
+        d.polygon([(s * 0.58, s * 0.3), (s * 0.96, s * 0.08), (s * 0.82, s * 0.32)], fill=255)
+        d.polygon([(s * 0.4, s * 0.62), (s * 0.04, s * 0.42), (s * 0.16, s * 0.68)], fill=255)
+
+    def sword(d, s):
+        d.polygon([(s * 0.5, s * 0.02), (s * 0.59, s * 0.14), (s * 0.59, s * 0.66), (s * 0.41, s * 0.66), (s * 0.41, s * 0.14)], fill=255)
+        d.line((s * 0.5, s * 0.1, s * 0.5, s * 0.64), fill=170, width=int(s * 0.025))
+        d.rounded_rectangle((s * 0.24, s * 0.65, s * 0.76, s * 0.73), radius=int(s * 0.03), fill=255)
+        d.rectangle((s * 0.45, s * 0.72, s * 0.55, s * 0.9), fill=255)
+        d.ellipse((s * 0.42, s * 0.87, s * 0.58, s * 0.99), fill=255)
+
+    def shield(d, s):
+        d.polygon([(s * 0.12, s * 0.12), (s * 0.88, s * 0.12), (s * 0.88, s * 0.52), (s * 0.74, s * 0.76), (s * 0.5, s * 0.96), (s * 0.26, s * 0.76), (s * 0.12, s * 0.52)], fill=255)
+        d.polygon([(s * 0.12, s * 0.56), (s * 0.5, s * 0.26), (s * 0.88, s * 0.56), (s * 0.88, s * 0.44), (s * 0.5, s * 0.14), (s * 0.12, s * 0.44)], fill=150)
+
+    def shuriken(d, s):
+        d.polygon(star_points(s / 2, s / 2, s * 0.49, s * 0.15, 4), fill=255)
+        d.ellipse((s * 0.42, s * 0.42, s * 0.58, s * 0.58), fill=40)
+
+    def koi(d, s):
+        d.ellipse((s * 0.26, s * 0.06, s * 0.74, s * 0.66), fill=255)
+        d.polygon([(s * 0.4, s * 0.6), (s * 0.6, s * 0.6), (s * 0.54, s * 0.78), (s * 0.82, s * 0.96), (s * 0.5, s * 0.86), (s * 0.18, s * 0.96), (s * 0.46, s * 0.78)], fill=255)
+        d.polygon([(s * 0.28, s * 0.3), (s * 0.08, s * 0.44), (s * 0.3, s * 0.46)], fill=255)
+        d.polygon([(s * 0.72, s * 0.3), (s * 0.92, s * 0.44), (s * 0.7, s * 0.46)], fill=255)
+        d.ellipse((s * 0.36, s * 0.3, s * 0.64, s * 0.5), fill=150)
+        for x in (0.38, 0.62):
+            d.ellipse((s * (x - 0.03), s * 0.14, s * (x + 0.03), s * 0.2), fill=40)
+
+    def dumpling(d, s):
+        d.chord((s * 0.06, s * 0.2, s * 0.94, s * 1.02), 180, 360, fill=255)
+        d.rectangle((s * 0.08, s * 0.6, s * 0.92, s * 0.72), fill=255)
+        for x in (0.3, 0.44, 0.58, 0.72):
+            d.line((s * x, s * 0.26, s * 0.5, s * 0.56), fill=150, width=int(s * 0.03))
+
+    def sushi(d, s):
+        d.rounded_rectangle((s * 0.1, s * 0.44, s * 0.9, s * 0.84), radius=int(s * 0.12), fill=210)
+        d.rounded_rectangle((s * 0.06, s * 0.24, s * 0.94, s * 0.56), radius=int(s * 0.14), fill=255)
+        for x in (0.26, 0.44, 0.62, 0.8):
+            d.line((s * x, s * 0.26, s * (x - 0.06), s * 0.54), fill=170, width=int(s * 0.03))
+        d.rectangle((s * 0.42, s * 0.24, s * 0.58, s * 0.84), fill=70)
+
+    def taco(d, s):
+        for i in range(7):
+            x = 0.16 + i * 0.113
+            d.ellipse((s * (x - 0.09), s * 0.18, s * (x + 0.09), s * 0.38), fill=170)
+        d.pieslice((s * 0.06, s * 0.22, s * 0.94, s * 1.1), 180, 360, fill=255)
+        for x, y in [(0.32, 0.5), (0.52, 0.42), (0.68, 0.56)]:
+            d.ellipse((s * (x - 0.03), s * (y - 0.03), s * (x + 0.03), s * (y + 0.03)), fill=170)
+
+    def croissant(d, s):
+        pts_out, pts_in = [], []
+        for i in range(25):
+            a = math.pi * (1.05 - 1.1 * i / 24)
+            pts_out.append((s * (0.5 + math.cos(a) * 0.46), s * (0.72 - math.sin(a) * 0.56)))
+            pts_in.append((s * (0.5 + math.cos(a) * 0.24), s * (0.8 - math.sin(a) * 0.26)))
+        d.polygon(pts_out + pts_in[::-1], fill=255)
+        for f in (0.28, 0.42, 0.58, 0.72):
+            a = math.pi * (1.05 - 1.1 * f)
+            d.line((s * (0.5 + math.cos(a) * 0.46), s * (0.72 - math.sin(a) * 0.56), s * (0.5 + math.cos(a) * 0.24), s * (0.8 - math.sin(a) * 0.26)), fill=160, width=int(s * 0.03))
+
+    def donut(d, s):
+        d.ellipse((s * 0.06, s * 0.06, s * 0.94, s * 0.94), fill=255)
+        d.ellipse((s * 0.36, s * 0.36, s * 0.64, s * 0.64), fill=0)
+        for x, y in [(0.24, 0.3), (0.5, 0.2), (0.74, 0.32), (0.8, 0.58), (0.58, 0.8), (0.3, 0.76), (0.18, 0.54)]:
+            d.ellipse((s * (x - 0.03), s * (y - 0.04), s * (x + 0.03), s * (y + 0.04)), fill=150)
+
+    def teacup(d, s):
+        d.chord((s * 0.08, s * 0.1, s * 0.78, s * 0.86), 0, 180, fill=255)
+        d.rectangle((s * 0.08, s * 0.44, s * 0.78, s * 0.5), fill=255)
+        d.ellipse((s * 0.68, s * 0.44, s * 0.96, s * 0.74), fill=255)
+        d.ellipse((s * 0.76, s * 0.52, s * 0.88, s * 0.66), fill=0)
+        d.rounded_rectangle((s * 0.08, s * 0.84, s * 0.78, s * 0.92), radius=int(s * 0.03), fill=255)
+        for x in (0.32, 0.54):
+            d.arc((s * (x - 0.08), s * 0.04, s * (x + 0.08), s * 0.26), 100, 300, fill=255, width=int(s * 0.04))
+
+    def hibiscus(d, s):
+        for i in range(5):
+            a = i * math.tau / 5 - math.pi / 2
+            x, y = s / 2 + math.cos(a) * s * 0.26, s / 2 + math.sin(a) * s * 0.26
+            d.ellipse((x - s * 0.22, y - s * 0.22, x + s * 0.22, y + s * 0.22), fill=255)
+        d.line((s * 0.5, s * 0.5, s * 0.78, s * 0.22), fill=120, width=int(s * 0.05))
+        d.ellipse((s * 0.74, s * 0.16, s * 0.84, s * 0.26), fill=120)
+        d.ellipse((s * 0.42, s * 0.42, s * 0.58, s * 0.58), fill=150)
+
+    def rose(d, s):
+        d.ellipse((s * 0.1, s * 0.08, s * 0.9, s * 0.88), fill=255)
+        for box, start, end in [((0.2, 0.18, 0.8, 0.78), 200, 420), ((0.3, 0.26, 0.72, 0.68), 20, 250), ((0.4, 0.36, 0.62, 0.58), 180, 470)]:
+            d.arc((s * box[0], s * box[1], s * box[2], s * box[3]), start, end, fill=130, width=int(s * 0.035))
+        d.polygon([(s * 0.22, s * 0.8), (s * 0.02, s * 0.98), (s * 0.38, s * 0.92)], fill=200)
+        d.polygon([(s * 0.78, s * 0.8), (s * 0.98, s * 0.98), (s * 0.62, s * 0.92)], fill=200)
+
+    def palm(d, s):
+        d.line((s * 0.52, s * 0.98, s * 0.46, s * 0.36), fill=200, width=int(s * 0.07))
+        for a0, a1 in [(-160, -110), (-130, -70), (-95, -35), (-60, -5), (-20, 25), (-200, -150)]:
+            pts = [(s * 0.46, s * 0.36)]
+            for t in range(9):
+                f = t / 8
+                a = math.radians(a0 + (a1 - a0) * f)
+                pts.append((s * (0.46 + math.cos(a) * 0.46 * (0.6 + 0.4 * f)), s * (0.36 + math.sin(a) * 0.3 + f * f * 0.2)))
+            d.polygon(pts, fill=255)
+
+    def cactus(d, s):
+        d.rounded_rectangle((s * 0.4, s * 0.08, s * 0.6, s * 0.96), radius=int(s * 0.1), fill=255)
+        d.rounded_rectangle((s * 0.14, s * 0.3, s * 0.3, s * 0.62), radius=int(s * 0.08), fill=255)
+        d.rectangle((s * 0.2, s * 0.52, s * 0.42, s * 0.62), fill=255)
+        d.rounded_rectangle((s * 0.7, s * 0.2, s * 0.86, s * 0.52), radius=int(s * 0.08), fill=255)
+        d.rectangle((s * 0.58, s * 0.42, s * 0.8, s * 0.52), fill=255)
+        d.line((s * 0.5, s * 0.16, s * 0.5, s * 0.9), fill=170, width=int(s * 0.03))
+
+    def mushroom(d, s):
+        d.chord((s * 0.06, s * 0.06, s * 0.94, s * 0.9), 180, 360, fill=255)
+        d.rounded_rectangle((s * 0.34, s * 0.46, s * 0.66, s * 0.96), radius=int(s * 0.1), fill=205)
+        for x, y, r in [(0.3, 0.32, 0.08), (0.56, 0.2, 0.08), (0.74, 0.36, 0.06)]:
+            d.ellipse((s * (x - r), s * (y - r), s * (x + r), s * (y + r)), fill=120)
+
+    def pumpkin(d, s):
+        for x, w in [(0.22, 0.28), (0.78, 0.28), (0.35, 0.32), (0.65, 0.32), (0.5, 0.34)]:
+            d.ellipse((s * (x - w / 2), s * 0.22, s * (x + w / 2), s * 0.94), fill=255)
+        d.rectangle((s * 0.45, s * 0.06, s * 0.57, s * 0.26), fill=200)
+        d.polygon([(s * 0.3, s * 0.44), (s * 0.42, s * 0.44), (s * 0.36, s * 0.56)], fill=60)
+        d.polygon([(s * 0.58, s * 0.44), (s * 0.7, s * 0.44), (s * 0.64, s * 0.56)], fill=60)
+        d.chord((s * 0.3, s * 0.48, s * 0.7, s * 0.82), 10, 170, fill=60)
+
+    def bat(d, s):
+        d.ellipse((s * 0.38, s * 0.34, s * 0.62, s * 0.74), fill=255)
+        d.polygon([(s * 0.4, s * 0.38), (s * 0.42, s * 0.22), (s * 0.48, s * 0.34)], fill=255)
+        d.polygon([(s * 0.6, s * 0.38), (s * 0.58, s * 0.22), (s * 0.52, s * 0.34)], fill=255)
+        d.polygon([(s * 0.4, s * 0.42), (s * 0.04, s * 0.26), (s * 0.1, s * 0.56), (s * 0.2, s * 0.5), (s * 0.28, s * 0.66), (s * 0.42, s * 0.6)], fill=255)
+        d.polygon([(s * 0.6, s * 0.42), (s * 0.96, s * 0.26), (s * 0.9, s * 0.56), (s * 0.8, s * 0.5), (s * 0.72, s * 0.66), (s * 0.58, s * 0.6)], fill=255)
+
+    def ghost(d, s):
+        d.chord((s * 0.14, s * 0.06, s * 0.86, s * 0.86), 180, 360, fill=255)
+        d.polygon([(s * 0.14, s * 0.44), (s * 0.86, s * 0.44), (s * 0.86, s * 0.94), (s * 0.68, s * 0.8), (s * 0.5, s * 0.94), (s * 0.32, s * 0.8), (s * 0.14, s * 0.94)], fill=255)
+        for x in (0.36, 0.64):
+            d.ellipse((s * (x - 0.07), s * 0.3, s * (x + 0.07), s * 0.48), fill=40)
+
+    def butterfly(d, s):
+        d.ellipse((s * 0.06, s * 0.1, s * 0.48, s * 0.56), fill=255)
+        d.ellipse((s * 0.52, s * 0.1, s * 0.94, s * 0.56), fill=255)
+        d.ellipse((s * 0.14, s * 0.5, s * 0.46, s * 0.88), fill=225)
+        d.ellipse((s * 0.54, s * 0.5, s * 0.86, s * 0.88), fill=225)
+        d.rounded_rectangle((s * 0.46, s * 0.18, s * 0.54, s * 0.86), radius=int(s * 0.04), fill=70)
+        for x in (0.22, 0.78):
+            d.ellipse((s * (x - 0.06), s * 0.26, s * (x + 0.06), s * 0.38), fill=140)
+
+    def bubble(d, s):
+        d.ellipse((s * 0.08, s * 0.08, s * 0.92, s * 0.92), fill=120)
+        d.ellipse((s * 0.14, s * 0.14, s * 0.86, s * 0.86), fill=70)
+        d.ellipse((s * 0.26, s * 0.22, s * 0.46, s * 0.42), fill=255)
+        d.ellipse((s * 0.54, s * 0.58, s * 0.62, s * 0.66), fill=210)
+
+    def rainbow(d, s):
+        for r, v in [(0.46, 255), (0.36, 200), (0.26, 255)]:
+            d.chord((s * (0.5 - r), s * (0.72 - r), s * (0.5 + r), s * (0.72 + r)), 180, 360, fill=v)
+        d.chord((s * 0.34, s * 0.56, s * 0.66, s * 0.88), 180, 360, fill=0)
+        for x in (0.14, 0.86):
+            d.ellipse((s * (x - 0.14), s * 0.6, s * (x + 0.14), s * 0.84), fill=255)
+
+    def cloud(d, s):
+        for x, y, r in [(0.28, 0.6, 0.2), (0.5, 0.46, 0.27), (0.74, 0.58, 0.22)]:
+            d.ellipse((s * (x - r), s * (y - r), s * (x + r), s * (y + r)), fill=255)
+        d.rounded_rectangle((s * 0.1, s * 0.56, s * 0.92, s * 0.8), radius=int(s * 0.12), fill=255)
+
+    def anchor(d, s):
+        d.ellipse((s * 0.4, s * 0.04, s * 0.6, s * 0.24), fill=255)
+        d.ellipse((s * 0.46, s * 0.1, s * 0.54, s * 0.18), fill=0)
+        d.rectangle((s * 0.45, s * 0.22, s * 0.55, s * 0.88), fill=255)
+        d.rectangle((s * 0.28, s * 0.3, s * 0.72, s * 0.38), fill=255)
+        d.arc((s * 0.1, s * 0.34, s * 0.9, s * 0.94), 10, 170, fill=255, width=int(s * 0.1))
+        d.polygon([(s * 0.04, s * 0.62), (s * 0.24, s * 0.62), (s * 0.12, s * 0.8)], fill=255)
+        d.polygon([(s * 0.96, s * 0.62), (s * 0.76, s * 0.62), (s * 0.88, s * 0.8)], fill=255)
+
+    def rocket(d, s):
+        d.ellipse((s * 0.3, s * 0.04, s * 0.7, s * 0.84), fill=255)
+        d.polygon([(s * 0.32, s * 0.5), (s * 0.12, s * 0.8), (s * 0.34, s * 0.74)], fill=225)
+        d.polygon([(s * 0.68, s * 0.5), (s * 0.88, s * 0.8), (s * 0.66, s * 0.74)], fill=225)
+        d.polygon([(s * 0.38, s * 0.82), (s * 0.62, s * 0.82), (s * 0.5, s * 1.0)], fill=170)
+        d.ellipse((s * 0.41, s * 0.26, s * 0.59, s * 0.44), fill=70)
+
+    def planet(d, s):
+        d.ellipse((s * 0.24, s * 0.24, s * 0.76, s * 0.76), fill=255)
+        d.arc((s * 0.02, s * 0.32, s * 0.98, s * 0.68), 340, 200, fill=190, width=int(s * 0.06))
+        d.line((s * 0.3, s * 0.42, s * 0.7, s * 0.42), fill=200, width=int(s * 0.03))
+
+    def umbrella(d, s):
+        d.pieslice((s * 0.04, s * 0.08, s * 0.96, s * 0.92), 180, 360, fill=255)
+        for x in (0.2, 0.5, 0.8):
+            d.line((s * 0.5, s * 0.08, s * x, s * 0.5), fill=170, width=int(s * 0.03))
+        d.rectangle((s * 0.47, s * 0.48, s * 0.53, s * 0.86), fill=255)
+        d.arc((s * 0.33, s * 0.74, s * 0.53, s * 0.98), 0, 180, fill=255, width=int(s * 0.055))
+
+    def dice(d, s):
+        d.rounded_rectangle((s * 0.12, s * 0.12, s * 0.88, s * 0.88), radius=int(s * 0.16), fill=255)
+        for x, y in [(0.32, 0.32), (0.68, 0.32), (0.5, 0.5), (0.32, 0.68), (0.68, 0.68)]:
+            d.ellipse((s * (x - 0.07), s * (y - 0.07), s * (x + 0.07), s * (y + 0.07)), fill=50)
+
     shapes = [(soft, 3.5), star, heart, spark, ring, flame, leaf, note, pixel, (puff, 1.2), snow, coin, bolt, petal, drop, confetti,
-              maple, clover, paw, fish, lantern, skull, smile, crown, diamond, moon, sun, pizza, banana, feather, swirl, (streak, 0.6), cherry, tulip, zzz, bee]
+              maple, clover, paw, fish, lantern, skull, smile, crown, diamond, moon, sun, pizza, banana, feather, swirl, (streak, 0.6), cherry, tulip, zzz, bee,
+              bamboo, sword, shield, shuriken, koi, dumpling, sushi, taco, croissant, donut, teacup, hibiscus, rose, palm, cactus, mushroom, pumpkin, bat, ghost,
+              butterfly, bubble, rainbow, cloud, anchor, rocket, planet, umbrella, dice]
     for i, shape in enumerate(shapes):
         fn, blur = shape if isinstance(shape, tuple) else (shape, 0.0)
         mask = cell_img(fn, blur)

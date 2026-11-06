@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/volcano_pillars.webp-90899c9bf9e4138d27b13e61
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.8
+compress/lossy_quality=0.72
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

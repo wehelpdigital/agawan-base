@@ -4,11 +4,15 @@ extends Control
 
 const RUNNERS := [
 	{"char": "kiko", "top": "tee", "pants": "shorts", "shoes": "sneakers", "pet": "puppy", "flag": "ph"},
+	{"char": "sir_clank", "pet": "squire", "flag": "gb", "back": "lance"},
+	{"char": "take", "pet": "shoot", "flag": "cn"},
 	{"char": "yuki", "hat": "hachimaki", "pet": "shiba", "flag": "jp"},
 	{"char": "amara", "top": "kente", "pet": "lion", "flag": "ng"},
 	{"char": "diego", "hat": "sombrero", "pet": "axolotl", "flag": "mx"},
 	{"char": "freya", "hat": "viking", "pet": "reindeer", "flag": "no"},
 	{"char": "botbot", "pet": "robo", "flag": "earth"},
+	{"char": "paco", "pet": "butterfly", "flag": "mx"},
+	{"char": "neb", "pet": "scarab", "flag": "eg"},
 	{"char": "luna", "hat": "plume", "pet": "toucan", "flag": "br"},
 	{"char": "leo", "hat": "beret", "pet": "dachshund", "flag": "it"},
 ]

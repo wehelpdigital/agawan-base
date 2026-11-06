@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/yucatan_crumble.webp-26fcb9367ae8f9fa40a42f2f
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.8
+compress/lossy_quality=0.72
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

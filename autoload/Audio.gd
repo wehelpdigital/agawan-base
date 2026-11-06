@@ -21,6 +21,7 @@ const MUSIC_FILES := {
 	"cartoon_jaunty": "cartoon_jaunty_gumption",
 }
 
+var silent := 0  ## Above zero, sound effects are ignored: a map's film, playing in a menu, keeps quiet this way.
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
 var _cache := {}
@@ -73,7 +74,7 @@ func apply_volumes() -> void:
 ## Plays an effect. Asking for the same one again within 45 ms does nothing: ten players' worth of
 ## sounds would otherwise stack into noise.
 func sfx(sfx_name: String, volume := 1.0, pitch := 1.0) -> void:
-	if sfx_name == "" or volume <= 0.01:
+	if sfx_name == "" or volume <= 0.01 or silent > 0:
 		return
 	var now := Time.get_ticks_msec()
 	if now - int(_last_played.get(sfx_name, -1000)) < 45:

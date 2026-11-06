@@ -64,7 +64,7 @@ func _apply() -> void:
 	(_tint.material as ShaderMaterial).set_shader_parameter("tint", tint)
 	_tint.visible = def.has("tint")
 	var veil_color: Color = Color(def["veil"]) if def.has("veil") else Color.WHITE
-	veil_color.a = float(def.get("veil_thick", 0.0))
+	veil_color.a = float(def.get("veil_thick", 0.0)) * (0.32 if _view.film else 1.0)  # A map's film should show the map.
 	_veil_mat.set_shader_parameter("veil", veil_color)
 	_env.background_color = Color(def["sky"]) if def.has("sky") else _sky_plain
 	if not def.has("fall"):

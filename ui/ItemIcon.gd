@@ -8,6 +8,7 @@ var _id := ""
 var _thumb: Texture2D
 var _entry: Dictionary = {}
 var _atlas: Texture2D
+var _thumb_path := ""
 
 
 func setup(slot: String, id: String) -> void:
@@ -17,8 +18,21 @@ func setup(slot: String, id: String) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var path := Cosmetics.thumb_path(slot, id)
 	if slot in Cosmetics.BAKED_SLOTS and (id != "" or slot == "face") and ResourceLoader.exists(path):
-		_thumb = load(path)
+		_thumb_path = path
+	set_process(_thumb_path != "")
 	_atlas = preload("res://assets/fx/atlas.png")
+
+
+## The picture comes when the card comes on screen, a few each frame, so a shelf of a hundred items opens at once.
+func _process(_delta: float) -> void:
+	if _thumb_path == "":
+		set_process(false)
+		return
+	if is_visible_in_tree() and get_viewport_rect().intersects(get_global_rect()) and LazyPicture.take_turn():
+		_thumb = load(_thumb_path)
+		material = LazyPicture.smooth_material()
+		set_process(false)
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -26,6 +40,8 @@ func _draw() -> void:
 	var rect := Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side))
 	if _thumb:
 		draw_texture_rect(_thumb, rect, false)
+		return
+	if _thumb_path != "":
 		return
 	if _slot == "flag" and _id != "":
 		var flag := Flags.texture(_id, true)

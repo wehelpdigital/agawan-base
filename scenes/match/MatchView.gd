@@ -30,6 +30,8 @@ var fx: FxField
 var camera: Camera3D
 var low_detail := false
 var tag_bots := false  ## Online, AI players say so over their heads.
+var film := false  ## A map's film in a menu: no name tags, and whoever's filming moves the camera.
+var film_look := Vector3.ZERO
 
 var _avatars: Array[Avatar3D] = []
 var _rings: Array[MeshInstance3D] = []
@@ -320,7 +322,7 @@ func view_yaw() -> float:
 
 ## What the camera's looking at, on the ground.
 func look_target() -> Vector3:
-	return _cam_target
+	return film_look if film else _cam_target
 
 
 func _reset_camera() -> void:
@@ -430,12 +432,13 @@ func _process(delta: float) -> void:
 	_update_bushes()
 	_update_bases()
 	_update_emotes(delta)
-	_follow_camera(delta)
+	if not film:
+		_follow_camera(delta)
 	_tick_timer_sound()
 
 
 func _hidden_to_me(p: Sim.Player) -> bool:
-	return sim.is_hidden_from(p, my_team)
+	return sim.is_hidden_from(p, my_team) and not film
 
 
 func _update_players(delta: float) -> void:
@@ -485,12 +488,12 @@ func _update_players(delta: float) -> void:
 		_update_pet(i, p, shown, is_moving, hidden, delta)
 		if _flag_icons[i]:
 			var icon: Sprite3D = _flag_icons[i]
-			icon.visible = not hidden
+			icon.visible = not hidden and not film
 			var text_w := UiKit.font_body().get_string_size(_labels[i].text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x * _labels[i].pixel_size
 			icon.position = shown + Vector3(0, 2.05 * scale + 0.1, 0) - camera.global_transform.basis.x * (text_w * 0.5 + 0.42)
 		_shadows[i].visible = not hidden and not airborne
 		_shadows[i].position = Vector3(shown.x, 0.02, shown.z)
-		_labels[i].visible = not hidden
+		_labels[i].visible = not hidden and not film
 		_labels[i].position = shown + Vector3(0, 2.05 * scale + 0.1, 0)
 		_rings[i].visible = not hidden and p.state == Sim.State.PLAY
 		_rings[i].position = Vector3(shown.x, 0.04, shown.z)

@@ -1,5 +1,5 @@
 // One draw call for every spark, star and puff on screen: camera-facing quads from a multimesh, each
-// picking its shape from a 6x6 atlas. INSTANCE_CUSTOM: x = atlas cell, y = size, z = spin, w = additive.
+// picking its shape from an 8x8 atlas. INSTANCE_CUSTOM: x = atlas cell, y = size, z = spin, w = additive.
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_never, depth_test_disabled;
 
@@ -16,8 +16,8 @@ void vertex() {
 	vec2 q = VERTEX.xy * size;
 	center.xy += vec2(q.x * c - q.y * s, q.x * s + q.y * c);
 	POSITION = PROJECTION_MATRIX * center;
-	vec2 grid = vec2(mod(cell, 6.0), floor(cell / 6.0));
-	cell_uv = (grid + vec2(UV.x, UV.y)) / 6.0;
+	vec2 grid = vec2(mod(cell, 8.0), floor(cell / 8.0));
+	cell_uv = (grid + vec2(UV.x, UV.y)) / 8.0;
 }
 
 void fragment() {

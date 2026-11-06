@@ -147,6 +147,8 @@ static func top(k: MeshKit, id: String, w: float) -> void:
 			k.spot(at, r, 0.0, -0.04, 0.1, c2)
 			k.spot(at, r, 0.0, -0.04, 0.06, Color("e8282f"))
 			k.band(at, r, hem, hem + 0.05, Color("e8282f"))
+		_:
+			CultureWear.top(k, style, at, r, hem, c, c2)
 
 
 ## The sleeve on each arm, which moves with it. Tank tops have none; armour has a shoulder plate.
@@ -158,7 +160,7 @@ static func sleeve(k: MeshKit, id: String) -> void:
 	match style:
 		"tank":
 			pass
-		"armor":
+		"armor", "plates", "tabard":
 			k.ball(Vector3(0, -0.01, 0), Vector3(0.14, 0.115, 0.14), c2, 8, 12)
 		"varsity", "overalls", "mariachi":
 			k.ball(Vector3(0, -0.035, 0), Vector3(0.105, 0.125, 0.105), c2 if style != "mariachi" else c, 8, 12)

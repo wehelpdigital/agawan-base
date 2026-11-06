@@ -56,8 +56,10 @@ const RARITY := {
 }
 ## Atlas cells in assets/fx/atlas.png.
 enum Fx { SOFT, STAR, HEART, SPARK, RING, FLAME, LEAF, NOTE, PIXEL, PUFF, SNOW, COIN, BOLT, PETAL, DROP, CONFETTI,
-	MAPLE, CLOVER, PAW, FISH, LANTERN, SKULL, SMILE, CROWN, DIAMOND, MOON, SUN, PIZZA, BANANA, FEATHER, SWIRL, STREAK, CHERRY, TULIP, ZZZ, BEE }
-const FX_GRID := 6  ## The atlas is this many cells across and down.
+	MAPLE, CLOVER, PAW, FISH, LANTERN, SKULL, SMILE, CROWN, DIAMOND, MOON, SUN, PIZZA, BANANA, FEATHER, SWIRL, STREAK, CHERRY, TULIP, ZZZ, BEE,
+	BAMBOO, SWORD, SHIELD, SHURIKEN, KOI, DUMPLING, SUSHI, TACO, CROISSANT, DONUT, TEACUP, HIBISCUS, ROSE, PALM, CACTUS, MUSHROOM, PUMPKIN, BAT, GHOST,
+	BUTTERFLY, BUBBLE, RAINBOW, CLOUD, ANCHOR, ROCKET, PLANET, UMBRELLA, DICE }
+const FX_GRID := 8  ## The atlas is this many cells across and down.
 
 ## The look you wear when nothing's happening. You still pull all the others as the game goes on.
 const FACES: Array[Dictionary] = [
@@ -434,7 +436,7 @@ static var _lists := {}
 static func list(slot: String) -> Array[Dictionary]:
 	if not _lists.has(slot):
 		var both: Array[Dictionary] = []
-		both.assign(_own_list(slot) + _world_list(slot))
+		both.assign(_own_list(slot) + _world_list(slot) + Culture.list(slot))
 		_lists[slot] = both
 	return _lists[slot]
 

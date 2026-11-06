@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/spooky_ringroad.webp-c979b2b7436ad942b483c384
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.8
+compress/lossy_quality=0.72
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

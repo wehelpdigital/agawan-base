@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/andes_lookout.webp-5bb1a3f0744ba86f328d8a5ddc
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.8
+compress/lossy_quality=0.72
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

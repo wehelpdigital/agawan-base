@@ -3,7 +3,10 @@ extends Control
 ## powerup list and how-to are one tap away.
 
 const NEWS := [
-	"NEW: Pets! They follow you everywhere and do nothing useful.",
+	"NEW: Knights, ninjas, pharaohs, bamboo and a slice of pizza. Over 100 heroes to play.",
+	"NEW: Watch any map being played before you pick it. Tap Maps.",
+	"Eighty silly faces. Your hero pulls them all as the game goes on.",
+	"Pets! They follow you everywhere and do nothing useful.",
 	"Fly your flag: every country's flag is free in the World shop.",
 	"Try the Mega Wave, the Ninja Clones and the Chicken Curse!",
 	"Fog, storms, sandstorms and more: check the sky before you run.",

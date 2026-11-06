@@ -132,7 +132,9 @@ static func _build(k: MeshKit, def: Dictionary) -> void:
 		"cactus": _cactus(k, c, c2)
 		"cloud": _cloud(k, c, c2)
 		"ufo": _ufo(k, c, c2)
-		_: _animal(k, def, c, c2)
+		_:
+			if not PetBodies.build(k, String(def.get("body", "")), c, c2):
+				_animal(k, def, c, c2)
 
 
 ## Dark dot eyes with a glint, well apart and low on the face: most of what makes it cute.

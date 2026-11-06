@@ -16,7 +16,7 @@ const HAT_R := 0.56
 const HAT_DEPTH := 0.9
 const HAT_RISE := 0.34
 ## These sit above the head or round it, so the hair and ears can stay. Everything else is pulled down over them.
-const HATS_OVER_HAIR := ["headband", "flowers", "halo_ring", "ufo", "hachimaki", "laurel", "lei_hat", "cat_ears", "bunny_ears", "antlers", "sprout"]
+const HATS_OVER_HAIR := ["headband", "flowers", "halo_ring", "ufo", "hachimaki", "laurel", "lei_hat", "cat_ears", "bunny_ears", "antlers", "sprout", "paper_crown", "bamboo_sprouts", "bamboo_flyer", "kokoshnik"]
 signal gag_started(line: String)  ## With something to say about it, for whoever's listening.
 
 static var _meshes := {}  # key -> ArrayMesh
@@ -310,6 +310,8 @@ static func _face_surface(hero: Dictionary, plain: bool) -> Array:
 ## This head as an ellipsoid: its middle, its size, and the height of its eyes.
 static func _head_shape(hero: Dictionary, plain: bool) -> Array:
 	if not plain:
+		if hero.has("surf"):
+			return hero["surf"]
 		match String(hero.get("animal", "")):
 			"tarsier": return [Vector3.ZERO, Vector3(0.48, 0.44, 0.44), 0.06]
 			"rooster": return [Vector3.ZERO, Vector3(0.46, 0.46, 0.44), 0.06]
@@ -496,7 +498,8 @@ func _build_body(k: MeshKit, hero: Dictionary, skin: Dictionary, no_top := false
 				"cup":
 					k.ball(Vector3(0, 0.44, 0), Vector3(0.3, 0.3, 0.27), main.darkened(0.08), 12, 18)
 				_:
-					k.ball(Vector3(0, 0.46, 0), Vector3(0.31, 0.32, 0.28), main.lightened(0.05), 12, 18)
+					if not HeroParts.body(k, hero, main, _second(hero, skin, "second")):
+						k.ball(Vector3(0, 0.46, 0), Vector3(0.31, 0.32, 0.28), main.lightened(0.05), 12, 18)
 
 
 func _ghost_hem(k: MeshKit, main: Color) -> void:
@@ -520,8 +523,8 @@ func _build_arm(k: MeshKit, hero: Dictionary, skin: Dictionary, dressed := false
 			arm = _main(hero, skin, "fur")
 			hand = _second(hero, skin, "belly").lerp(arm, 0.3)
 		_:
-			arm = _main(hero, skin, "main").darkened(0.08)
-			hand = Color("fbf7ff")
+			arm = Color(hero["arm"]) if hero.has("arm") else _main(hero, skin, "main").darkened(0.08)
+			hand = Color(hero["hand"]) if hero.has("hand") else Color("fbf7ff")
 			cuff = Color(hero.get("accent", "ffffff"))
 	k.cyl(Vector3(0, -0.2, 0), 0.2, 0.06, 0.07, arm, 12)
 	if sleeve.a > 0.0:
@@ -707,6 +710,8 @@ func _eye(k: MeshKit, info: Dictionary, kind: String, at: Vector3, s: float) -> 
 				var r := size * lerpf(0.08, 0.92, f)
 				turns.append(Vector3(at.x + cos(a) * r, at.y + sin(a) * r, flat))
 			k.ribbon(turns, size * 0.13, ink)
+		_:
+			FaceParts.eye(self, k, info, kind, at, s)
 
 
 # --- Painted on the face, following its curve ---------------------------------------------------------
@@ -933,6 +938,8 @@ func _draw_mouth(k: MeshKit, info: Dictionary, kind: String) -> void:
 		"scream":
 			_paint(k, info, _oval(Vector2(0, y - w * 0.85), w * 0.72, w * 1.15), Color("5a1730"))
 			_paint(k, info, _oval(Vector2(0, y - w * 1.42), w * 0.42, w * 0.42), Color("ff8fa6"), 0.01)
+		_:
+			FaceParts.mouth(self, k, info, kind)
 
 
 ## Things drawn on the head round the eyes and mouth: blushes, tears, and comic marks.
@@ -989,6 +996,8 @@ func _face_extra(k: MeshKit, info: Dictionary, kind: String, hide: String) -> vo
 			var at := _on_head(info, size * 0.5, y - size * 0.76, 0.03)
 			k.ball(at, Vector3(size * 0.46, size * 0.46, size * 0.16), Color("c9f1ff"), 6, 10)
 			k.ball(at + Vector3(-size * 0.14, size * 0.16, size * 0.14), Vector3(size * 0.1, size * 0.1, size * 0.03), Color.WHITE, 3, 5)
+		_:
+			FaceParts.extra(self, k, info, kind, hide)
 
 
 ## One eye drawn as a curve: bent up for a happy ^, or down for a blink.
@@ -1084,7 +1093,7 @@ func _build_head(k: MeshKit, hero: Dictionary, skin: Dictionary, hat := 0, cover
 				base = _second(hero, skin, "second") if hero["shape"] == "flame" else _main(hero, skin, "main")
 				_head_mascot(k, hero, skin, hat, cover)
 	if not _eye_seen.is_empty() and not _eye_seen.has("ink"):
-		_eye_seen["cheek"] = base.lerp(Color("ff5f86"), 0.5)
+		_eye_seen["cheek"] = Color(hero["cheek"]) if hero.has("cheek") and not _plain_head(hero, cover) else base.lerp(Color("ff5f86"), 0.5)
 
 
 func _head_kid(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cover: String) -> void:
@@ -1100,7 +1109,7 @@ func _head_kid(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cover: 
 	if cover != "plate":  # Everyone has one little thing of their own.
 		k.outline = 0.0
 		match id:
-			"lani":  # Freckles.
+			"lani", "fiona":  # Freckles.
 				for s: float in [-1.0, 1.0]:
 					for spot: Vector2 in [Vector2(0.1, -0.075), Vector2(0.14, -0.105), Vector2(0.07, -0.11)]:
 						k.spot(Vector3.ZERO, head, s * spot.x, spot.y, 0.012, tone.darkened(0.28))
@@ -1127,6 +1136,8 @@ func _head_kid(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cover: 
 					var a := TAU * i / 5.0 + PI * 0.5
 					k.ball(Vector3(0.36 + cos(a) * 0.07, 0.22 + sin(a) * 0.07, 0.29), Vector3(0.035, 0.035, 0.018), Color("ffd23f"), 4, 7)
 				k.outline = 0.02
+		_:
+			HeroParts.hair(k, String(hero.get("style")), hair, hat)
 
 
 ## The hair: a shell that hugs the head, so its edge is one clean soft line, with a rounder shape over the top for volume.
@@ -1148,7 +1159,7 @@ func _hair(k: MeshKit, hair: Color, style: String, cover: String) -> void:
 			rim = 0.0
 			k.cap_wave = Vector2.ZERO
 		_:
-			if style == "bowl":  # A straight, thick edge all the way round.
+			if style == "bowl" or style == "bob":  # A straight, thick edge all the way round.
 				reach = Vector2(1.6, 1.57)
 				tilt = 0.22
 				rim = 0.032
@@ -1166,6 +1177,9 @@ func _head_animal(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cove
 	var animal: String = hero["animal"]
 	var muzzle := cover not in ["low", "plate"]  # Under a mask there's no snout to stick out of it.
 	var head := Vector3(0.5, 0.46, 0.46)
+	if hero.has("look"):
+		HeroParts.animal(self, k, hero, fur, belly, hat, muzzle)
+		return
 	match animal:
 		"tarsier":
 			k.ball(Vector3.ZERO, Vector3(0.48, 0.44, 0.44), fur, 16, 24)
@@ -1354,6 +1368,8 @@ func _head_mascot(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cove
 			_smile(k, -0.2, 0.34, 0.08)
 			if cover == "":  # A runny nose, frozen solid.
 				k.ball(Vector3(0.015, -0.135, 0.355), Vector3(0.02, 0.055, 0.02), Color("e8fbff"), 6, 8)
+		_:
+			HeroParts.mascot(self, k, hero, main, second, bare, cover)
 
 
 # --- What flops about ----------------------------------------------------------------------------
@@ -1427,6 +1443,7 @@ func _wiggle_list(hero: Dictionary, hat: int, cover: String, plain: bool, has_ba
 							out.append([part, true, Vector3(-0.2 if part == "feeler_l" else 0.2, 0.46, 0), side, 0.08, 0.42, 3.4, 15.0])
 				"flame":
 					if bare: out.append(["flames", true, Vector3(0, 0.05, 0), side, 0.05, 0.12, 8.0, 18.0])
+	out.append_array(HeroParts.wiggles(hero, hat, cover, plain, has_back))
 	return out
 
 
@@ -1532,6 +1549,8 @@ func _build_wiggle(k: MeshKit, part: String, hero: Dictionary, skin: Dictionary)
 			k.tube(PackedVector3Array([Vector3(0, -0.12, -0.02), Vector3(-0.02, 0.1, -0.02), Vector3(0.03, 0.32, -0.03), Vector3(0.12, 0.54, -0.04)]), 0.36, main, false, 16, 0.03)
 			k.tube(PackedVector3Array([Vector3(0.3, -0.16, 0.0), Vector3(0.36, 0.02, -0.01), Vector3(0.42, 0.18, -0.02), Vector3(0.52, 0.3, -0.02)]), 0.17, main.lightened(0.14), false, 12, 0.02)
 			k.tube(PackedVector3Array([Vector3(-0.3, -0.16, 0.0), Vector3(-0.36, 0.0, -0.01), Vector3(-0.42, 0.12, -0.02), Vector3(-0.5, 0.2, -0.02)]), 0.15, main.lightened(0.14), false, 12, 0.02)
+		_:
+			HeroParts.wiggle(k, part, hero, skin)
 
 
 func _tick_wiggles(delta: float) -> void:
@@ -1636,6 +1655,20 @@ func _gag_pose() -> Dictionary:
 			return {"stretch": 1.0 + pulse * 0.18 * swell, "arm_l": Vector3(0, 0, 1.6), "arm_r": Vector3(0, 0, -1.6), "y": pulse * 0.05}
 		"shiver":  # Yelo: who left the door open?
 			return {"turn": sin(_t * 44.0) * 0.07, "roll": sin(_t * 51.0) * 0.05, "arm_l": Vector3(-1.2, 0, 0.0), "arm_r": Vector3(-1.2, 0, 0.0), "y": -0.03 * swell}
+		"salute":  # Sir Clank: at your service.
+			return {"arm_r": Vector3(-0.5, 0, -2.5 * swell), "arm_l": Vector3(0, 0, 0.12), "stretch": 1.0 + 0.08 * swell, "head_tilt": -0.1 * swell}
+		"bow":  # Bushi: excuse me. Tag.
+			return {"tilt": 0.5 * swell, "head_tilt": 0.22 * swell, "arm_l": Vector3(0.1, 0, 0.1), "arm_r": Vector3(0.1, 0, -0.1), "y": -0.03 * swell}
+		"spin":  # Zephyr: wheee.
+			return {"turn": smoothstep(0.0, 1.0, f) * TAU * 2.0, "y": 0.26 * swell, "arm_l": Vector3(0, 0, 1.5), "arm_r": Vector3(0, 0, -1.5), "stretch": 1.0 + 0.08 * swell}
+		"conduct":  # Merl: and now, the rabbit.
+			return {"arm_r": Vector3(-1.2 + sin(_t * 7.0) * 0.5, 0, -1.7 + cos(_t * 7.0) * 0.4), "arm_l": Vector3(-0.7 + cos(_t * 5.0) * 0.3, 0, 1.2), "head_roll": sin(_t * 3.5) * 0.14, "turn": sin(_t * 2.0) * 0.15}
+		"sip":  # Earl Grey: one moment, please.
+			var lift := smoothstep(0.1, 0.4, f) * (1.0 - smoothstep(0.75, 1.0, f))
+			return {"arm_r": Vector3(-2.4 * lift, 0, -0.5 * lift), "arm_l": Vector3(-0.8 * lift, 0, 0.1), "head_tilt": -0.3 * lift}
+		"sway":  # Take: in the breeze.
+			var lean := sin(_t * 2.1) * 0.2 * swell
+			return {"roll": lean, "head_roll": -lean * 0.6, "arm_l": Vector3(0, 0, 1.3 + lean), "arm_r": Vector3(0, 0, -1.3 + lean)}
 	return {}
 
 
@@ -2052,7 +2085,7 @@ func _build_back(k: MeshKit, id: String, team: Color) -> void:
 				k.pop()
 			k.ball(star, Vector3(0.13, 0.13, 0.12), Color("fff8c4"), 8, 12)
 		_:
-			WorldWear.back(k, id, _bracket(k) if id in ["banner", "kite", "hot_air"] else Vector3.ZERO)
+			WorldWear.back(k, id, _bracket(k) if id in ["banner", "kite", "hot_air"] or id in CultureWear.TALL else Vector3.ZERO)
 
 
 # --- Animation ------------------------------------------------------------------------------------
@@ -2288,6 +2321,51 @@ func _run_pose() -> Dictionary:
 			out["arm_r"] = Vector3(-1.5, 0, -0.1)
 			out["foot_l"] = Vector3(0, bounce * 0.42, -bounce * 0.1) * m
 			out["foot_r"] = Vector3(0, bounce * 0.42, -bounce * 0.1) * m
+		"clank":  # Full armour: stiff arms, no bend in the knees.
+			out["tilt"] = -0.03
+			out["turn"] = swing * 0.1 * m
+			out["y"] = absf(swing) * 0.04 * m
+			out["arm_l"] = Vector3(swing * 0.3 * m, 0, 0.5)
+			out["arm_r"] = Vector3(-swing * 0.3 * m, 0, -0.5)
+			out["foot_l"] = Vector3(0, maxf(cos(phase), 0.0) * 0.08, swing * 0.16) * m
+			out["foot_r"] = Vector3(0, maxf(-cos(phase), 0.0) * 0.08, -swing * 0.16) * m
+		"sneak":  # Low, wide, and very obvious.
+			out["tilt"] = 0.3 * m
+			out["y"] = -0.1 * m + absf(swing) * 0.02
+			out["arm_l"] = Vector3(-1.2, 0, 1.0 + swing * 0.2)
+			out["arm_r"] = Vector3(-1.2, 0, -1.0 + swing * 0.2)
+			out["head"] = -0.2 * m
+		"chicken":  # Bok bok bok.
+			phase = _t * 15.0
+			swing = sin(phase)
+			out["tilt"] = 0.3 * m
+			out["head"] = swing * 0.3 * m
+			out["arm_l"] = Vector3(0, 0, 1.1 + swing * 0.6)
+			out["arm_r"] = Vector3(0, 0, -1.1 - swing * 0.6)
+			out["y"] = absf(swing) * 0.06 * m
+		"sack":  # Both feet, all day.
+			var boing := absf(sin(_t * 8.0))
+			out["y"] = boing * 0.34 * m
+			out["tilt"] = 0.06 * m
+			out["arm_l"] = Vector3(-0.5, 0, 0.1)
+			out["arm_r"] = Vector3(-0.5, 0, -0.1)
+			out["foot_l"] = Vector3.ZERO
+			out["foot_r"] = Vector3.ZERO
+		"race_walk":  # Those hips.
+			out["tilt"] = 0.05 * m
+			out["turn"] = swing * 0.42 * m
+			out["y"] = 0.0
+			out["arm_l"] = Vector3(swing * 1.1 * m, 0, 0.3)
+			out["arm_r"] = Vector3(-swing * 1.1 * m, 0, -0.3)
+			out["foot_l"] = Vector3(0, maxf(cos(phase), 0.0) * 0.05, swing * 0.3) * m
+			out["foot_r"] = Vector3(0, maxf(-cos(phase), 0.0) * 0.05, -swing * 0.3) * m
+		"flying":  # One arm out. Basically flying.
+			out["tilt"] = 0.7 * m
+			out["head"] = -0.46 * m
+			out["arm_r"] = Vector3(-2.7, 0, -0.1)
+			out["arm_l"] = Vector3(0.7, 0, 0.3)
+			out["foot_l"] = Vector3(0, 0.1, -0.2 + swing * 0.1) * m
+			out["foot_r"] = Vector3(0, 0.1, -0.24 - swing * 0.1) * m
 		"crab":
 			out["turn"] = PI * 0.5 * m
 			out["tilt"] = 0.0
@@ -2411,6 +2489,66 @@ func _dance() -> Dictionary:
 			out["y"] = absf(sin(_t * 9.4)) * 0.07
 			out["arm_r"] = Vector3(-1.4, 0, -2.3) if point else Vector3(0, 0, -0.5)
 			out["arm_l"] = Vector3(0, 0, 0.5) if point else Vector3(-1.4, 0, 2.3)
+		"sirtaki":  # Arms on shoulders, and faster and faster.
+			var quick := 3.0 + fmod(_t, 8.0) * 1.2
+			var s := sin(_t * quick)
+			out["arm_l"] = Vector3(0, 0, 1.55)
+			out["arm_r"] = Vector3(0, 0, -1.55)
+			out["foot_l"] = Vector3(s * 0.16, maxf(s, 0.0) * 0.14, 0)
+			out["foot_r"] = Vector3(s * 0.16, maxf(-s, 0.0) * 0.14, 0)
+			out["y"] = absf(s) * 0.05
+		"salsa":
+			var s := sin(_t * 7.0)
+			out["turn"] = s * 0.32
+			out["arm_l"] = Vector3(-1.2, 0, 0.5 + s * 0.3)
+			out["arm_r"] = Vector3(-1.2, 0, -0.5 + s * 0.3)
+			out["foot_l"] = Vector3(0, 0, maxf(s, 0.0) * 0.18)
+			out["foot_r"] = Vector3(0, 0, maxf(-s, 0.0) * 0.18)
+			out["y"] = absf(s) * 0.03
+		"tango":  # Very serious. Stop laughing.
+			var step := fmod(_t, 3.0) / 3.0
+			out["turn"] = (0.0 if step < 0.5 else PI) + sin(step * TAU * 2.0) * 0.2
+			out["tilt"] = -0.2
+			out["arm_r"] = Vector3(-0.2, 0, -1.6)
+			out["arm_l"] = Vector3(-1.3, 0, 0.4)
+			out["foot_l"] = Vector3(0, 0, sin(step * TAU * 2.0) * 0.24)
+		"ballet":
+			var loop := fmod(_t, 2.4) / 2.4
+			out["turn"] = smoothstep(0.0, 1.0, loop) * TAU * 2.0
+			out["y"] = 0.14 + sin(loop * PI) * 0.08
+			out["arm_l"] = Vector3(-0.3, 0, 2.5)
+			out["arm_r"] = Vector3(-0.3, 0, -2.5)
+			out["foot_r"] = Vector3(0, 0.2, 0.06)
+		"polka":
+			var hop := absf(sin(_t * 8.0))
+			out["y"] = hop * 0.22
+			out["turn"] = sin(_t * 4.0) * 0.5
+			out["arm_l"] = Vector3(0, 0, 0.9)
+			out["arm_r"] = Vector3(0, 0, -0.9)
+			out["foot_l"] = Vector3(0, hop * 0.1, 0.06)
+		"charleston":
+			var s := sin(_t * 8.0)
+			out["arm_l"] = Vector3(s * 1.2, 0, 0.5)
+			out["arm_r"] = Vector3(-s * 1.2, 0, -0.5)
+			out["foot_l"] = Vector3(0, maxf(s, 0.0) * 0.14, s * 0.26)
+			out["foot_r"] = Vector3(0, maxf(-s, 0.0) * 0.14, -s * 0.26)
+			out["turn"] = s * 0.2
+		"toprock":
+			var s := sin(_t * 9.0)
+			out["y"] = absf(s) * 0.1
+			out["turn"] = sin(_t * 3.0) * 0.5
+			out["tilt"] = 0.12
+			out["arm_l"] = Vector3(s * 1.0, 0, 1.1)
+			out["arm_r"] = Vector3(-s * 1.0, 0, -1.1)
+			out["foot_l"] = Vector3(s * 0.16, 0, maxf(s, 0.0) * 0.14)
+			out["foot_r"] = Vector3(-s * 0.16, 0, maxf(-s, 0.0) * 0.14)
+		"bhangra":
+			var s := absf(sin(_t * 7.0))
+			out["y"] = s * 0.14
+			out["arm_l"] = Vector3(0, 0, 2.3 + s * 0.3)
+			out["arm_r"] = Vector3(0, 0, -2.3 - s * 0.3)
+			out["foot_l"] = Vector3(0, s * 0.14, 0)
+			out["turn"] = sin(_t * 3.5) * 0.2
 		"hula":
 			var sway := sin(_t * 4.0)
 			out["turn"] = sway * 0.26

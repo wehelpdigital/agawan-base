@@ -367,6 +367,8 @@ static func hat(k: MeshKit, id: String) -> void:
 				k.tube(arc, 0.042, colours[i], false, 6)
 			for s: float in [-1.0, 1.0]:
 				k.ball(Vector3(s * 0.46, 0.32, 0), Vector3(0.24, 0.14, 0.16), Color.WHITE, 8, 12)
+		_:
+			CultureWear.hat(k, id)
 
 
 static func mask(k: MeshKit, id: String, hatted := false) -> void:
@@ -594,6 +596,8 @@ static func mask(k: MeshKit, id: String, hatted := false) -> void:
 					k.tube(PackedVector3Array([Vector3(s * 0.16, 0.48, 0.05), Vector3(s * 0.24, 0.66, 0.05), Vector3(s * 0.3, 0.8, 0.05)]), 0.02, green.darkened(0.1), false, 6)
 					k.ball(Vector3(s * 0.3, 0.82, 0.05), Vector3(0.05, 0.05, 0.05), Color("ff6fb5"), 6, 8)
 			AvatarParts._smile(k, -0.27, 0.05, 0.015, 0.012, INK, W)
+		_:
+			CultureWear.mask(k, id, hatted)
 
 
 ## Backs. `end` for anything tall comes from the same bracket the balloon and team flag hang from.
@@ -730,6 +734,8 @@ static func back(k: MeshKit, id: String, bracket: Vector3) -> void:
 			k.push(Transform3D(Basis.IDENTITY, Vector3(0, -0.5, -0.2)))
 			PropKit.draw(k, "chest", Vector3.ZERO, 0.0, 0.5)
 			k.pop()
+		_:
+			CultureWear.back(k, id, bracket)
 
 
 static func _tall(k: MeshKit, id: String, end: Vector3) -> void:

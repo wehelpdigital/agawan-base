@@ -35,26 +35,77 @@ const PARTS := {
 	"swirl": ["swirl", "swirl", "wavy"],
 	"puppy": ["puppy", "puppy", "o"],
 	"sleepy": ["line", "line", "o", "zzz", "bubble"],
+	"wow": ["sparkly", "sparkly", "o", "sparkle"],
+	"evil": ["evil", "evil", "fangs"],
+	"villain": ["evil", "evil", "sharp"],
+	"bored": ["half", "half", "uh"],
+	"eyeroll": ["roll", "roll", "uh"],
+	"crosseyed": ["inward", "inward", "wavy"],
+	"wonky": ["up_look", "low_look", "tongue"],
+	"kiss": ["shut", "wink_star", "kiss", "hearts"],
+	"whistle": ["side", "side", "whistle", "note"],
+	"zipped": ["wide", "wide", "zip"],
+	"hungry": ["up", "up", "drool"],
+	"sneeze": ["squint", "squint", "sneeze", "drop"],
+	"queasy": ["tilde", "tilde", "wobble", "sick"],
+	"burnt": ["hollow", "hollow", "tiny", "soot"],
+	"frozen": ["wide", "wide", "eee", "frost"],
+	"cool": ["cool", "cool", "smirk"],
+	"nerd": ["glasses", "glasses", "buck"],
+	"retro": ["pixel", "pixel", "flat"],
+	"blank_stare": ["hollow", "hollow", "flat", "gloom"],
+	"mindblown": ["wide", "wide", "shock", "exclaim"],
+	"idea": ["up_look", "up_look", "big", "bulb"],
+	"confused": ["big", "small", "uh", "question"],
+	"flustered": ["wide", "wide", "wavy", "flush"],
+	"giggle": ["up", "up", "cat", "blush_lines"],
+	"teary": ["teary", "teary", "wobble"],
+	"bawling": ["tee", "tee", "wail", "tears"],
+	"rage": ["mad", "mad", "scream", "steam"],
+	"snarl": ["mad", "mad", "sharp", "vein"],
+	"puffed": ["squint", "squint", "puff"],
+	"bubblegum": ["half", "half", "gum"],
+	"shark": ["up", "up", "sharp"],
+	"vampire": ["half", "half", "fangs"],
+	"flower": ["flower", "flower", "big", "blush"],
+	"focused": ["target", "target", "flat"],
+	"moony": ["moon", "moon", "o"],
+	"sunny": ["sunny", "sunny", "tri"],
+	"spooky": ["skull", "skull", "teeth"],
+	"fired_up": ["fire", "fire", "gritted"],
+	"snowy": ["snowflake", "snowflake", "o", "frost"],
+	"heartbroken": ["broken", "broken", "wobble", "tear"],
+	"seeing_stars": ["x", "x", "tongue", "stars"],
+	"singing": ["up", "up", "tri", "note"],
+	"panting": ["up", "up", "pant", "drop"],
+	"snaggle": ["dot", "dot", "one_tooth", "freckles"],
+	"sewn_up": ["plus", "plus", "stitch"],
+	"cat_eyes": ["slit", "slit", "cat"],
+	"lovestruck": ["heart", "heart", "heart_m", "blush"],
+	"gentleman": ["half", "half", "tache"],
+	"got_hurt": ["sad", "squint", "wobble", "plaster"],
 }
 ## Faces whose eyes are open, so that they blink.
 const BLINKING := ["normal", "look_l", "look_r", "tongue", "pout", "shy", "puppy"]
-const FUNNY := ["wink", "tongue", "smug", "grin", "cat", "uwu", "blank", "sideeye", "pout", "shy", "nervous", "laugh", "love", "star", "money", "derp", "cry", "angry", "scream", "swirl", "puppy", "sleepy"]
+const FUNNY := ["wink", "tongue", "smug", "grin", "cat", "uwu", "blank", "sideeye", "pout", "shy", "nervous", "laugh", "love", "star", "money", "derp", "cry", "angry", "scream", "swirl", "puppy", "sleepy",
+	"wow", "evil", "villain", "bored", "eyeroll", "crosseyed", "wonky", "kiss", "whistle", "zipped", "hungry", "sneeze", "queasy", "cool", "nerd", "retro", "blank_stare", "mindblown", "idea", "confused",
+	"flustered", "giggle", "teary", "bawling", "rage", "puffed", "bubblegum", "shark", "vampire", "flower", "focused", "sunny", "spooky", "fired_up", "seeing_stars", "singing", "snaggle", "cat_eyes", "lovestruck", "gentleman"]
 ## What the face does while something is happening. One is picked each time it happens.
 const DURING := {
-	"stun": ["dizzy", "swirl", "derp"],
-	"freeze": ["shock", "blank", "nervous"],
-	"root": ["nervous", "angry", "shock"],
-	"jail": ["sad", "cry", "pout", "angry", "blank"],
-	"sad": ["sad", "cry", "blank"],
-	"dance": ["happy", "grin", "star", "love", "laugh", "wink"],
-	"air": ["happy", "scream", "star"],
-	"dash": ["focus", "angry", "grin"],
+	"stun": ["dizzy", "swirl", "derp", "seeing_stars", "crosseyed", "wonky", "got_hurt"],
+	"freeze": ["shock", "blank", "nervous", "frozen", "snowy", "zipped"],
+	"root": ["nervous", "angry", "shock", "flustered", "rage"],
+	"jail": ["sad", "cry", "pout", "angry", "blank", "bored", "eyeroll", "whistle", "teary", "bawling", "blank_stare", "heartbroken", "puffed"],
+	"sad": ["sad", "cry", "blank", "teary", "bawling", "heartbroken", "got_hurt"],
+	"dance": ["happy", "grin", "star", "love", "laugh", "wink", "singing", "wow", "giggle", "lovestruck", "cool"],
+	"air": ["happy", "scream", "star", "wow", "mindblown", "singing"],
+	"dash": ["focus", "angry", "grin", "focused", "fired_up", "shark", "panting"],
 }
-const TAGGING := ["smug", "laugh", "grin", "tongue", "wink", "money"]
-const TAGGED := ["shock", "scream", "derp", "cry", "swirl", "nervous"]
-const CHEERING := ["star", "love", "laugh", "grin", "happy", "cat"]
-const BOOING := ["sad", "cry", "angry", "blank", "scream", "pout"]
-const GOT_CRYSTAL := ["star", "money", "puppy", "happy"]
+const TAGGING := ["smug", "laugh", "grin", "tongue", "wink", "money", "evil", "villain", "cool", "kiss", "shark", "gentleman"]
+const TAGGED := ["shock", "scream", "derp", "cry", "swirl", "nervous", "mindblown", "seeing_stars", "flustered", "queasy", "got_hurt"]
+const CHEERING := ["star", "love", "laugh", "grin", "happy", "cat", "wow", "singing", "lovestruck", "sunny", "giggle", "flower"]
+const BOOING := ["sad", "cry", "angry", "blank", "scream", "pout", "rage", "snarl", "bawling", "heartbroken", "blank_stare", "eyeroll"]
+const GOT_CRYSTAL := ["star", "money", "puppy", "happy", "wow", "idea", "hungry"]
 
 ## Who each character is: their usual mouth and eyes, the walk they fall back on, the silly thing they do when left
 ## standing, the faces they pull most, and what they say about it.
@@ -149,6 +200,12 @@ const GAGS := {
 	"hello": {"time": 2.0, "face": "happy"},
 	"flare": {"time": 1.7, "face": "grin"},
 	"shiver": {"time": 2.0, "face": "nervous"},
+	"salute": {"time": 1.8, "face": "focus"},
+	"bow": {"time": 2.0, "face": "blink"},
+	"spin": {"time": 1.8, "face": "star"},
+	"conduct": {"time": 2.4, "face": "idea"},
+	"sip": {"time": 2.2, "face": "blink"},
+	"sway": {"time": 2.4, "face": "happy"},
 }
 
 static var _bag: Array = []
@@ -163,7 +220,7 @@ static func funny() -> String:
 
 
 static func person(hero_id: String) -> Dictionary:
-	return PEOPLE.get(hero_id, {})
+	return PEOPLE.get(hero_id, Culture.PEOPLE.get(hero_id, {}))
 
 
 ## A silly face for this character: mostly one of their favourites.
