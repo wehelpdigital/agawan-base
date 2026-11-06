@@ -12,7 +12,7 @@ const LEAGUES: Array[Dictionary] = [
 	{"id": "sapphire", "name": "Sapphire", "min": 1700, "color": Color("3a6aff"), "reward_gems": 100},
 	{"id": "amethyst", "name": "Amethyst", "min": 2300, "color": Color("b768ff"), "reward_gems": 120},
 	{"id": "diamond", "name": "Diamond", "min": 3000, "color": Color("9fe6ff"), "reward_gems": 150},
-	{"id": "legend", "name": "Agawan Legend", "min": 4000, "color": Color("ff9d2e"), "reward_gems": 250},
+	{"id": "legend", "name": "Base Legend", "min": 4000, "color": Color("ff9d2e"), "reward_gems": 250},
 ]
 
 

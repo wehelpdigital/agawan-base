@@ -6,6 +6,9 @@ extends RefCounted
 const TEAM_COLORS := [Color("ffb21f"), Color("23a7ff")]
 const TEAM_NAMES := ["Sun", "Wave"]
 const WALL_H := 0.9
+const FLOOR_STYLES := {"cobble": 1, "sand": 2, "asphalt": 3, "marble": 4, "waves": 5, "planks": 6, "tulips": 7, "snow": 8, "zellige": 9, "brick": 10, "stone": 11, "gravel": 12, "dry": 13, "grass": 14}
+## Traffic that's really an animal or a cart gets a dirt track, not a road.
+const DIRT_LANES := ["camel", "elephant", "sheep", "moose", "llama", "cart"]
 
 
 static func team_color(team: int) -> Color:
@@ -24,12 +27,19 @@ static func build(sim: Sim, low_detail := false) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(sim.map_id)
 
+	var ground_kit := MeshKit.new()
+	ground_kit.outline = 0.0
 	var floor_kit := MeshKit.new()
 	floor_kit.outline = 0.0
 	_draw_background(floor_kit, sim, theme)
+	_draw_ground(ground_kit, sim, theme)
 	_draw_floor(floor_kit, sim, theme, rng)
 	_draw_midline(floor_kit, sim)
 	_draw_pads(floor_kit, sim)
+	var ground_mat := ShaderMaterial.new()
+	ground_mat.shader = preload("res://gfx/shaders/floor.gdshader")
+	ground_mat.set_shader_parameter("style", float(FLOOR_STYLES.get(theme.get("style", ""), 0)))
+	_add(root, ground_kit, ground_mat, "Ground")
 	_add(root, floor_kit, toon, "Floor")
 
 	var pit := _draw_pits(sim, theme)
@@ -100,7 +110,7 @@ static func _draw_background(k: MeshKit, sim: Sim, theme: Dictionary) -> void:
 
 
 ## Lush ground, no checkerboard: two colours drift into each other in big soft patches, with a worn path between the bases.
-static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumberGenerator) -> void:
+static func _draw_ground(k: MeshKit, sim: Sim, theme: Dictionary) -> void:
 	var t := Maps.TILE
 	var light := Color(theme["floor"][0]).lightened(0.05)
 	var dark := Color(theme["floor"][1]).darkened(0.07)
@@ -109,8 +119,6 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 	noise.seed = absi(hash(sim.map_id)) % 100000
 	noise.frequency = 0.075
 	noise.fractal_octaves = 2
-	var leafy: bool = String(Maps.by_id(sim.map_id)["theme"]) in ["barrio", "terraces", "mangrove", "schoolyard", "ruins"]
-	var accent := Color(theme["accent"])
 	var mid_y: float = (sim.base[0].y + sim.base[1].y) * 0.5
 	var mid_x: float = sim.w * t * 0.5
 	var shade := func(px: float, py: float, side: Color) -> Color:
@@ -128,7 +136,7 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 	for gy in rows:
 		for gx in cols:
 			var under := sim.tiles[(gy / 2) * sim.w + gx / 2]
-			if under == Maps.PIT or (under >= Maps.CON_R and under <= Maps.DASH_D):
+			if under == Maps.PIT or under == Maps.STONE or (under >= Maps.CON_R and under <= Maps.DASH_D):
 				continue
 			var x0 := gx * cell
 			var y0 := gy * cell
@@ -137,6 +145,16 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 			var side: Color = team_color(0 if gx < cols / 2 else 1)
 			k._quad(Vector3(x0, 0, y0), Vector3(x0, 0, y1), Vector3(x1, 0, y1), Vector3(x1, 0, y0), Vector3.UP,
 				shade.call(x0, y0, side), shade.call(x0, y1, side), shade.call(x1, y1, side), shade.call(x1, y0, side), false)
+
+
+## What's painted on the ground, tile by tile.
+static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumberGenerator) -> void:
+	var t := Maps.TILE
+	var light := Color(theme["floor"][0]).lightened(0.05)
+	var leafy: bool = String(Maps.by_id(sim.map_id)["theme"]) in ["barrio", "terraces", "mangrove", "schoolyard", "ruins"]
+	var plain_floor: bool = not theme.has("style")  # The world maps' floors have their own texture, and don't need pebbles too.
+	var accent := Color(theme["accent"])
+	var dirt_road: bool = String(Maps.theme_info(String(Maps.by_id(sim.map_id)["theme"])).get("lane", "jeep")) in DIRT_LANES
 	for y in sim.h:
 		for x in sim.w:
 			var code := sim.tiles[y * sim.w + x]
@@ -151,8 +169,29 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 					if rng.randf() < 0.45:
 						_disc(k, center + Vector2(rng.randf_range(-0.5, 0.5), rng.randf_range(-0.5, 0.5)), rng.randf_range(0.14, 0.26), 0.012, Color("6a4830"), 10)
 				Maps.FLOOR:
-					if rng.randf() < 0.3:
+					if plain_floor and rng.randf() < 0.3:
 						_floor_detail(k, center + Vector2(rng.randf_range(-0.8, 0.8), rng.randf_range(-0.8, 0.8)), light, leafy, accent, rng)
+				Maps.SPIKES:
+					_spike_plate(k, center)
+				Maps.CRUMBLE:
+					k.ground(Rect2(center - Vector2(t, t) * 0.5, Vector2(t, t)), 0.006, Color("1c1830"))
+				Maps.ROAD:
+					_road_tile(k, center, y, dirt_road, theme)
+				Maps.QUICKSAND:
+					_blob_tile(k, sim, x, y, Maps.QUICKSAND, 0.006, Color("d9b878"))
+					_disc(k, center, t * 0.42, 0.01, Color("c4a060"), 18)
+					_disc(k, center, t * 0.3, 0.012, Color("d9b878"), 16)
+					_disc(k, center, t * 0.17, 0.014, Color("a8864a"), 12)
+				Maps.TIDE:
+					_blob_tile(k, sim, x, y, Maps.TIDE, 0.006, Color("d9c79a"))
+					if rng.randf() < 0.3:
+						_disc(k, center + Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6)), 0.08, 0.012, Color("fff6dd"), 7)
+				Maps.TOWER:
+					_disc(k, center, t * 0.48, 0.01, Color("1a6fd0"), 20)
+					_disc(k, center, t * 0.38, 0.012, Color("7ee8ff"), 20)
+				Maps.GEYSER:
+					_disc(k, center, t * 0.46, 0.01, Color("3a4a58"), 18)
+					_disc(k, center, t * 0.3, 0.012, Color("7ecfe8"), 16)
 				Maps.BOUNCE:
 					_disc(k, center, t * 0.46, 0.01, Color("ff4f8b"), 20)
 					_disc(k, center, t * 0.3, 0.012, Color("ffd23f"), 18)
@@ -187,6 +226,31 @@ static func _draw_line_posts(k: MeshKit, sim: Sim) -> void:
 		k.ball(post + Vector3(0, 4.7, 0), Vector3(0.2, 0.2, 0.2), Color("ffd23f"), 6, 10)
 		_pennant(k, post + Vector3(0, 4.5, 0), -1.0, 2.0, 1.2, team_color(0))
 		_pennant(k, post + Vector3(0, 4.5, 0), 1.0, 2.0, 1.2, team_color(1))
+
+
+## A steel plate full of holes: so you can tell where they'll come up before they do.
+static func _spike_plate(k: MeshKit, center: Vector2) -> void:
+	var half := Maps.TILE * 0.47
+	k.ground(Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0), 0.008, Color("3a4258"))
+	k.ground(Rect2(center - Vector2(half, half) * 0.9, Vector2(half, half) * 1.8), 0.01, Color("5a6480"))
+	for ix in 3:
+		for iy in 3:
+			_disc(k, center + (Vector2(ix, iy) - Vector2.ONE) * half * 0.56, 0.11, 0.012, Color("0a1426"), 8)
+
+
+## A stretch of road, with a dashed line down it, or a beaten dirt track.
+static func _road_tile(k: MeshKit, center: Vector2, row: int, dirt: bool, theme: Dictionary) -> void:
+	var half := Maps.TILE * 0.5
+	if dirt:
+		k.ground(Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0), 0.006, Color(theme["edge"]).lightened(0.1))
+		k.ground(Rect2(center - Vector2(half * 0.6, half), Vector2(half * 0.3, half * 2.0)), 0.008, Color(theme["edge"]))
+		k.ground(Rect2(center + Vector2(half * 0.3, -half), Vector2(half * 0.3, half * 2.0)), 0.008, Color(theme["edge"]))
+		return
+	k.ground(Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0), 0.006, Color("3a4058"))
+	k.ground(Rect2(center - Vector2(half, half), Vector2(0.1, half * 2.0)), 0.008, Color("f4f0e0"))
+	k.ground(Rect2(center + Vector2(half - 0.1, -half), Vector2(0.1, half * 2.0)), 0.008, Color("f4f0e0"))
+	if row % 2 == 0:
+		k.ground(Rect2(center - Vector2(0.07, half * 0.6), Vector2(0.14, half * 1.2)), 0.008, Color("ffd23f"))
 
 
 ## A tile of ice or mud with its corners rounded off, joining smoothly on to any neighbour of the same kind.
@@ -257,6 +321,44 @@ static func _draw_tricks(k: MeshKit, sim: Sim) -> void:
 					_fence(k, at, _tile_code(sim, x, y - 1) == Maps.FENCE or _tile_code(sim, x, y + 1) == Maps.FENCE)
 				Maps.BUMPER:
 					_bumper(k, at)
+				Maps.ARM:
+					_arm_post(k, at)
+				Maps.GEYSER:
+					_vent(k, at)
+				Maps.TOWER:
+					_lookout(k, at)
+
+
+## The stout post a spinning arm turns on.
+static func _arm_post(k: MeshKit, at: Vector3) -> void:
+	k.cyl(at, 0.3, 0.92, 0.82, Color("3a4258"), 18)
+	k.cyl(at + Vector3(0, 0.3, 0), 0.72, 0.42, 0.38, Color("ffc21f"), 16)
+	k.outline = 0.0
+	for y: float in [0.5, 0.82]:
+		k.torus(at + Vector3(0, y, 0), 0.41, 0.05, Color("0a1426"), 16, 4)
+	k.outline = 0.02
+
+
+static func _vent(k: MeshKit, at: Vector3) -> void:
+	for i in 7:
+		var a := TAU * i / 7.0
+		k.ball(at + Vector3(cos(a) * 0.78, 0.12, sin(a) * 0.78), Vector3(0.24, 0.2, 0.24), Color("6a7284").lerp(Color("8a92a4"), fmod(i * 0.37, 1.0)), 6, 9)
+
+
+## A wooden frame with a telescope on it, and a flag to spot it by.
+static func _lookout(k: MeshKit, at: Vector3) -> void:
+	var wood := Color("c98c4a")
+	for x: float in [-0.74, 0.74]:
+		for z: float in [-0.74, 0.74]:
+			k.cyl(at + Vector3(x, 0, z), 1.2, 0.08, 0.07, wood, 8)
+	k.outline = 0.0
+	k.torus(at + Vector3(0, 1.2, 0), 1.0, 0.05, wood.darkened(0.2), 4, 3)
+	k.outline = 0.02
+	k.cyl(at + Vector3(0.74, 1.2, -0.74), 1.5, 0.04, 0.04, wood.darkened(0.2), 6)
+	_pennant(k, at + Vector3(0.74, 2.66, -0.74), 1.0, 0.8, 0.5, Color("ff5a4e"))
+	k.push(Transform3D(Basis(Vector3.RIGHT, 1.1), at + Vector3(-0.74, 1.3, 0.74)))
+	k.cyl(Vector3(0, -0.3, 0), 0.6, 0.09, 0.06, Color("ffd23f"), 10)
+	k.pop()
 
 
 ## A big spring, with a dotted line through the air to the box it lands you on.
@@ -387,7 +489,7 @@ static func _draw_pits(sim: Sim, theme: Dictionary) -> MeshInstance3D:
 	var col := Color(theme["pit_c"])
 	for y in sim.h:
 		for x in sim.w:
-			if sim.tiles[y * sim.w + x] == Maps.PIT:
+			if sim.tiles[y * sim.w + x] in [Maps.PIT, Maps.STONE]:
 				k.ground(Rect2(x * t, y * t, t, t), -0.14, col)
 	if k.is_empty():
 		return null
@@ -595,7 +697,9 @@ static func _draw_decor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 	var accent := Color(theme["accent"])
 	var size := sim.arena_size()
 	var margin := 3.2
-	var count := 36 if low_detail else 64
+	var world_map: bool = theme.has("region")
+	var count := (22 if low_detail else 38) if world_map else (36 if low_detail else 64)
+	var spacing := 6.0 if world_map else 4.0
 	var placed: Array[Vector2] = []
 	var tries := 0
 	while placed.size() < count and tries < 600:
@@ -610,7 +714,7 @@ static func _draw_decor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 			_: at = Vector2(size.x + depth, rng.randf_range(-10.0, size.y + 10.0))
 		var close := false
 		for other: Vector2 in placed:
-			if other.distance_to(at) < 4.0:
+			if other.distance_to(at) < spacing:
 				close = true
 				break
 		if close:
@@ -620,7 +724,7 @@ static func _draw_decor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 		var yaw := rng.randf() * TAU
 		if prop == "banderitas":
 			yaw = rng.randf_range(-0.3, 0.3)
-		elif prop == "building" or prop == "hut":
+		elif prop in ["building", "hut", "townhouse", "canal_house", "palazzo", "riad", "skyscraper", "torii", "billboard", "big_clock", "taj", "log_cabin"]:
 			yaw = (PI if side == 1 else 0.0) + rng.randf_range(-0.2, 0.2)
 		PropKit.draw(k, prop, Vector3(at.x, -0.3, at.y), yaw, rng.randf_range(0.9, 1.25), rng.randf(), accent)
 

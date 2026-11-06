@@ -98,10 +98,10 @@ func _fill_leagues() -> void:
 		var card := UiKit.panel(Color("1fa35c") if i == mine else UiKit.CARD, 14, 3)
 		var row := UiKit.hbox(10)
 		card.add_child(row)
-		var dot := PanelContainer.new()
-		dot.add_theme_stylebox_override("panel", UiKit.style(league["color"] if reached else UiKit.INK, 12, 3))
-		dot.custom_minimum_size = Vector2(36, 36)
-		dot.add_child(UiKit.icon("trophy", 24))
+		var dot := RoundBadge.new().setup("", 40.0, league["color"] if reached else UiKit.INK)
+		var cup := UiKit.icon("trophy", 26)
+		cup.position = Vector2(7, 7)
+		dot.add_child(cup)
 		row.add_child(dot)
 		var text := UiKit.vbox(0)
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -160,11 +160,8 @@ func _board_row(rank: int, row: Dictionary, scope: String) -> Control:
 	var card := UiKit.panel(Color("1fa35c") if mine else UiKit.CARD, 12, 3)
 	var box := UiKit.hbox(10)
 	card.add_child(box)
-	var medal_color: Color = [UiKit.YELLOW, Color("d6dff0"), Color("e08e45")][rank - 1] if rank <= 3 else UiKit.WHITE
-	var number := UiKit.title(str(rank), 20, medal_color)
-	number.custom_minimum_size.x = 40
-	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(number)
+	var medal_color: Color = [UiKit.YELLOW, Color("e6eef8"), Color("f0a868")][rank - 1] if rank <= 3 else UiKit.WHITE
+	box.add_child(RoundBadge.new().setup(str(rank), 40.0, medal_color))
 	var text := UiKit.vbox(0)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var title_line := UiKit.title(str(row.get("name", "?")), 17)

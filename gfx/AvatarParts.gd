@@ -82,6 +82,71 @@ static func top(k: MeshKit, id: String, w: float) -> void:
 			k.spot(at, r, 0.0, -0.06, 0.13, c2)
 			for star: Vector2 in [Vector2(-0.22, -0.13), Vector2(0.22, -0.05), Vector2(-0.12, 0.06), Vector2(0.13, 0.08), Vector2(0.1, -0.2)]:
 				k.spot(at, r, star.x, star.y, 0.018, Color.WHITE)
+		"vstripes":
+			for x: float in [-0.21, -0.07, 0.07, 0.21]:
+				k.patch(at, r, x - 0.035, x + 0.035, -0.27, 0.15, c2)
+		"kimono":
+			k.patch(at, r, -0.09, -0.045, -0.04, 0.14, c2)
+			k.patch(at, r, 0.045, 0.09, -0.04, 0.14, c2)
+			k.patch(at, r, -0.3, 0.3, -0.18, -0.07, Color("ffd23f"))
+			k.spot(at, r, 0.0, -0.125, 0.045, c2)
+			for flower: Vector2 in [Vector2(-0.19, 0.03), Vector2(0.2, 0.02), Vector2(-0.14, -0.23), Vector2(0.15, -0.22)]:
+				k.spot(at, r, flower.x, flower.y, 0.025, c2)
+		"hanbok":
+			k.patch(at, r, -0.3, 0.3, -0.28, -0.1, c.lightened(0.3))
+			k.patch(at, r, -0.05, -0.015, -0.08, 0.14, c2)
+			k.patch(at, r, 0.015, 0.05, -0.08, 0.14, c2)
+			k.spot(at, r, 0.0, -0.06, 0.04, c2)
+			k.patch(at, r, -0.02, 0.02, -0.24, -0.06, c2)
+		"qipao":
+			k.band(at, r, 0.17, 0.215, c2)
+			k.patch(at, r, -0.015, 0.015, -0.25, 0.17, c2)
+			for i in 3:
+				k.patch(at, r, -0.05, 0.05, -0.15 + i * 0.1, -0.13 + i * 0.1, c2)
+			k.band(at, r, hem, hem + 0.025, c2)
+		"kurta":
+			k.band(at, r, 0.14, 0.19, c2)
+			k.patch(at, r, -0.03, 0.03, -0.08, 0.14, c2)
+			for i in 3:
+				k.spot(at, r, 0.0, -0.05 + i * 0.07, 0.012, Color("e8483f"))
+			k.band(at, r, hem, hem + 0.05, c2)
+		"poncho":
+			k.ball(Vector3(0, 0.46, 0), Vector3(0.42 * w, 0.27, 0.33 * w), c, 10, 18)
+			var rough := Vector3(0.42 * w, 0.27, 0.33 * w)
+			var at2 := Vector3(0, 0.46, 0)
+			for i in 4:
+				var y := -0.22 + i * 0.1
+				k.band(at2, rough, y, y + 0.045, c2 if i % 2 == 0 else Color("35d07f"), 0.006, 26)
+		"mariachi":
+			k.patch(at, r, -0.09, 0.09, -0.22, 0.13, Color("fff6dd"))
+			k.spot(at, r, 0.0, 0.08, 0.04, Color("e8282f"))
+			for i in 4:
+				for s: float in [-0.14, 0.14]:
+					k.spot(at, r, s, -0.2 + i * 0.09, 0.016, c2)
+			k.band(at, r, hem, hem + 0.03, c2)
+		"dashiki":
+			k.patch(at, r, -0.1, 0.1, -0.04, 0.17, c2)
+			k.patch(at, r, -0.06, 0.06, -0.24, -0.04, c2)
+			k.patch(at, r, -0.05, 0.05, 0.02, 0.1, Color("e8483f"))
+			for x: float in [-0.2, 0.2]:
+				k.patch(at, r, x - 0.035, x + 0.035, -0.24, 0.1, Color("e8483f"))
+		"kente":
+			var weave := [Color("1a9c58"), Color("e8483f"), Color("1d1a30")]
+			for i in 5:
+				k.band(at, r, -0.25 + i * 0.09, -0.21 + i * 0.09, weave[i % 3])
+			for x: float in [-0.2, 0.0, 0.2]:
+				k.patch(at, r, x - 0.03, x + 0.03, -0.27, 0.15, c2.lightened(0.1) if x == 0.0 else Color("1d1a30"))
+		"toga":
+			k.patch(at, r, -0.24, -0.1, -0.22, 0.15, c2)
+			k.band(at, r, hem, hem + 0.03, c2)
+		"braces":
+			for x: float in [-0.15, 0.15]:
+				k.patch(at, r, x - 0.035, x + 0.035, -0.26, 0.15, c2)
+			k.patch(at, r, -0.16, 0.16, -0.03, 0.03, c2)
+		"hero":
+			k.spot(at, r, 0.0, -0.04, 0.1, c2)
+			k.spot(at, r, 0.0, -0.04, 0.06, Color("e8282f"))
+			k.band(at, r, hem, hem + 0.05, Color("e8282f"))
 
 
 ## The sleeve on each arm, which moves with it. Tank tops have none; armour has a shoulder plate.
@@ -95,8 +160,13 @@ static func sleeve(k: MeshKit, id: String) -> void:
 			pass
 		"armor":
 			k.ball(Vector3(0, -0.01, 0), Vector3(0.14, 0.115, 0.14), c2, 8, 12)
-		"varsity", "overalls":
-			k.ball(Vector3(0, -0.035, 0), Vector3(0.105, 0.125, 0.105), c2, 8, 12)
+		"varsity", "overalls", "mariachi":
+			k.ball(Vector3(0, -0.035, 0), Vector3(0.105, 0.125, 0.105), c2 if style != "mariachi" else c, 8, 12)
+		"kimono", "hanbok":
+			k.ball(Vector3(0, -0.11, 0), Vector3(0.125, 0.2, 0.125), c, 8, 12)
+			k.ball(Vector3(0, -0.26, 0), Vector3(0.1, 0.03, 0.1), c2, 5, 10)
+		"poncho":
+			k.ball(Vector3(0, -0.04, 0), Vector3(0.14, 0.15, 0.14), c, 8, 12)
 		_:
 			k.ball(Vector3(0, -0.035, 0), Vector3(0.105, 0.125, 0.105), c, 8, 12)
 
@@ -226,6 +296,29 @@ static func shoe(k: MeshKit, id: String) -> void:
 			k.outline = 0.0
 			k.ball(Vector3(0, -0.01, -0.21), Vector3(0.05, 0.05, 0.08), c2, 6, 9)
 			k.outline = 0.02
+		"geta":
+			k.soft_box(Vector3(0, -0.04, 0.05), Vector3(0.13, 0.03, 0.19), c, 0.5, 4, 10)
+			for z: float in [-0.04, 0.14]:
+				k.soft_box(Vector3(0, -0.08, z), Vector3(0.12, 0.018, 0.022), c.darkened(0.25), 0.5, 3, 8)
+			k.ball(Vector3(0, -0.005, 0.05), Vector3(0.1, 0.05, 0.15), Color("e0a874"), 8, 12)
+			k.torus(Vector3(0, 0.0, 0.12), 0.09, 0.016, c2, 16, 5)
+		"clog":
+			k.ball(Vector3(0, 0.0, 0.08), Vector3(0.15, 0.115, 0.23), c, 10, 14)
+			k.ball(Vector3(0, 0.03, -0.04), Vector3(0.1, 0.05, 0.08), c.darkened(0.3), 6, 9)
+			k.outline = 0.0
+			k.ball(Vector3(0, 0.05, 0.17), Vector3(0.07, 0.03, 0.07), c2, 4, 8)
+			k.outline = 0.02
+		"curly":
+			k.ball(at, Vector3(0.115, 0.08, 0.17), c, 10, 14)
+			k.tube(PackedVector3Array([Vector3(0, 0.0, 0.18), Vector3(0, 0.02, 0.27), Vector3(0, 0.1, 0.31), Vector3(0, 0.15, 0.26)]), 0.05, c, false, 8, 0.02)
+			k.ball(Vector3(0, 0.15, 0.25), Vector3(0.03, 0.03, 0.03), c2, 5, 7)
+			k.band(at, r, -0.075, -0.05, c2)
+		"skate":
+			k.ball(Vector3(0, 0.04, 0.045), Vector3(0.12, 0.08, 0.17), c, 10, 14)
+			k.cyl(Vector3(0, 0.04, -0.02), 0.2, 0.098, 0.1, c, 14)
+			for z: float in [-0.08, 0.16]:
+				k.cyl(Vector3(0, -0.07, z), 0.05, 0.012, 0.012, Color("c9d0e6"), 5)
+			k.soft_box(Vector3(0, -0.085, 0.04), Vector3(0.012, 0.016, 0.22), Color("c9d0e6"), 0.6, 3, 6)
 
 
 static func glove(k: MeshKit, id: String) -> void:
@@ -261,6 +354,13 @@ static func glove(k: MeshKit, id: String) -> void:
 		"robot":
 			k.soft_box(hand, Vector3(0.115, 0.13, 0.105), c, 0.6)
 			k.torus(wrist, 0.08, 0.026, c2, 18, 8)
+		"wrap":
+			k.ball(hand, Vector3(0.11, 0.135, 0.104), c, 10, 14)
+			k.outline = 0.0
+			for f: float in [-0.07, 0.0, 0.07]:
+				k.torus(hand + Vector3(0, f, 0), 0.103 - absf(f) * 0.3, 0.012, c2, 16, 5)
+			k.outline = 0.02
+			k.torus(wrist, 0.08, 0.028, c2, 18, 8)
 		"flame":
 			k.ball(hand, Vector3(0.11, 0.14, 0.105), c, 10, 14)
 			for i in 5:  # A cuff of little flames round the wrist.
@@ -745,3 +845,5 @@ static func mask(k: MeshKit, id: String, hatted := false) -> void:
 				k.push(Transform3D(Basis(Vector3.BACK, -a), Vector3(0, 0.72, 0)))
 				k.ball(Vector3(0, 0.22, 0), Vector3(0.065, 0.24, 0.03), Color("e8282f") if i % 2 == 0 else Color("ffd23f"), 8, 12)
 				k.pop()
+		_:
+			WorldWear.mask(k, id, hatted)

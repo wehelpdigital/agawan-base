@@ -38,6 +38,7 @@ var look: Dictionary = Cosmetics.default_look()
 var emotes: Array[String] = []
 var stats := {"games": 0, "wins": 0, "tags": 0, "rescues": 0, "captures": 0, "powers": 0, "mvps": 0}
 var favorite_map := ""
+var favorite_weather := ""  ## Empty: whatever the map's sky feels like today.
 var difficulty := 1  ## Index into DIFFICULTIES for practice matches.
 var tutorial_done := false
 var matches_played := 0
@@ -69,6 +70,7 @@ func _ready() -> void:
 func load_profile() -> void:
 	if not FileAccess.file_exists(_file):
 		player_name = Names.new_player()
+		_guess_flag()
 		_ensure_quests()
 		save()
 		return
@@ -79,9 +81,14 @@ func load_profile() -> void:
 	_ensure_quests()
 
 
+## Everyone starts flying the flag of the country their device says it's in. It's free, and easy to change.
+func _guess_flag() -> void:
+	look["flag"] = Flags.from_locale(OS.get_locale())
+
+
 func to_data() -> Dictionary:
 	return {"version": VERSION, "name": player_name, "coins": coins, "gems": gems, "trophies": trophies, "best_trophies": best_trophies,
-		"xp": xp, "level": level, "owned": owned, "look": look, "look_version": 1, "emotes": emotes, "stats": stats, "favorite_map": favorite_map,
+		"xp": xp, "level": level, "owned": owned, "look": look, "look_version": 2, "emotes": emotes, "stats": stats, "favorite_map": favorite_map, "favorite_weather": favorite_weather,
 		"difficulty": difficulty, "tutorial_done": tutorial_done, "matches_played": matches_played, "daily_day": daily_day,
 		"daily_streak": daily_streak, "quest_day": quest_day, "quest_ids": quest_ids, "quest_progress": quest_progress,
 		"quest_claimed": quest_claimed, "claimed_leagues": claimed_leagues, "saved_at": saved_at}
@@ -109,6 +116,8 @@ func apply_data(data: Dictionary) -> void:
 		# Everyone used to start in shades, whether they chose them or not. They can always put them back on.
 		if int(data.get("look_version", 0)) < 1 and look["mask"] == "shades":
 			look["mask"] = ""
+		if int(data.get("look_version", 0)) < 2:
+			_guess_flag()
 	emotes.clear()
 	if data.get("emotes") is Array:
 		for id: Variant in data["emotes"]:
@@ -118,6 +127,9 @@ func apply_data(data: Dictionary) -> void:
 		for key: String in stats:
 			stats[key] = int((data["stats"] as Dictionary).get(key, stats[key]))
 	favorite_map = str(data.get("favorite_map", favorite_map))
+	favorite_weather = str(data.get("favorite_weather", favorite_weather))
+	if favorite_weather != "" and not Weather.ALL.has(favorite_weather):
+		favorite_weather = ""
 	difficulty = int(data.get("difficulty", difficulty))
 	tutorial_done = bool(data.get("tutorial_done", tutorial_done))
 	matches_played = int(data.get("matches_played", matches_played))

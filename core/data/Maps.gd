@@ -14,12 +14,24 @@ extends RefCounted
 ##        * crystal altar: always grows a new crystal
 ##        %       low fence: stops a walk, but a dash goes over it
 ##        o       bumper: knocks you flying
+##        s       spikes: pop up on a beat
+##        c       crumbling floor: falls away after you stand on it, and grows back
+##        a       spinning arm: a long beam sweeping round this block
+##        |       road: traffic comes down it every so often
+##        z       geyser: blows on a beat and throws you somewhere nearby
+##        q       quicksand: drags you to its middle; dash to get out
+##        w       lookout tower: stand on it and your team sees every enemy
+##        x       powder crate: blows up when dashed into or shot, and comes back later
+##        n       stepping stone: sinks and rises in turn with its neighbours
+##        y       web: catches whoever runs in, and takes a while to grow back
+##        T       tide flats: the sea comes in on a timer and slows you right down
 
 const TILE := 2.0  ## Metres per tile.
 const CLEAR_BASE := 5.8  ## Nothing stands this close to the middle of a base...
 const CLEAR_JAIL := 3.2  ## ...or of a jail.
 
-enum { FLOOR, SOLID, PIT, GRASS, ICE, MUD, BOUNCE, TELE, CON_R, CON_L, CON_U, CON_D, DASH_R, DASH_L, DASH_U, DASH_D, JUMP, LAND, GATE, FOUNTAIN, ALTAR, FENCE, BUMPER }
+enum { FLOOR, SOLID, PIT, GRASS, ICE, MUD, BOUNCE, TELE, CON_R, CON_L, CON_U, CON_D, DASH_R, DASH_L, DASH_U, DASH_D, JUMP, LAND, GATE, FOUNTAIN, ALTAR, FENCE, BUMPER,
+	SPIKES, CRUMBLE, ARM, ROAD, GEYSER, QUICKSAND, TOWER, TNT, STONE, WEB, TIDE }
 
 const JUMP_PADS := {"1": "!", "2": "@"}
 
@@ -296,6 +308,431 @@ const LAYOUTS := {
 		"..............",
 		"........gg....",
 	]},
+	"crumble": {"name": "Crumble Crossing", "mirror": "x", "blurb": "Bridges fall away after you cross. Don't stop to wave.", "rows": [
+		"..........~~~~",
+		"..J.....*.~~~~",
+		"....%.....cccc",
+		"....%.....~~~~",
+		".......gg.~~~~",
+		".......gg.cccc",
+		"..........~~~~",
+		"..A..........f",
+		"..........~~~~",
+		".......gg.cccc",
+		".......gg.~~~~",
+		"....%.....~~~~",
+		"....%.....cccc",
+		"........*.~~~~",
+		"..........~~~~",
+	]},
+	"rush_hour": {"name": "Rush Hour", "mirror": "x", "blurb": "Look both ways. Traffic doesn't stop for a game of tag.", "rows": [
+		"........|...|.",
+		"..J.....|.*.|.",
+		"........|...|.",
+		".....##.|.gg|.",
+		".....##.|.gg|.",
+		"........|...|.",
+		"........|...|.",
+		"..A.....|.o.|f",
+		"........|...|.",
+		"........|...|.",
+		".....##.|.gg|.",
+		".....##.|.gg|.",
+		"........|...|.",
+		"........|.*.|.",
+		"........|...|.",
+	]},
+	"spike_alley": {"name": "Spike Alley", "mirror": "x", "blurb": "Spikes pop up on a beat. Learn the beat.", "rows": [
+		"..............",
+		"..J....ss.*...",
+		".......ss.....",
+		"....##...ss.gg",
+		"....##...ss.gg",
+		".......ss.....",
+		".......ss.....",
+		"..A......ss..f",
+		".......ss.....",
+		".......ss.....",
+		"....##...ss.gg",
+		"....##...ss.gg",
+		".......ss.....",
+		".......ss.*...",
+		"..............",
+	]},
+	"windmills": {"name": "Spinning Arms", "mirror": "x", "blurb": "Big arms sweep the field. Duck through at the right moment.", "rows": [
+		"..............",
+		"..J.........*.",
+		"......gg......",
+		"........a.....",
+		"......gg......",
+		"............a.",
+		"..............",
+		"..A.....a....f",
+		"..............",
+		"............a.",
+		"......gg......",
+		"........a.....",
+		"......gg......",
+		"............*.",
+		"..............",
+	]},
+	"springs": {"name": "Hot Springs", "mirror": "x", "blurb": "Geysers blow on a beat, and throw you wherever they like.", "rows": [
+		"..............",
+		"..J....z..z.*.",
+		"..............",
+		"......~~~~....",
+		".....~~~~~~.z.",
+		"......~~~~....",
+		"..........z...",
+		"..A..z.......f",
+		"..........z...",
+		"......~~~~....",
+		".....~~~~~~.z.",
+		"......~~~~....",
+		"..............",
+		".......z..z.*.",
+		"..............",
+	]},
+	"sinking": {"name": "Sinking Sands", "mirror": "x", "blurb": "Quicksand drags you in. Dash out before it swallows your lead.", "rows": [
+		"......qqq.....",
+		"..J...qqq...*.",
+		"..........##..",
+		".........q##..",
+		"........qqq...",
+		"....##..qqq.gg",
+		"....##...q..gg",
+		"..A..........f",
+		"....##...q..gg",
+		"....##..qqq.gg",
+		"........qqq...",
+		".........q##..",
+		"..........##..",
+		"......qqq...*.",
+		"......qqq.....",
+	]},
+	"lookout": {"name": "The Lookout", "mirror": "x", "blurb": "Stand on a lookout tower and your team sees everyone.", "rows": [
+		".......gggggg.",
+		"..J....g....g.",
+		"......wg..w.g.",
+		".......g....g.",
+		"....ggggg.ggg.",
+		"....g.........",
+		"....g...*.....",
+		"..A.....##...f",
+		"....g...*.....",
+		"....g.........",
+		"....ggggg.ggg.",
+		".......g....g.",
+		"......wg..w.g.",
+		".......g....g.",
+		".......gggggg.",
+	]},
+	"powder": {"name": "Powder Keg", "mirror": "x", "blurb": "Dash into a crate and it all goes up, so mind who's standing next to it.", "rows": [
+		"..............",
+		"..J...xx....*.",
+		"......xx..o...",
+		"..........xxx.",
+		"....##....x...",
+		"....##...gg...",
+		".........gg.xx",
+		"..A.......x..f",
+		".........gg.xx",
+		"....##...gg...",
+		"....##....x...",
+		"..........xxx.",
+		"......xx..o...",
+		"......xx....*.",
+		"..............",
+	]},
+	"stepping": {"name": "Stepping Stones", "mirror": "x", "blurb": "Stones sink and rise in turn. Time your crossing, or take the long way round.", "rows": [
+		"..........~~~~",
+		"..J.....*.~~~~",
+		"........b.~~~~",
+		"..........nnnn",
+		"..........~~~~",
+		".......gg.~~~~",
+		".......gg..~~~",
+		"..A.........f.",
+		".......gg..~~~",
+		".......gg.~~~~",
+		"..........~~~~",
+		"..........nnnn",
+		"........b.~~~~",
+		"........*.~~~~",
+		"..........~~~~",
+	]},
+	"webs": {"name": "Sticky Woods", "mirror": "x", "blurb": "Webs catch whoever runs in first. Let someone else go ahead.", "rows": [
+		"....g.y..g....",
+		"..J.g.y..g..*.",
+		"....g....g.y..",
+		".....y...g.y..",
+		"...........gg.",
+		"....gg.y...gg.",
+		"....gg.y.y....",
+		"..A......y...f",
+		"....gg.y.y....",
+		"....gg.y...gg.",
+		"...........gg.",
+		".....y...g.y..",
+		"....g....g.y..",
+		"....g.y..g..*.",
+		"......y..g....",
+	]},
+	"tides": {"name": "Rising Tide", "mirror": "x", "blurb": "The sea comes in on a timer. Be somewhere dry when it does.", "rows": [
+		"..........TTTT",
+		"..J.....*.TTTT",
+		".........TTTTT",
+		"....##..TTTTTT",
+		"....##..TT##TT",
+		"........TTTTTT",
+		"...........TTT",
+		"..A......o...f",
+		"...........TTT",
+		"........TTTTTT",
+		"....##..TT##TT",
+		"....##..TTTTTT",
+		".........TTTTT",
+		"........*.TTTT",
+		"..........TTTT",
+	]},
+	"temple": {"name": "Temple Run", "mirror": "x", "blurb": "Spikes, falling floors and a sweeping arm. Someone didn't want visitors.", "rows": [
+		"..............",
+		"..J...####...*",
+		"......####.a..",
+		"..............",
+		".....ss...ccc.",
+		".....ss.#.ccc.",
+		"........#.....",
+		"..A...ss.....f",
+		"........#.....",
+		".....ss.#.ccc.",
+		".....ss...ccc.",
+		"..............",
+		"......####.a..",
+		"......####...*",
+		"..............",
+	]},
+	"bazaar": {"name": "The Bazaar", "mirror": "x", "blurb": "Tight alleys and low stalls. Dash over them to lose a chaser.", "rows": [
+		"......#...#...",
+		"..J...#.*.#.gg",
+		"......#...#.gg",
+		"...........RRR",
+		"....%%%.%%%...",
+		"......#...#...",
+		"......#.o.#.*.",
+		"..A..........f",
+		"......#.o.#.*.",
+		"......#...#...",
+		"....%%%.%%%...",
+		"...........RRR",
+		"......#...#.gg",
+		"......#.*.#.gg",
+		"......#...#...",
+	]},
+	"circuit": {"name": "The Circuit", "mirror": "x", "blurb": "Belts carry you into the traffic. Hop off in time.", "rows": [
+		"........|.....",
+		"..J.....|.*...",
+		"....>>>>|>>>>>",
+		"........|.....",
+		"......gg|..o..",
+		"......gg|.....",
+		"........|.....",
+		"..A.....|....f",
+		"........|.....",
+		"......gg|.....",
+		"......gg|..o..",
+		"........|.....",
+		"....<<<<|<<<<<",
+		"........|.*...",
+		"........|.....",
+	]},
+	"crater": {"name": "Crater Rim", "mirror": "x", "blurb": "A crumbling ring round a great pit. The short way is the risky way.", "rows": [
+		"..............",
+		"..J......*....",
+		"..........cccc",
+		".........cc~~~",
+		"........cc~~~~",
+		"....z...c~~~~~",
+		"........c~~~~~",
+		"..A.....c~~~~~",
+		"........c~~~~~",
+		"....z...c~~~~~",
+		"........cc~~~~",
+		".........cc~~~",
+		"..........cccc",
+		".........*....",
+		"..............",
+	]},
+	"maze": {"name": "The Maze", "mirror": "x", "blurb": "Walls, gates and dead ends. The tower shows you who's coming.", "rows": [
+		"..............",
+		"..J...####.#..",
+		"......#..=.#.*",
+		".....##.##.#..",
+		"......#.....w.",
+		"...##.#.###.##",
+		"......=.#.....",
+		"..A.....#.o..f",
+		"......=.#.....",
+		"...##.#.###.##",
+		"......#.....w.",
+		".....##.##.#..",
+		"......#..=.#.*",
+		"......####.#..",
+		"..............",
+	]},
+	"islands": {"name": "Island Hop", "mirror": "x", "blurb": "Warp across, bounce over, and don't get cornered on the sand.", "rows": [
+		"..........~~~~",
+		"..J.......~..~",
+		"..........~.*~",
+		"......t...~..~",
+		".......~~~~~.~",
+		".......~....b.",
+		".......~.gg...",
+		"..A......gg..f",
+		".......~.gg...",
+		".......~....b.",
+		".......~~~~~.~",
+		"......t...~..~",
+		"..........~.*~",
+		"..........~..~",
+		"..........~~~~",
+	]},
+	"castle": {"name": "Castle Siege", "mirror": "x", "blurb": "A moat, a wall and a gate on the beat. Watch from the tower.", "rows": [
+		"..............",
+		"..J......~~...",
+		"......w..~~.*.",
+		"......###.~~..",
+		"........#.~~..",
+		"........#.~~.o",
+		"........=.....",
+		"..A.....=....f",
+		"........=.....",
+		"........#.~~.o",
+		"........#.~~..",
+		"......###.~~..",
+		".........~~.*.",
+		".........~~...",
+		"..............",
+	]},
+	"canals": {"name": "The Canals", "mirror": "x", "blurb": "Water everywhere and only three ways across.", "rows": [
+		"......~~..~~..",
+		"..J...~~..~~.*",
+		"......~~..~~..",
+		"..............",
+		"......~~..~~..",
+		"......~~..~~gg",
+		"......~~..~~gg",
+		"..A..........f",
+		"......~~..~~gg",
+		"......~~..~~gg",
+		"......~~..~~..",
+		"..............",
+		"......~~..~~..",
+		"......~~..~~.*",
+		"......~~..~~..",
+	]},
+	"skatepark": {"name": "Skate Park", "mirror": "x", "blurb": "Ice, boost floors and bumpers. Nobody here has any brakes.", "rows": [
+		"...........iii",
+		"..J...RR..iiii",
+		".........iiiii",
+		".....o..iiio.i",
+		"........iiiiii",
+		"......RR.iii.*",
+		"..........ii..",
+		"..A...o..RRR.f",
+		"..........ii..",
+		"......RR.iii.*",
+		"........iiiiii",
+		".....o..iiio.i",
+		".........iiiii",
+		"......RR..iiii",
+		"...........iii",
+	]},
+	"zen": {"name": "Quiet Garden", "mirror": "x", "blurb": "Low fences and soft bushes, and someone behind every one.", "rows": [
+		"..............",
+		"..J...%%%..gg.",
+		".......%...gg.",
+		"...........*..",
+		"....gg..o.....",
+		"....gg...%%%..",
+		"..........%...",
+		"..A...gg.....f",
+		"..........%...",
+		"....gg...%%%..",
+		"....gg..o.....",
+		"...........*..",
+		".......%...gg.",
+		"......%%%..gg.",
+		"..............",
+	]},
+	"oasis": {"name": "The Oasis", "mirror": "x", "blurb": "Water in the middle and quicksand round the edge. Pick your poison.", "rows": [
+		"......qqqq....",
+		"..J..qqqqqq.*.",
+		"......qqqq....",
+		"............qq",
+		"....#......qqq",
+		"....#...~~..qq",
+		".......~~~~...",
+		"..A....~~~~..f",
+		".......~~~~...",
+		"....#...~~..qq",
+		"....#......qqq",
+		"............qq",
+		"......qqqq....",
+		".....qqqqqq.*.",
+		"......qqqq....",
+	]},
+	"pinball": {"name": "Pinball", "mirror": "x", "blurb": "Bumpers everywhere. You will go where they send you.", "rows": [
+		"..............",
+		"..J.o...o...*.",
+		"......o...o...",
+		"..o.........o.",
+		".....>>>>>....",
+		"...o......o...",
+		"......o.......",
+		"..A.....o....f",
+		"......o.......",
+		"...o......o...",
+		".....<<<<<....",
+		"..o.........o.",
+		"......o...o...",
+		"....o...o...*.",
+		"..............",
+	]},
+	"crossing": {"name": "Level Crossing", "mirror": "x", "blurb": "One long road down the line, and a geyser to get you over it.", "rows": [
+		"...........|..",
+		"..J...gg...|*.",
+		"......gg...|..",
+		"...........|..",
+		"....##.....|cc",
+		"....##...z.|cc",
+		"...........|..",
+		"..A..z.....|.f",
+		"...........|..",
+		"....##...z.|cc",
+		"....##.....|cc",
+		"...........|..",
+		"......gg...|..",
+		"......gg...|*.",
+		"...........|..",
+	]},
+	"gladiator": {"name": "Gladiator Pit", "mirror": "x", "blurb": "Spikes in the sand and arms sweeping round. The crowd loves it.", "rows": [
+		"..............",
+		"..J.....s.s.*.",
+		"......s.....s.",
+		"..........a...",
+		"....#.s.....s.",
+		"....#...s.s...",
+		"..............",
+		"..A.....a....f",
+		"..............",
+		"....#...s.s...",
+		"....#.s.....s.",
+		"..........a...",
+		"......s.....s.",
+		"........s.s.*.",
+		"..............",
+	]},
 }
 
 ## Look of a map. `pit` names what the ~ tiles are, `blocks` and `decor` are PropKit prop names.
@@ -328,9 +765,108 @@ const THEMES := {
 		"pit": "syrup", "pit_c": "62e0a0", "wall": "4a3f6b", "accent": "ff9d2e", "grass": "4aa58a", "blocks": ["tomb", "pumpkin", "stump"], "decor": ["dead_tree", "tomb", "dead_tree", "pumpkin"], "music": "cartoon_snitch"},
 	"schoolyard": {"name": "Schoolyard", "floor": ["d9b98a", "cfae7e"], "edge": "b4935f", "bg": "76c35c", "sky": "bdeaff",
 		"pit": "water", "pit_c": "4cc7ee", "wall": "e4574f", "accent": "ffd23f", "grass": "59c04f", "blocks": ["crate", "tire", "hay"], "decor": ["tree", "building", "tree", "bush"], "music": "cartoon_jaunty"},
+	# --- Around the world ----------------------------------------------------------------------------------
+	"kyoto": {"name": "Kyoto Gardens", "place": "Japan", "region": "asia", "style": "gravel", "floor": ["c9d6a0", "bcca92"], "edge": "8fa070", "bg": "6fa86a", "sky": "ffe3ee",
+		"pit": "water", "pit_c": "4fc0d0", "wall": "c9403a", "accent": "ff9fc8", "grass": "4fa858", "blocks": ["stone_lantern", "bamboo", "rock"], "decor": ["torii", "pagoda", "sakura", "sakura", "bamboo"],
+		"music": "tropical_tiki", "weather": ["blossom", "rain", "fog"], "layouts": ["zen", "stepping", "lookout", "springs"]},
+	"tokyo": {"name": "Tokyo Crossing", "place": "Japan", "region": "asia", "style": "asphalt", "floor": ["5a6078", "525870"], "edge": "3a4058", "bg": "2a2f48", "sky": "ffb3d4",
+		"pit": "void", "pit_c": "1a1d30", "wall": "ff5a8a", "accent": "27e9ff", "grass": "3ac0a0", "blocks": ["vending", "neon_block", "cone_stack"], "decor": ["skyscraper", "billboard", "tokyo_tower", "neon_tower", "skyscraper"],
+		"music": "gamer_final", "weather": ["rain", "night", "blossom"], "lane": "bullet_train", "layouts": ["rush_hour", "circuit", "crossing", "teleports"]},
+	"seoul": {"name": "Seoul Hanok Lanes", "place": "South Korea", "region": "asia", "style": "gravel", "floor": ["d9cfae", "cec39f"], "edge": "a89a78", "bg": "7a9a70", "sky": "c9ecff",
+		"pit": "water", "pit_c": "4cbad8", "wall": "4a5a7a", "accent": "ff6fb5", "grass": "4fa858", "blocks": ["stone_lantern", "lantern_post", "crate"], "decor": ["pagoda", "skyscraper", "sakura", "wall_tower"],
+		"music": "funk", "weather": ["snow", "rain", "blossom", "night"], "layouts": ["maze", "bazaar", "lookout", "spike_alley"]},
+	"greatwall": {"name": "The Great Wall", "place": "China", "region": "asia", "style": "cobble", "floor": ["c4baa0", "b8ae94"], "edge": "8f8670", "bg": "6a9a6a", "sky": "d9eef5",
+		"pit": "water", "pit_c": "4fb0c0", "wall": "b8ae96", "accent": "e8483f", "grass": "4a9a52", "blocks": ["wall_block", "lantern_post", "bamboo"], "decor": ["wall_tower", "mountain", "pagoda", "bamboo"],
+		"music": "cartoon_snitch", "weather": ["fog", "snow", "wind"], "lane": "cart", "layouts": ["castle", "maze", "fortress", "lookout"]},
+	"agra": {"name": "Agra Gardens", "place": "India", "region": "asia", "style": "marble", "floor": ["f4eee0", "ece4d2"], "edge": "cfc6b0", "bg": "7cc46a", "sky": "ffd9b8",
+		"pit": "water", "pit_c": "5ec8e0", "wall": "e8c98a", "accent": "ff9933", "grass": "43a553", "blocks": ["planter", "marble", "pottery"], "decor": ["taj", "cypress", "elephant", "tuk_tuk", "cypress"],
+		"music": "tropical_tiki", "weather": ["rain", "storm", "heat"], "lane": "tuk_tuk", "layouts": ["canals", "oasis", "zen", "crossing"]},
+	"bangkok": {"name": "Bangkok Floating Market", "place": "Thailand", "region": "asia", "style": "planks", "floor": ["d9a868", "cf9c5c"], "edge": "a8743c", "bg": "2ea8c8", "sky": "ffe9b8",
+		"pit": "water", "pit_c": "38b8c0", "wall": "e8483f", "accent": "ffc21f", "grass": "3f9f55", "blocks": ["lantern_post", "crate", "rugs"], "decor": ["stupa", "long_boat", "palm", "tuk_tuk"],
+		"music": "latin_samba", "weather": ["rain", "storm", "heat"], "lane": "tuk_tuk", "layouts": ["canals", "circuit", "bazaar", "stepping"]},
+	"cappadocia": {"name": "Cappadocia Balloons", "place": "Turkiye", "region": "asia", "style": "sand", "floor": ["ecd2a8", "e2c69a"], "edge": "c0a078", "bg": "c49a70", "sky": "ffe0c9",
+		"pit": "void", "pit_c": "6a4a3a", "wall": "c0986a", "accent": "e8483f", "grass": "8aa84f", "blocks": ["chimney_small", "rock", "pottery"], "decor": ["chimney", "hot_balloon", "chimney", "hot_balloon"],
+		"music": "cartoon_jaunty", "weather": ["wind", "snow", "heat"], "layouts": ["crater", "lookout", "pillars", "webs"]},
+	"paris": {"name": "Paris Boulevard", "place": "France", "region": "europe", "style": "cobble", "floor": ["c9c4bc", "bdb8b0"], "edge": "98938c", "bg": "86ad72", "sky": "d6e8f5",
+		"pit": "water", "pit_c": "5fb0c8", "wall": "5a6a8a", "accent": "e8483f", "grass": "4fa858", "blocks": ["cafe", "flower_box", "kiosk"], "decor": ["eiffel", "townhouse", "paris_lamp", "tree", "townhouse"],
+		"music": "cartoon_jaunty", "weather": ["rain", "fog", "wind"], "lane": "taxi", "layouts": ["bazaar", "rush_hour", "crossroads", "pillars"]},
+	"london": {"name": "Foggy London", "place": "United Kingdom", "region": "europe", "style": "brick", "floor": ["bfa89a", "b39c8e"], "edge": "8a7468", "bg": "7c9a70", "sky": "c4d0d8",
+		"pit": "water", "pit_c": "5a98b0", "wall": "c9403a", "accent": "1f3f8a", "grass": "4a9a52", "blocks": ["phone_box", "mailbox", "crate"], "decor": ["big_clock", "townhouse", "red_bus", "paris_lamp"],
+		"music": "rock_sock", "weather": ["fog", "rain", "storm"], "lane": "red_bus", "layouts": ["rush_hour", "maze", "lookout", "bridges"]},
+	"venice": {"name": "Venice Canals", "place": "Italy", "region": "europe", "style": "marble", "floor": ["ecdcc4", "e2d0b6"], "edge": "c0ac90", "bg": "3fa8b8", "sky": "ffe6cf",
+		"pit": "water", "pit_c": "3fb8b0", "wall": "c9604a", "accent": "2f4fd0", "grass": "4fa858", "blocks": ["mooring", "flower_box", "crate"], "decor": ["gondola", "palazzo", "bell_tower", "gondola"],
+		"music": "latin_samba", "weather": ["fog", "rain"], "layouts": ["canals", "stepping", "bridges", "tides"]},
+	"rome": {"name": "Roman Forum", "place": "Italy", "region": "europe", "style": "marble", "floor": ["e6dabc", "dccfae"], "edge": "b8aa88", "bg": "8fb06a", "sky": "c9ecff",
+		"pit": "void", "pit_c": "5a4a38", "wall": "e6d6b0", "accent": "c9302a", "grass": "5f9f55", "blocks": ["column", "statue", "amphora"], "decor": ["colosseum", "column", "cypress", "statue"],
+		"music": "rock_sock", "weather": ["heat", "storm"], "layouts": ["gladiator", "temple", "pillars", "crumble"]},
+	"santorini": {"name": "Santorini Cliffs", "place": "Greece", "region": "europe", "style": "marble", "floor": ["fbf8ef", "f2eee2"], "edge": "d4d0c4", "bg": "1f8fd0", "sky": "bfe9ff",
+		"pit": "water", "pit_c": "1f9fe0", "wall": "2a7fd0", "accent": "2a7fd0", "grass": "6fae5a", "blocks": ["white_house", "column", "amphora"], "decor": ["blue_dome", "white_house", "greek_mill", "cypress"],
+		"music": "tropical_beach", "weather": ["wind", "heat"], "layouts": ["crumble", "stepping", "tides", "pillars"]},
+	"holland": {"name": "Tulip Fields", "place": "Netherlands", "region": "europe", "style": "tulips", "floor": ["a8d86a", "9ccc5e"], "edge": "78a848", "bg": "5ca8d8", "sky": "cfeaff",
+		"pit": "water", "pit_c": "4cb0e0", "wall": "c9604a", "accent": "ff4f6a", "grass": "3f9f55", "blocks": ["tulip_pot", "hay", "clog_pair"], "decor": ["windmill", "canal_house", "tulip_row", "windmill", "tulip_row"],
+		"music": "kids_polka", "weather": ["wind", "rain", "fog"], "layouts": ["windmills", "canals", "twin_ponds", "zen"]},
+	"highlands": {"name": "Scottish Highlands", "place": "Scotland", "region": "europe", "style": "grass", "floor": ["a8b870", "9cac64"], "edge": "788a50", "bg": "7a6a9a", "sky": "c4d4e0",
+		"pit": "water", "pit_c": "4a88a8", "wall": "9a9a8a", "accent": "b768ff", "grass": "7a6ab0", "blocks": ["stone_wall", "rock", "hay"], "decor": ["castle", "sheep", "pine", "rock", "sheep"],
+		"music": "rock_sock", "weather": ["rain", "fog", "wind", "storm"], "lane": "sheep", "layouts": ["castle", "crossing", "lookout", "mudflats"]},
+	"nordic": {"name": "Northern Lights", "place": "Norway", "region": "europe", "style": "snow", "floor": ["e8f4fc", "dcebf6"], "edge": "b8d4e8", "bg": "2a4a7a", "sky": "1f3a6a", "aurora": true,
+		"pit": "water", "pit_c": "3a88c0", "wall": "6a4a3a", "accent": "6dffb0", "grass": "2f8a7a", "blocks": ["ice_block", "log_stack", "rock"], "decor": ["viking_ship", "pine_snow", "stave_hut", "igloo", "pine_snow"],
+		"music": "kids_polka", "weather": ["night", "snow", "hail"], "layouts": ["rink", "skatepark", "crumble", "stepping"]},
+	"newyork": {"name": "New York Blocks", "place": "United States", "region": "americas", "style": "asphalt", "floor": ["7a8094", "70768a"], "edge": "565c70", "bg": "4a5068", "sky": "bcd8f0",
+		"pit": "void", "pit_c": "2a2d40", "wall": "c9604a", "accent": "ffc21f", "grass": "4fa858", "blocks": ["hydrant", "crate", "cone_stack"], "decor": ["skyscraper", "liberty", "skyscraper", "water_tower"],
+		"music": "funk", "weather": ["snow", "rain", "night", "storm"], "lane": "taxi", "layouts": ["rush_hour", "crossing", "powder", "gauntlet"]},
+	"rockies": {"name": "Canadian Rockies", "place": "Canada", "region": "americas", "style": "snow", "floor": ["eef6fb", "e2edf5"], "edge": "c0d4e4", "bg": "5a8ab0", "sky": "bfe2ff",
+		"pit": "water", "pit_c": "4ab0d8", "wall": "a8743c", "accent": "e8282f", "grass": "3f8f65", "blocks": ["log_stack", "rock", "ice_block"], "decor": ["mountain", "pine_snow", "moose", "log_cabin", "pine_snow"],
+		"music": "kids_polka", "weather": ["snow", "hail", "fog"], "lane": "moose", "layouts": ["rink", "lookout", "crossing", "powder"]},
+	"yucatan": {"name": "Yucatan Temples", "place": "Mexico", "region": "americas", "style": "stone", "floor": ["c4c494", "b8b888"], "edge": "909068", "bg": "3f8f4a", "sky": "c9f0d0",
+		"pit": "water", "pit_c": "3fbfae", "wall": "9a9a78", "accent": "ff5a4e", "grass": "2f9a4e", "blocks": ["carved", "pillar", "cactus"], "decor": ["step_pyramid", "jungle_tree", "cactus", "banderitas", "step_pyramid"],
+		"music": "latin_samba", "weather": ["heat", "rain", "storm"], "layouts": ["temple", "webs", "hideout", "crumble"]},
+	"rio": {"name": "Rio Carnival", "place": "Brazil", "region": "americas", "style": "waves", "floor": ["f4e6c0", "ead8ac"], "edge": "c8b488", "bg": "2ec4e8", "sky": "9ff0ff",
+		"pit": "water", "pit_c": "2ad3e6", "wall": "35d07f", "accent": "ffd23f", "grass": "2fae4e", "blocks": ["drums", "crate", "barrel"], "decor": ["sugarloaf", "palm", "float", "toucan_tree", "banderitas"],
+		"music": "latin_samba", "weather": ["rain", "heat", "storm"], "lane": "float", "layouts": ["pinball", "tides", "bazaar", "skatepark"]},
+	"andes": {"name": "Andes Terraces", "place": "Peru", "region": "americas", "style": "stone", "floor": ["b8c88a", "accc7e"], "edge": "88a060", "bg": "6a8ab0", "sky": "cfe6f5",
+		"pit": "void", "pit_c": "4a5a6a", "wall": "9a9a8a", "accent": "e8483f", "grass": "4f9f55", "blocks": ["stone_wall", "rock", "hay"], "decor": ["mountain", "llama", "terrace", "pine", "llama"],
+		"music": "tropical_tiki", "weather": ["fog", "wind", "hail"], "lane": "llama", "layouts": ["crumble", "windmills", "lookout", "stepping"]},
+	"cairo": {"name": "Giza Sands", "place": "Egypt", "region": "africa", "style": "sand", "floor": ["f0d8a0", "e6cc92"], "edge": "c4a870", "bg": "e0b878", "sky": "ffe8bf",
+		"pit": "water", "pit_c": "3fc0c0", "wall": "c9a060", "accent": "2f5fd0", "grass": "6a9f4a", "blocks": ["sandstone", "pottery", "obelisk"], "decor": ["pyramid", "sphinx", "palm", "camel", "pyramid"],
+		"music": "cartoon_snitch", "weather": ["sand", "heat"], "lane": "camel", "layouts": ["sinking", "oasis", "temple", "gladiator"]},
+	"marrakesh": {"name": "Marrakesh Bazaar", "place": "Morocco", "region": "africa", "style": "zellige", "floor": ["e8a878", "de9c6c"], "edge": "b87850", "bg": "c9784a", "sky": "ffd9a8",
+		"pit": "water", "pit_c": "38b0b8", "wall": "c9604a", "accent": "1f8a9a", "grass": "5f9f55", "blocks": ["rugs", "pottery", "spices"], "decor": ["riad", "tent", "palm", "lantern_post", "riad"],
+		"music": "cartoon_snitch", "weather": ["sand", "heat"], "lane": "camel", "layouts": ["bazaar", "sinking", "powder", "maze"]},
+	"savanna": {"name": "Serengeti Savanna", "place": "Tanzania", "region": "africa", "style": "dry", "floor": ["e0c878", "d6bc6c"], "edge": "b09a50", "bg": "c4a850", "sky": "ffdca0",
+		"pit": "water", "pit_c": "4ab8c8", "wall": "b5763c", "accent": "e8483f", "grass": "a8a840", "blocks": ["termite", "rock", "hay"], "decor": ["acacia", "giraffe", "elephant", "acacia", "rock"],
+		"music": "tropical_island", "weather": ["heat", "storm", "sand"], "lane": "elephant", "layouts": ["crossing", "sinking", "lookout", "hideout"]},
+	"outback": {"name": "Aussie Outback", "place": "Australia", "region": "oceania", "style": "dry", "floor": ["e09a68", "d6905c"], "edge": "b06e40", "bg": "c46a3a", "sky": "ffcfa0",
+		"pit": "void", "pit_c": "7a3a20", "wall": "c9502f", "accent": "ffc21f", "grass": "8aa040", "blocks": ["red_rock", "termite", "road_sign"], "decor": ["red_mesa", "gum_tree", "kangaroo", "wind_pump", "gum_tree"],
+		"music": "rock_sock", "weather": ["heat", "sand", "wind", "storm"], "lane": "jeep", "layouts": ["sinking", "powder", "crossing", "gauntlet"]},
+	"hawaii": {"name": "Hawaiian Waves", "place": "Hawaii", "region": "oceania", "style": "sand", "floor": ["f8e4b0", "eed8a0"], "edge": "d4bc80", "bg": "1fb8d8", "sky": "aef2ff",
+		"pit": "water", "pit_c": "1fc4e0", "wall": "a06a3a", "accent": "ff5a7a", "grass": "2fae4e", "blocks": ["surf_rack", "rock", "tiki"], "decor": ["palm", "volcano_far", "tiki", "umbrella", "palm"],
+		"music": "tropical_beach", "weather": ["wind", "rain", "ash"], "layouts": ["crater", "tides", "springs", "pinball"]},
 }
 
-const THEME_ORDER := ["barrio", "beach", "schoolyard", "terraces", "terminal", "mangrove", "halo", "glacier", "ruins", "cove", "volcano", "spooky", "arcade", "moon"]
+const THEME_ORDER := ["barrio", "beach", "schoolyard", "terraces", "terminal", "mangrove", "halo", "glacier", "ruins", "cove", "volcano", "spooky", "arcade", "moon",
+	"kyoto", "tokyo", "seoul", "greatwall", "agra", "bangkok", "cappadocia", "paris", "london", "venice", "rome", "santorini", "holland", "highlands", "nordic",
+	"newyork", "rockies", "yucatan", "rio", "andes", "cairo", "marrakesh", "savanna", "outback", "hawaii"]
+## The first themes: places in the Philippines, and places that aren't anywhere.
+const OLD_THEME_INFO := {
+	"barrio": {"place": "Philippines", "region": "asia", "weather": ["rain", "heat", "storm"]},
+	"beach": {"place": "Philippines", "region": "asia", "weather": ["wind", "heat", "storm"]},
+	"terraces": {"place": "Philippines", "region": "asia", "weather": ["fog", "rain"]},
+	"terminal": {"place": "Philippines", "region": "asia", "weather": ["rain", "heat", "night"], "lane": "jeep"},
+	"mangrove": {"place": "Philippines", "region": "asia", "weather": ["rain", "fog"]},
+	"halo": {"place": "Dessert Dreamland", "region": "fantasy", "weather": ["blossom", "hail"]},
+	"schoolyard": {"place": "Your Own Backyard", "region": "fantasy", "weather": ["rain", "wind"]},
+	"glacier": {"place": "The Far North", "region": "fantasy", "weather": ["snow", "hail", "wind"]},
+	"ruins": {"place": "Lost Jungle", "region": "fantasy", "weather": ["fog", "rain", "storm"]},
+	"cove": {"place": "Pirate Seas", "region": "fantasy", "weather": ["storm", "wind", "fog"]},
+	"volcano": {"place": "Fire Island", "region": "fantasy", "weather": ["ash", "heat"]},
+	"spooky": {"place": "Somewhere Spooky", "region": "fantasy", "weather": ["night", "fog", "storm"]},
+	"arcade": {"place": "Inside the Machine", "region": "fantasy", "weather": ["night"]},
+	"moon": {"place": "The Moon", "region": "fantasy", "weather": ["meteors"]},
+}
+const REGIONS := [
+	{"id": "asia", "name": "Asia"}, {"id": "europe", "name": "Europe"}, {"id": "americas", "name": "Americas"},
+	{"id": "africa", "name": "Africa"}, {"id": "oceania", "name": "Oceania"}, {"id": "fantasy", "name": "Fantasy"},
+]
 ## The ground behind each base, added to the far edge of every layout, with a clear row above and below the field:
 ## room to come round the back of a base, and hedges, cover and crystals to bring you there.
 const YARDS := [
@@ -339,7 +875,10 @@ const YARDS := [
 	[".....", ".....", ".#.#.", ".....", ".....", ".#.#.", ".....", ".....", ".....", ".....", ".....", ".#.#.", ".....", ".....", ".#.#.", ".....", "....."],
 	[".....", ".~~..", ".~~..", ".....", ".....", "..gg.", "..gg.", ".....", ".....", ".....", "..gg.", "..gg.", ".....", ".....", ".~~..", ".~~..", "....."],
 ]
-const LAYOUT_ORDER := ["plaza", "crossroads", "twin_ponds", "zigzag", "fortress", "conveyors", "bouncy", "teleports", "rink", "mudflats", "hideout", "pillars", "bridges", "ringroad", "pinwheel", "gauntlet"]
+const LAYOUT_ORDER := ["plaza", "crossroads", "twin_ponds", "zigzag", "fortress", "conveyors", "bouncy", "teleports", "rink", "mudflats", "hideout", "pillars", "bridges", "ringroad", "pinwheel", "gauntlet",
+	"crumble", "rush_hour", "spike_alley", "windmills", "springs", "sinking", "lookout", "powder", "stepping", "webs", "tides", "temple", "bazaar", "circuit", "crater", "maze", "islands", "castle", "canals", "skatepark", "zen", "oasis", "pinball", "crossing", "gladiator"]
+## What the first themes step through, so their maps stay the same. The world themes choose their own (`layouts`).
+const FIRST_LAYOUTS := 16
 const MAPS_PER_THEME := 4
 
 static var _maps: Array[Dictionary] = []
@@ -352,11 +891,16 @@ static func all() -> Array[Dictionary]:
 	if _maps.is_empty():
 		var n := 0
 		for theme: String in THEME_ORDER:
+			var own: Array = THEMES[theme].get("layouts", [])
 			for i in MAPS_PER_THEME:
-				var layout: String = LAYOUT_ORDER[n % LAYOUT_ORDER.size()]
-				n += 1
+				var layout: String
+				if own.is_empty():
+					layout = LAYOUT_ORDER[n % FIRST_LAYOUTS]
+					n += 1
+				else:
+					layout = own[i]
 				var map := {"id": "%s_%s" % [theme, layout], "theme": theme, "layout": layout,
-					"name": "%s %s" % [THEMES[theme]["name"], LAYOUTS[layout]["name"]]}
+					"name": "%s: %s" % [THEMES[theme]["name"], LAYOUTS[layout]["name"]]}
 				_maps.append(map)
 				_by_id[map["id"]] = map
 	return _maps
@@ -365,6 +909,12 @@ static func all() -> Array[Dictionary]:
 static func by_id(id: String) -> Dictionary:
 	all()
 	return _by_id.get(id, {})
+
+
+## Where a theme is, what part of the world that's in, and what the weather can do there.
+static func theme_info(theme_id: String) -> Dictionary:
+	var theme: Dictionary = THEMES.get(theme_id, {})
+	return theme if theme.has("region") else OLD_THEME_INFO.get(theme_id, {})
 
 
 static func random_id(rng: RandomNumberGenerator = null) -> String:
@@ -436,17 +986,42 @@ static func build_grid(map_id: String) -> Dictionary:
 		var to: Vector2i = landings[JUMP_PADS[c]]
 		jumps[from.y * w + from.x] = to.y * w + to.x
 		jumps[(h - 1 - from.y if rot else from.y) * w + (w - 1 - from.x)] = (h - 1 - to.y if rot else to.y) * w + (w - 1 - to.x)
-	return {"w": w, "h": h, "tiles": tiles, "base": base, "jail": jail, "tele": tele, "jumps": jumps}
+	return {"w": w, "h": h, "tiles": tiles, "base": base, "jail": jail, "tele": tele, "jumps": jumps, "lanes": _find_lanes(tiles, w, h)}
 
 
 static func _with_yard(rows: Array, yard: Array) -> Array:
 	var out: Array = []
 	var width := String(rows[0]).length()
-	out.append(String(yard[0]) + ".".repeat(width))
+	out.append(String(yard[0]) + _edge_row(rows[0], width))
 	for i in rows.size():
 		out.append(String(yard[i + 1]) + String(rows[i]))
-	out.append(String(yard[rows.size() + 1]) + ".".repeat(width))
+	out.append(String(yard[rows.size() + 1]) + _edge_row(rows[rows.size() - 1], width))
 	return out
+
+
+## The clear row above and below the field, with any road carrying on through it.
+static func _edge_row(next_to: String, width: int) -> String:
+	var row := ""
+	for i in width:
+		row += "|" if next_to[i] == "|" else "."
+	return row
+
+
+## Each straight run of road down the field is one lane: {x, y0, y1} in metres, the middle of the road and its ends.
+static func _find_lanes(tiles: PackedByteArray, w: int, h: int) -> Array:
+	var lanes: Array = []
+	for x in w:
+		var y := 0
+		while y < h:
+			if tiles[y * w + x] != ROAD:
+				y += 1
+				continue
+			var from := y
+			while y < h and tiles[y * w + x] == ROAD:
+				y += 1
+			if y - from >= 4:
+				lanes.append({"x": (x + 0.5) * TILE, "y0": from * TILE, "y1": y * TILE, "down": x < w / 2})
+	return lanes
 
 
 static func _center(x: int, y: int) -> Vector2:
@@ -484,6 +1059,17 @@ static func _code(c: String) -> int:
 		"*": return ALTAR
 		"%": return FENCE
 		"o": return BUMPER
+		"s": return SPIKES
+		"c": return CRUMBLE
+		"a": return ARM
+		"|": return ROAD
+		"z": return GEYSER
+		"q": return QUICKSAND
+		"w": return TOWER
+		"x": return TNT
+		"n": return STONE
+		"y": return WEB
+		"T": return TIDE
 	return FLOOR
 
 

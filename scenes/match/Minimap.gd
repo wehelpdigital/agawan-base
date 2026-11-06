@@ -127,6 +127,30 @@ func _draw_field() -> void:
 					_field.draw_circle(rect.get_center(), tile.y * 0.18, Color("fff6e0"))
 				Maps.ALTAR:
 					_field.draw_circle(rect.get_center(), tile.y * 0.44, Color("7a6ad8"))
+				Maps.SPIKES:
+					_field.draw_rect(rect.grow(-tile.y * 0.1), Color("5a6480"))
+				Maps.CRUMBLE:
+					_field.draw_rect(rect.grow(-tile.y * 0.1), Color(theme["edge"]).darkened(0.2))
+				Maps.ROAD:
+					_field.draw_rect(rect, Color("3a4058"))
+				Maps.ARM:
+					_field.draw_circle(rect.get_center(), tile.y * 0.44, Color("ffc21f"))
+				Maps.GEYSER:
+					_field.draw_circle(rect.get_center(), tile.y * 0.4, Color("7ecfe8"))
+				Maps.QUICKSAND:
+					_field.draw_rect(rect, Color("c4a060"))
+				Maps.TOWER:
+					_field.draw_circle(rect.get_center(), tile.y * 0.44, Color("1a6fd0"))
+					_field.draw_circle(rect.get_center(), tile.y * 0.22, Color("7ee8ff"))
+				Maps.TNT:
+					_field.draw_rect(rect.grow(-tile.y * 0.1), Color("d8362f"))
+				Maps.STONE:
+					_field.draw_style_box(UiKit.style(Color(theme["pit_c"]), radius), rect.grow(overlap))
+					_field.draw_circle(rect.get_center(), tile.y * 0.34, Color("c9d4e6"))
+				Maps.WEB:
+					_field.draw_circle(rect.get_center(), tile.y * 0.36, Color("f4f6ff"))
+				Maps.TIDE:
+					_field.draw_rect(rect, Color(theme["pit_c"]).lerp(Color("d9c79a"), 0.55))
 	# The line, over everything but the players.
 	var thick := maxf(whole.y * 0.024, 3.0)
 	_field.draw_rect(Rect2(whole.x * 0.5 - thick * 0.5, 0, thick, whole.y), Color("fffdf4"))

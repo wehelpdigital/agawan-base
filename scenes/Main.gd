@@ -131,10 +131,10 @@ func _begin_practice(map_id: String, skill: float) -> void:
 	var seats := _bot_seats(rng, skill)
 	var my_team := rng.randi_range(0, 1)
 	seats[my_team] = _my_seat(my_team)  # Seats alternate teams, so seat 0 or 1 is on that team.
-	_start_match(map_id, seats, my_team, skill, false, true, "")
+	_start_match(map_id, seats, my_team, skill, false, true, "", 0, Profile.favorite_weather)
 
 
-func _start_match(map_id: String, seats: Array, local_id: int, skill: float, online: bool, host: bool, match_id: String, seed_value := 0) -> void:
+func _start_match(map_id: String, seats: Array, local_id: int, skill: float, online: bool, host: bool, match_id: String, seed_value := 0, weather := "") -> void:
 	_end_search()
 	ui.hide_all()
 	_ui_layer.visible = false
@@ -142,7 +142,7 @@ func _start_match(map_id: String, seats: Array, local_id: int, skill: float, onl
 	_runner.match_id = match_id
 	add_child(_runner)
 	_runner.finished.connect(_on_match_finished)
-	_runner.start(map_id, seats, local_id, skill, _world, _hud_root, online, host, seed_value)
+	_runner.start(map_id, seats, local_id, skill, _world, _hud_root, online, host, seed_value, weather)
 	_runner.hud.pause_pressed.connect(_on_pause)
 
 

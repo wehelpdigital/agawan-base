@@ -16,6 +16,7 @@ var _font_size := 24
 var _bounce := 1.0
 var _tween: Tween
 var _text := ""
+var _shown_off := false
 var _box_lip := StyleBoxFlat.new()
 var _box_body := StyleBoxFlat.new()
 var _box_gloss := StyleBoxFlat.new()
@@ -68,15 +69,22 @@ func _make_label(text: String) -> void:
 func set_kind(p_kind: String) -> void:
 	kind = p_kind
 	_colors = UiKit.BUTTON_COLORS.get(kind, UiKit.BUTTON_COLORS["yellow"])
-	var text_color: Color = _colors["text"]
-	if _label:
-		_label.add_theme_color_override("font_color", text_color)
-		if text_color == UiKit.WHITE:
-			_label.add_theme_color_override("font_outline_color", (_colors["lip"] as Color).darkened(0.15))
-			_label.add_theme_constant_override("outline_size", maxi(int(_font_size * 0.28), 5))
-		else:
-			_label.add_theme_constant_override("outline_size", 0)
+	_style_label()
 	queue_redraw()
+
+
+## Whatever colour the button normally is, one you can't press is black with white words, so it can always be read.
+func _style_label() -> void:
+	_shown_off = disabled
+	if _label == null:
+		return
+	var text_color: Color = UiKit.WHITE if disabled else _colors["text"]
+	_label.add_theme_color_override("font_color", text_color)
+	if text_color == UiKit.WHITE:
+		_label.add_theme_color_override("font_outline_color", UiKit.INK if disabled else (_colors["lip"] as Color).darkened(0.15))
+		_label.add_theme_constant_override("outline_size", maxi(int(_font_size * 0.28), 5))
+	else:
+		_label.add_theme_constant_override("outline_size", 0)
 
 
 func set_text(text: String) -> void:
@@ -128,12 +136,14 @@ func _paint() -> void:
 	var body_h := h - LIP
 	var r := int(minf(radius, h * 0.45))
 	var off := disabled
+	if off != _shown_off:
+		_style_label()
 	var low: Color = _colors["low"]
 	var top: Color = _colors["top"]
 	var lip: Color = _colors["lip"]
 	if off:
-		low = Color("141d30")
-		top = Color("2a3650")
+		low = UiKit.INK_SOFT
+		top = Color("33415f")
 		lip = UiKit.INK
 	if is_hovered() and not off and not pressed_now:
 		top = top.lightened(0.08)

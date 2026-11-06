@@ -7,7 +7,7 @@ extends RefCounted
 ##
 ## An avatar's look is a dictionary with one entry per slot (see default_look).
 
-const SLOTS := ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "dance", "emote", "trail", "aura", "burst", "frame", "title", "char", "skin"]
+const SLOTS := ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "flag", "pet", "run", "dance", "emote", "trail", "aura", "burst", "frame", "title", "char", "skin"]
 const SLOT_INFO := {
 	"face": {"name": "Faces", "icon": "emote"},
 	"mask": {"name": "Masks", "icon": "mask"},
@@ -17,6 +17,8 @@ const SLOT_INFO := {
 	"shoes": {"name": "Shoes", "icon": "shoes"},
 	"gloves": {"name": "Gloves", "icon": "gloves"},
 	"back": {"name": "Backs", "icon": "backpack"},
+	"flag": {"name": "Flags", "icon": "flag"},
+	"pet": {"name": "Pets", "icon": "paw"},
 	"run": {"name": "Run Styles", "icon": "dash"},
 	"dance": {"name": "Dances", "icon": "dance"},
 	"emote": {"name": "Emotes", "icon": "emote"},
@@ -30,6 +32,8 @@ const SLOT_INFO := {
 }
 ## The shop's top row. Accessories come first; avatars are one choice among them.
 const GROUPS: Array[Dictionary] = [
+	{"id": "world", "name": "World", "icon": "globe", "slots": ["flag"]},
+	{"id": "pets", "name": "Pets", "icon": "paw", "slots": ["pet"]},
 	{"id": "wear", "name": "Wear", "icon": "mask", "slots": ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back"]},
 	{"id": "moves", "name": "Moves", "icon": "dance", "slots": ["run", "dance", "emote"]},
 	{"id": "effects", "name": "Effects", "icon": "aura", "slots": ["trail", "aura", "burst"]},
@@ -37,7 +41,12 @@ const GROUPS: Array[Dictionary] = [
 	{"id": "avatars", "name": "Avatars", "icon": "avatar", "slots": ["char", "skin"]},
 ]
 ## Slots whose shop card is a picture of the item alone, rendered from its 3D model.
-const BAKED_SLOTS := ["char", "face", "mask", "hat", "top", "pants", "shoes", "gloves", "back"]
+const BAKED_SLOTS := ["char", "face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "pet"]
+## The World tab's second row: a flag for everyone, then everything from each part of the planet.
+const REGIONS: Array[Dictionary] = [
+	{"id": "asia", "name": "Asia"}, {"id": "europe", "name": "Europe"}, {"id": "americas", "name": "Americas"},
+	{"id": "africa", "name": "Africa"}, {"id": "oceania", "name": "Oceania"},
+]
 const RARITY := {
 	"free": {"name": "Free", "color": Color("0a1426"), "coins": 0, "gems": 0},
 	"common": {"name": "Common", "color": Color("6fcf6a"), "coins": 200, "gems": 0},
@@ -46,7 +55,9 @@ const RARITY := {
 	"legend": {"name": "Legendary", "color": Color("ffc21f"), "coins": 0, "gems": 120},
 }
 ## Atlas cells in assets/fx/atlas.png.
-enum Fx { SOFT, STAR, HEART, SPARK, RING, FLAME, LEAF, NOTE, PIXEL, PUFF, SNOW, COIN, BOLT, PETAL, DROP, CONFETTI }
+enum Fx { SOFT, STAR, HEART, SPARK, RING, FLAME, LEAF, NOTE, PIXEL, PUFF, SNOW, COIN, BOLT, PETAL, DROP, CONFETTI,
+	MAPLE, CLOVER, PAW, FISH, LANTERN, SKULL, SMILE, CROWN, DIAMOND, MOON, SUN, PIZZA, BANANA, FEATHER, SWIRL, STREAK, CHERRY, TULIP, ZZZ, BEE }
+const FX_GRID := 6  ## The atlas is this many cells across and down.
 
 ## The look you wear when nothing's happening. You still pull all the others as the game goes on.
 const FACES: Array[Dictionary] = [
@@ -91,20 +102,20 @@ const MASKS: Array[Dictionary] = [
 	{"id": "snorkel", "name": "Snorkel", "cover": "eyes", "rarity": "common"},
 	{"id": "panda", "name": "Panda Face", "cover": "whole", "rarity": "common"},
 	{"id": "tiger", "name": "Tiger Face", "cover": "whole", "rarity": "rare"},
-	{"id": "luchador", "name": "Luchador", "cover": "whole", "rarity": "rare"},
+	{"id": "luchador", "name": "Luchador", "cover": "whole", "rarity": "rare", "region": "americas", "from": "Mexico"},
 	{"id": "clown", "name": "Clown Face", "cover": "plate", "rarity": "rare"},
-	{"id": "tiki", "name": "Tiki Mask", "cover": "whole", "rarity": "rare"},
-	{"id": "kitsune", "name": "Fox Spirit", "cover": "plate", "rarity": "rare"},
+	{"id": "tiki", "name": "Tiki Mask", "cover": "whole", "rarity": "rare", "region": "oceania", "from": "Polynesia"},
+	{"id": "kitsune", "name": "Fox Spirit", "cover": "plate", "rarity": "rare", "region": "asia", "from": "Japan"},
 	{"id": "pixel", "name": "Pixel Visor", "cover": "eyes", "rarity": "rare"},
-	{"id": "oni", "name": "Ogre Mask", "cover": "plate", "rarity": "epic"},
+	{"id": "oni", "name": "Ogre Mask", "cover": "plate", "rarity": "epic", "region": "asia", "from": "Japan"},
 	{"id": "skull", "name": "Skull Face", "cover": "plate", "rarity": "epic"},
 	{"id": "plague", "name": "Beak Mask", "cover": "plate", "rarity": "epic"},
 	{"id": "knight", "name": "Knight Visor", "cover": "whole", "rarity": "epic"},
 	{"id": "robot", "name": "Robo Face", "cover": "whole", "rarity": "epic"},
 	{"id": "pumpkin", "name": "Pumpkin Head", "cover": "whole", "rarity": "epic"},
-	{"id": "masskara", "name": "MassKara Smile", "cover": "plate", "rarity": "legend", "blurb": "The smiling festival mask of Bacolod."},
-	{"id": "higante", "name": "Higante Giant", "cover": "whole", "rarity": "legend", "blurb": "A papier-mache giant head, as paraded in Angono."},
-	{"id": "moriones", "name": "Roman Morion", "cover": "whole", "no_hat": true, "rarity": "legend", "blurb": "After the carved Holy Week helmets of Marinduque."},
+	{"id": "masskara", "name": "MassKara Smile", "cover": "plate", "rarity": "legend", "region": "asia", "from": "Philippines", "blurb": "The smiling festival mask of Bacolod."},
+	{"id": "higante", "name": "Higante Giant", "cover": "whole", "rarity": "legend", "region": "asia", "from": "Philippines", "blurb": "A papier-mache giant head, as paraded in Angono."},
+	{"id": "moriones", "name": "Roman Morion", "cover": "whole", "no_hat": true, "rarity": "legend", "region": "asia", "from": "Philippines", "blurb": "After the carved helmets of Marinduque."},
 	{"id": "golden", "name": "Golden Face", "cover": "plate", "rarity": "legend"},
 	{"id": "galaxy", "name": "Starfield Face", "cover": "plate", "rarity": "legend"},
 ]
@@ -129,7 +140,7 @@ const TOPS: Array[Dictionary] = [
 	{"id": "dots", "name": "Polka Dots", "rarity": "common", "style": "dots", "c": "ff6fb5", "c2": "ffffff"},
 	{"id": "jersey", "name": "Hoops Jersey", "rarity": "common", "style": "jersey", "c": "e8483f", "c2": "ffffff"},
 	{"id": "aloha", "name": "Island Shirt", "rarity": "rare", "style": "floral", "c": "19b8d6", "c2": "ffd23f"},
-	{"id": "barong", "name": "Barong", "rarity": "rare", "style": "barong", "c": "fff6dd", "c2": "d9b774", "blurb": "Fine embroidered Filipino formal wear."},
+	{"id": "barong", "name": "Barong", "rarity": "rare", "style": "barong", "c": "fff6dd", "c2": "d9b774", "region": "asia", "from": "Philippines", "blurb": "Fine embroidered formal wear."},
 	{"id": "varsity", "name": "Varsity Jacket", "rarity": "rare", "style": "varsity", "c": "2b2466", "c2": "ffd23f"},
 	{"id": "overalls", "name": "Overalls", "rarity": "rare", "style": "overalls", "c": "3f7fd0", "c2": "ffb21f"},
 	{"id": "gi", "name": "Ninja Gi", "rarity": "epic", "style": "gi", "c": "2b2448", "c2": "e8483f"},
@@ -152,7 +163,7 @@ const PANTS: Array[Dictionary] = [
 	{"id": "board", "name": "Board Shorts", "rarity": "rare", "style": "floral", "c": "ff7a3c", "c2": "fff1a8"},
 	{"id": "pajama", "name": "Pajamas", "rarity": "rare", "style": "dots", "c": "9fb4ff", "c2": "ffffff"},
 	{"id": "tutu", "name": "Tutu", "rarity": "rare", "style": "tutu", "c": "ff9fd8", "c2": "ffffff"},
-	{"id": "kilt", "name": "Tartan Kilt", "rarity": "epic", "style": "kilt", "c": "c9302a", "c2": "24135f"},
+	{"id": "kilt", "name": "Tartan Kilt", "rarity": "epic", "style": "kilt", "c": "c9302a", "c2": "24135f", "region": "europe", "from": "Scotland"},
 	{"id": "grass", "name": "Grass Skirt", "rarity": "epic", "style": "grass", "c": "6ccf5a", "c2": "d9c25a"},
 	{"id": "armor", "name": "Plate Legs", "rarity": "epic", "style": "armor", "c": "c5d0e6", "c2": "8f97b0"},
 	{"id": "neon", "name": "Neon Racers", "rarity": "legend", "style": "track", "c": "ff2fc0", "c2": "27e9ff"},
@@ -163,7 +174,7 @@ const PANTS: Array[Dictionary] = [
 const SHOES: Array[Dictionary] = [
 	{"id": "", "name": "Avatar's Own", "rarity": "free"},
 	{"id": "sneakers", "name": "Sneakers", "rarity": "free", "style": "sneaker", "c": "f6f3ff", "c2": "ff5a4e"},
-	{"id": "tsinelas", "name": "Tsinelas", "rarity": "free", "style": "slipper", "c": "3aa6ff", "c2": "ffffff", "blurb": "The Filipino flip-flop, also good for throwing."},
+	{"id": "tsinelas", "name": "Tsinelas", "rarity": "free", "style": "slipper", "c": "3aa6ff", "c2": "ffffff", "region": "asia", "from": "Philippines", "blurb": "The flip-flop, also good for throwing."},
 	{"id": "hitops", "name": "Hi-Tops", "rarity": "common", "style": "hitop", "c": "e8483f", "c2": "ffffff"},
 	{"id": "rainboots", "name": "Rain Boots", "rarity": "common", "style": "boot", "c": "ffd23f", "c2": "e8a81f"},
 	{"id": "cowboy", "name": "Cowboy Boots", "rarity": "rare", "style": "boot", "c": "9a5f30", "c2": "e0b35e"},
@@ -210,7 +221,7 @@ const HEROES: Array[Dictionary] = [
 	{"id": "lani", "name": "Lani", "rarity": "free", "kind": "kid", "skin": "d99a68", "hair": "5c2f1e", "style": "ponytail", "top": "35d07f", "low": "ffb52e", "shoe": "ff6fb5", "blurb": "Has never lost at tag. Has also never admitted to losing at tag."},
 	{"id": "bong", "name": "Bong", "rarity": "free", "kind": "kid", "skin": "c98a58", "hair": "33221c", "style": "bowl", "top": "3aa6ff", "low": "2f5fd0", "shoe": "ffd23f", "blurb": "Quiet, sneaky, and behind you. No, the other behind."},
 	{"id": "maya", "name": "Maya", "rarity": "common", "kind": "kid", "skin": "f0c090", "hair": "8a4a24", "style": "buns", "top": "ff6fb5", "low": "ffffff", "shoe": "7f5cff", "blurb": "Named after a tiny bird. Eats like a big one."},
-	{"id": "rafael", "name": "Rafael", "rarity": "common", "kind": "kid", "skin": "b87a4c", "hair": "3a2618", "style": "mohawk", "top": "ffd23f", "low": "ff7a3c", "shoe": "ff5a4e", "blurb": "Louder than the fiesta band. The band has complained."},
+	{"id": "rafael", "name": "Rafael", "rarity": "common", "kind": "kid", "skin": "b87a4c", "hair": "3a2618", "style": "mohawk", "top": "ffd23f", "low": "ff7a3c", "shoe": "ff5a4e", "blurb": "Louder than the marching band. The band has complained."},
 	{"id": "tala", "name": "Tala", "rarity": "rare", "kind": "kid", "skin": "e0a874", "hair": "e8eaff", "style": "long", "top": "7f5cff", "low": "35b8d0", "shoe": "bff3ff", "blurb": "Runs by starlight. Walks into poles by daylight."},
 	{"id": "bantay", "name": "Bantay", "rarity": "common", "kind": "animal", "animal": "dog", "fur": "c98a4a", "belly": "fff1d6", "accent": "ff5a4e", "blurb": "Very good boy. Guards the base. Forgot which one."},
 	{"id": "muning", "name": "Muning", "rarity": "common", "kind": "animal", "animal": "cat", "fur": "ffb04d", "belly": "fff6e6", "accent": "35d07f", "blurb": "Knocks your power card off the table. On purpose. While looking at you."},
@@ -224,7 +235,7 @@ const HEROES: Array[Dictionary] = [
 	{"id": "halo", "name": "Halo", "rarity": "epic", "kind": "mascot", "shape": "cup", "main": "cfeeff", "second": "b57cff", "accent": "ff6fb5", "blurb": "Shaved ice, sweet beans, constant brain freeze."},
 	{"id": "botbot", "name": "Botbot", "rarity": "epic", "kind": "mascot", "shape": "robot", "main": "8fd0ff", "second": "ffd23f", "accent": "27e9ff", "blurb": "Calculated your route. Calculated your snack. Ate your snack."},
 	{"id": "multo", "name": "Multo", "rarity": "epic", "kind": "mascot", "shape": "ghost", "main": "eef1ff", "second": "c9c4ff", "accent": "7f5cff", "blurb": "Says boo. Then says sorry."},
-	{"id": "kosmo", "name": "Kosmo", "rarity": "legend", "kind": "mascot", "shape": "alien", "main": "6dffb0", "second": "2b2466", "accent": "ff6fb5", "blurb": "Came for the base, stayed for the fiesta. Third eye is for the buffet."},
+	{"id": "kosmo", "name": "Kosmo", "rarity": "legend", "kind": "mascot", "shape": "alien", "main": "6dffb0", "second": "2b2466", "accent": "ff6fb5", "blurb": "Came for the base, stayed for the party. Third eye is for the buffet."},
 	{"id": "apoy", "name": "Apoy", "rarity": "legend", "kind": "mascot", "shape": "flame", "main": "ff7a1f", "second": "ffd23f", "accent": "ff3f3f", "blurb": "Loves hugs. Nobody has survived one."},
 	{"id": "yelo", "name": "Yelo", "rarity": "legend", "kind": "mascot", "shape": "crystal", "main": "9fe6ff", "second": "e8fbff", "accent": "5a7dff", "blurb": "A cool head, in the most literal way. Please close the door."},
 ]
@@ -232,7 +243,7 @@ const HEROES: Array[Dictionary] = [
 ## Outfit colours: repaint the main and accent colours of any hero.
 const SKINS: Array[Dictionary] = [
 	{"id": "", "name": "Classic", "rarity": "free", "a": "", "b": ""},
-	{"id": "fiesta", "name": "Fiesta", "rarity": "common", "a": "ff4f8b", "b": "ffd23f"},
+	{"id": "fiesta", "name": "Party", "rarity": "common", "a": "ff4f8b", "b": "ffd23f"},
 	{"id": "ocean", "name": "Ocean", "rarity": "common", "a": "19b8d6", "b": "e6fdff"},
 	{"id": "forest", "name": "Forest", "rarity": "common", "a": "2f9a4e", "b": "c9f28a"},
 	{"id": "sunset", "name": "Sunset", "rarity": "common", "a": "ff7a3c", "b": "b0245f"},
@@ -251,27 +262,27 @@ const SKINS: Array[Dictionary] = [
 const HATS: Array[Dictionary] = [
 	{"id": "", "name": "No Hat", "rarity": "free"},
 	{"id": "cap", "name": "Ball Cap", "rarity": "free"},
-	{"id": "salakot", "name": "Salakot", "rarity": "common"},
+	{"id": "salakot", "name": "Salakot", "rarity": "common", "region": "asia", "from": "Philippines"},
 	{"id": "party", "name": "Party Hat", "rarity": "common"},
 	{"id": "headphones", "name": "Headphones", "rarity": "common"},
 	{"id": "bow", "name": "Big Bow", "rarity": "common"},
 	{"id": "headband", "name": "Headband", "rarity": "common"},
 	{"id": "beanie", "name": "Beanie", "rarity": "common"},
 	{"id": "flowers", "name": "Flower Crown", "rarity": "rare"},
-	{"id": "cowboy", "name": "Cowboy Hat", "rarity": "rare"},
+	{"id": "cowboy", "name": "Cowboy Hat", "rarity": "rare", "region": "americas", "from": "United States"},
 	{"id": "propeller", "name": "Propeller Cap", "rarity": "rare"},
 	{"id": "chef", "name": "Chef Hat", "rarity": "rare"},
 	{"id": "tophat", "name": "Top Hat", "rarity": "rare"},
 	{"id": "pirate", "name": "Pirate Hat", "rarity": "rare"},
-	{"id": "sombrero", "name": "Sombrero", "rarity": "rare"},
-	{"id": "viking", "name": "Viking Helm", "rarity": "epic"},
+	{"id": "sombrero", "name": "Sombrero", "rarity": "rare", "region": "americas", "from": "Mexico"},
+	{"id": "viking", "name": "Viking Helm", "rarity": "epic", "region": "europe", "from": "Norway"},
 	{"id": "wizard", "name": "Wizard Hat", "rarity": "epic"},
 	{"id": "santa", "name": "Holiday Hat", "rarity": "epic"},
 	{"id": "halo_ring", "name": "Halo", "rarity": "epic"},
 	{"id": "horns", "name": "Little Horns", "rarity": "epic"},
 	{"id": "astronaut", "name": "Space Helmet", "rarity": "epic"},
 	{"id": "crown", "name": "Golden Crown", "rarity": "legend"},
-	{"id": "parol_hat", "name": "Parol Crown", "rarity": "legend"},
+	{"id": "parol_hat", "name": "Parol Crown", "rarity": "legend", "region": "asia", "from": "Philippines"},
 	{"id": "ufo", "name": "Tiny UFO", "rarity": "legend"},
 ]
 
@@ -288,7 +299,7 @@ const BACKS: Array[Dictionary] = [
 	{"id": "jetpack", "name": "Jetpack", "rarity": "epic"},
 	{"id": "angel", "name": "Angel Wings", "rarity": "epic"},
 	{"id": "bat", "name": "Bat Wings", "rarity": "epic"},
-	{"id": "parol", "name": "Parol Lantern", "rarity": "legend"},
+	{"id": "parol", "name": "Parol Lantern", "rarity": "legend", "region": "asia", "from": "Philippines"},
 	{"id": "dragon", "name": "Dragon Wings", "rarity": "legend"},
 ]
 
@@ -355,7 +366,7 @@ const DANCES: Array[Dictionary] = [
 	{"id": "spin", "name": "Spinner", "rarity": "common"},
 	{"id": "twist", "name": "The Twist", "rarity": "rare"},
 	{"id": "robot", "name": "Robot Moves", "rarity": "rare"},
-	{"id": "tinikling", "name": "Bamboo Hop", "rarity": "epic"},
+	{"id": "tinikling", "name": "Bamboo Hop", "rarity": "epic", "region": "asia", "from": "Philippines"},
 	{"id": "flip", "name": "Backflip", "rarity": "epic"},
 	{"id": "superstar", "name": "Superstar", "rarity": "legend"},
 ]
@@ -365,18 +376,18 @@ const EMOTES: Array[Dictionary] = [
 	{"id": "gg", "name": "GG", "rarity": "free", "text": "GG"},
 	{"id": "nice", "name": "Nice!", "rarity": "free", "text": "Nice!"},
 	{"id": "help", "name": "Help!", "rarity": "free", "text": "Help!"},
-	{"id": "hoy", "name": "Hoy!", "rarity": "common", "text": "Hoy!"},
+	{"id": "hoy", "name": "Hoy!", "rarity": "common", "text": "Hoy!", "region": "asia", "from": "Filipino"},
 	{"id": "oops", "name": "Oops", "rarity": "common", "text": "Oops"},
 	{"id": "haha", "name": "Haha", "rarity": "common", "text": "Haha!"},
 	{"id": "lets_go", "name": "Let's Go!", "rarity": "common", "text": "Let's go!"},
-	{"id": "ayos", "name": "Ayos!", "rarity": "rare", "text": "Ayos!"},
-	{"id": "takbo", "name": "Takbo!", "rarity": "rare", "text": "Takbo!"},
+	{"id": "ayos", "name": "Ayos!", "rarity": "rare", "text": "Ayos!", "region": "asia", "from": "Filipino"},
+	{"id": "takbo", "name": "Takbo!", "rarity": "rare", "text": "Takbo!", "region": "asia", "from": "Filipino"},
 	{"id": "too_slow", "name": "Too Slow", "rarity": "rare", "text": "Too slow!"},
 	{"id": "on_me", "name": "On Me", "rarity": "rare", "text": "On me!"},
-	{"id": "panalo", "name": "Panalo!", "rarity": "epic", "text": "Panalo!"},
+	{"id": "panalo", "name": "Panalo!", "rarity": "epic", "text": "Panalo!", "region": "asia", "from": "Filipino"},
 	{"id": "catch_me", "name": "Catch Me", "rarity": "epic", "text": "Catch me!"},
 	{"id": "boss", "name": "Boss Move", "rarity": "legend", "text": "Boss move."},
-	{"id": "fiesta", "name": "Fiesta!", "rarity": "legend", "text": "FIESTA!"},
+	{"id": "fiesta", "name": "Party!", "rarity": "legend", "text": "PARTY!"},
 ]
 const DEFAULT_EMOTES: Array[String] = ["hi", "gg", "nice", "help"]
 
@@ -396,7 +407,7 @@ const FRAMES: Array[Dictionary] = [
 
 const TITLES: Array[Dictionary] = [
 	{"id": "", "name": "New Runner", "rarity": "free"},
-	{"id": "barrio_kid", "name": "Barrio Kid", "rarity": "free"},
+	{"id": "barrio_kid", "name": "Block Kid", "rarity": "free"},
 	{"id": "tag_rookie", "name": "Tag Rookie", "rarity": "common"},
 	{"id": "fresh", "name": "Stay Fresh", "rarity": "common"},
 	{"id": "runner", "name": "Road Runner", "rarity": "common"},
@@ -407,19 +418,28 @@ const TITLES: Array[Dictionary] = [
 	{"id": "power_hungry", "name": "Power Hungry", "rarity": "rare"},
 	{"id": "sneaky", "name": "Sneaky Grass", "rarity": "rare"},
 	{"id": "guardian", "name": "Base Guardian", "rarity": "rare"},
-	{"id": "fiesta_king", "name": "Fiesta Royalty", "rarity": "epic"},
+	{"id": "fiesta_king", "name": "Party Royalty", "rarity": "epic"},
 	{"id": "untouchable", "name": "Untouchable", "rarity": "epic"},
 	{"id": "jailbreaker", "name": "Jailbreaker", "rarity": "epic"},
 	{"id": "tag_master", "name": "Tag Master", "rarity": "epic"},
-	{"id": "agawan_legend", "name": "Agawan Legend", "rarity": "legend"},
+	{"id": "agawan_legend", "name": "Base Legend", "rarity": "legend"},
 	{"id": "the_goat", "name": "Number One Fan", "rarity": "legend"},
-	{"id": "kapitan", "name": "Barangay Captain", "rarity": "legend"},
+	{"id": "kapitan", "name": "Team Captain", "rarity": "legend"},
 ]
 
 static var _index := {}
+static var _lists := {}
 
 
 static func list(slot: String) -> Array[Dictionary]:
+	if not _lists.has(slot):
+		var both: Array[Dictionary] = []
+		both.assign(_own_list(slot) + _world_list(slot))
+		_lists[slot] = both
+	return _lists[slot]
+
+
+static func _own_list(slot: String) -> Array:
 	match slot:
 		"char": return HEROES
 		"mask": return MASKS
@@ -439,7 +459,41 @@ static func list(slot: String) -> Array[Dictionary]:
 		"face": return FACES
 		"frame": return FRAMES
 		"title": return TITLES
+		"flag": return Flags.ALL
+		"pet": return WorldItems.PETS
 	return []
+
+
+static func _world_list(slot: String) -> Array:
+	match slot:
+		"char": return WorldItems.HEROES
+		"mask": return WorldItems.MASKS
+		"top": return WorldItems.TOPS
+		"pants": return WorldItems.PANTS
+		"shoes": return WorldItems.SHOES
+		"gloves": return WorldItems.GLOVES
+		"run": return WorldItems.RUNS
+		"skin": return WorldItems.SKINS
+		"hat": return WorldItems.HATS
+		"back": return WorldItems.BACKS
+		"trail": return WorldItems.TRAILS
+		"aura": return WorldItems.AURAS
+		"burst": return WorldItems.BURSTS
+		"dance": return WorldItems.DANCES
+		"emote": return WorldItems.EMOTES
+		"frame": return WorldItems.FRAMES
+		"title": return WorldItems.TITLES
+	return []
+
+
+## Everything from one part of the world, across every kind of item: [{slot, id}].
+static func from_region(region: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for slot: String in SLOTS:
+		for entry: Dictionary in list(slot):
+			if entry.get("region", "") == region and slot != "flag":
+				out.append({"slot": slot, "id": entry["id"]})
+	return out
 
 
 static func item(slot: String, id: String) -> Dictionary:
@@ -474,7 +528,7 @@ static func total_items() -> int:
 
 
 static func default_look() -> Dictionary:
-	return {"char": "kiko", "skin": "", "face": "", "mask": "", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
+	return {"char": "kiko", "skin": "", "face": "", "mask": "", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "flag": "", "pet": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
 
 
 ## A believable random outfit, for bots.
@@ -482,8 +536,9 @@ static func random_look(rng: RandomNumberGenerator, fancy := 0.5) -> Dictionary:
 	var look := default_look()
 	for slot: String in ["mask", "top", "pants", "shoes"]:
 		look[slot] = ""
-	look["char"] = String(HEROES[rng.randi_range(0, HEROES.size() - 1)]["id"])
-	for slot: String in ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "run", "trail", "aura", "burst"]:
+	var heroes := list("char")
+	look["char"] = String(heroes[rng.randi_range(0, heroes.size() - 1)]["id"])
+	for slot: String in ["face", "mask", "hat", "top", "pants", "shoes", "gloves", "back", "flag", "pet", "run", "trail", "aura", "burst"]:
 		if rng.randf() < fancy:
 			var entries := list(slot)
 			look[slot] = String(entries[rng.randi_range(0, entries.size() - 1)]["id"])

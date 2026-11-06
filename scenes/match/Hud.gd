@@ -29,6 +29,10 @@ var _announce: Label
 var _announce_big: Label
 var _feed_box: VBoxContainer
 var _status_label: Label
+var _weather_chip: PanelContainer
+var _weather_icon: TextureRect
+var _wind_arrow: Control
+var _weather_shown := ""
 var _side_pill: PanelContainer
 var _side_text: Label
 var _side_shown := ""
@@ -131,6 +135,7 @@ func _build() -> void:
 	_side_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_side_pill.visible = false
 	add_child(_side_pill)
+	_build_weather_chip()
 	_side_text = UiKit.title("", 17)
 	_side_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_side_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -214,6 +219,39 @@ func _score_side(team: int) -> Control:
 	_score_pips[shown] = pips
 	row.set_meta("color", color)
 	return row
+
+
+## A small round chip under the map: what the sky is doing, and which way the wind is pushing.
+func _build_weather_chip() -> void:
+	_weather_chip = PanelContainer.new()
+	_weather_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := UiKit.style(UiKit.PAPER, 18, 3, UiKit.INK)
+	box.content_margin_left = 6
+	box.content_margin_right = 8
+	box.content_margin_top = 2
+	box.content_margin_bottom = 2
+	_weather_chip.add_theme_stylebox_override("panel", box)
+	var row := UiKit.hbox(4)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_weather_chip.add_child(row)
+	_weather_icon = UiKit.icon("w_sun", 26)
+	row.add_child(_weather_icon)
+	_wind_arrow = WindArrow.new()
+	_wind_arrow.custom_minimum_size = Vector2(26, 26)
+	row.add_child(_wind_arrow)
+	add_child(_weather_chip)
+
+
+func _update_weather_chip() -> void:
+	if sim.weather != _weather_shown:
+		_weather_shown = sim.weather
+		_weather_icon.texture = UiKit.icon_texture(String(Weather.def(sim.weather)["icon"]))
+		_weather_chip.visible = sim.weather != "clear"
+	_wind_arrow.visible = sim.wind.length() > 0.3
+	if _wind_arrow.visible:
+		(_wind_arrow as WindArrow).way = sim.wind.rotated(view.view_yaw())
+	_weather_chip.reset_size()
+	_weather_chip.position = _mini.global_position - global_position + Vector2(0.0, _mini.size.y + 8.0)
 
 
 func _build_emotes() -> void:
@@ -404,6 +442,7 @@ func refresh() -> void:
 	_refresh_side(me)
 	_refresh_hints(delta, me)
 	_refresh_countdown()
+	_update_weather_chip()
 	_mini.view_rect = view.ground_view()
 	_mini.queue_redraw()
 	if Settings.fps_counter:

@@ -27,6 +27,12 @@ func _draw() -> void:
 	if _thumb:
 		draw_texture_rect(_thumb, rect, false)
 		return
+	if _slot == "flag" and _id != "":
+		var flag := Flags.texture(_id, true)
+		var w := side * 0.92
+		var h := w * float(flag.get_height()) / flag.get_width()
+		draw_texture_rect(flag, Rect2((size - Vector2(w, h)) * 0.5, Vector2(w, h)), false)
+		return
 	var center := size * 0.5
 	var tint: Color = Color.WHITE if _entry["rarity"] == "free" else (Cosmetics.RARITY[_entry["rarity"]]["color"] as Color).lightened(0.3)
 	match _slot:
@@ -85,7 +91,7 @@ func _draw_particles(center: Vector2, side: float) -> void:
 		return
 	var cell := int(_entry["fx"])
 	var colors: Array = _entry["c"]
-	var src := Rect2(Vector2(cell % 4, cell / 4) * 128.0, Vector2(128, 128))
+	var src := Rect2(Vector2(cell % Cosmetics.FX_GRID, cell / Cosmetics.FX_GRID) * 128.0, Vector2(128, 128))
 	var ring: Color = Color(_entry["ring"]) if _entry.has("ring") else Color(0, 0, 0, 0)
 	if ring.a > 0.0:
 		draw_arc(center + Vector2(0, side * 0.2), side * 0.32, 0.0, TAU, 28, ring, 5.0, true)

@@ -10,11 +10,12 @@ const FACE := [3.7, 1.1]
 const ZOOM_OUT_MOST := -0.6  ## Past the whole avatar, for the widest hats and wings.
 const FOCUS := {
 	"face": [3.1, 1.08], "mask": [3.7, 1.1], "hat": [4.6, 1.42], "top": [3.6, 0.5], "gloves": [3.8, 0.45], "pants": [3.1, 0.28],
-	"shoes": [2.7, 0.14], "back": [5.4, 0.8],
+	"shoes": [2.7, 0.14], "back": [5.4, 0.8], "flag": [6.6, 1.1], "pet": [5.0, 0.55],
 }
 const MAX_SIDE := 1400.0
 
 var avatar: Avatar3D
+var pet: Pet3D
 var fx: FxField
 var preview_slot := ""
 var zoomable := false  ## Shows zoom buttons, and lets the wheel and a pinch zoom too.
@@ -83,12 +84,17 @@ func _ready() -> void:
 	avatar = Avatar3D.new()
 	world.add_child(avatar)
 	avatar.gag_started.connect(_say)
+	pet = Pet3D.new()
+	pet.position = Vector3(0.92, 0, 0.22)
+	pet.rotation.y = -0.55
+	world.add_child(pet)
 	avatar.calm = preview_slot == "face"
 	fx = FxField.new(120)
 	fx.density = 0.6 if Quality.is_low() else 1.0
 	world.add_child(fx)
 	if not _look.is_empty():
 		avatar.setup(_look, ArenaBuilder.team_color(0))
+		pet.setup(str(_look.get("pet", "")))
 	avatar.rotation.y = _yaw
 	resized.connect(_fit_viewport)
 	resized.connect(_apply_zoom)
@@ -120,8 +126,8 @@ func set_look(look: Dictionary, slot := "") -> void:
 	_apply_zoom()
 	if not (same_slot and _turned):  # Having turned the avatar to look at something, you keep that view.
 		_turned = false
-		_yaw_locked = slot in ["face", "mask", "hat", "back", "shoes", "pants", "top", "gloves"]
-		_want_yaw = PI + 0.5 if slot == "back" else 0.42
+		_yaw_locked = slot in ["face", "mask", "hat", "back", "flag", "shoes", "pants", "top", "gloves"]
+		_want_yaw = PI + 0.5 if slot == "back" else (PI - 0.7 if slot == "flag" else 0.42)
 		if slot != "":
 			_auto_yaw = not _yaw_locked
 	if avatar == null:
@@ -129,6 +135,9 @@ func set_look(look: Dictionary, slot := "") -> void:
 	avatar.calm = slot == "face"
 	if not same:
 		avatar.setup(_look, ArenaBuilder.team_color(0))
+		pet.setup(str(_look.get("pet", "")))
+		if slot == "pet":
+			pet.cheer(0.9)
 	_apply_preview()
 
 
@@ -212,6 +221,7 @@ func _process(delta: float) -> void:
 	elif _auto_yaw:  # Left alone, it sways a little and keeps looking at you.
 		_yaw = lerp_angle(_yaw, sin(Time.get_ticks_msec() * 0.00045) * 0.38, clampf(delta * 3.0, 0.0, 1.0))
 	avatar.rotation.y = _yaw
+	pet.idle(delta)
 	_distance = lerpf(_distance, _want_distance, clampf(delta * 5.0, 0.0, 1.0))
 	_height = lerpf(_height, _want_height, clampf(delta * 5.0, 0.0, 1.0))
 	_camera.position = Vector3(0, _height + 0.14 * _distance, _distance + 0.5)

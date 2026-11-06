@@ -15,6 +15,9 @@ extends RefCounted
 ##   that the team that took the most prisoners.
 ## One rule is ours, because camping is no fun on a screen: stay on your own base for 5 seconds and the
 ## pad pops you off it.
+##
+## Then there's the world around them: map elements that run on a beat (see the constants below), and the weather
+## (core/data/Weather.gd), which changes how far you can see, how well your feet grip and which way the wind shoves you.
 
 const TICK := 1.0 / 30.0
 const RADIUS := 0.62
@@ -45,6 +48,25 @@ const ALTAR_REGROW := 13.0
 const BUMPER_KICK := 26.0
 const BUSH_SIGHT := 3.5  ## Enemies this close can see you in a bush. Walk in too and you find each other.
 const CHARGE_TIME := 6.0  ## How long a fountain or a Fresh card lets you tag anyone, on either side of the line.
+const SPIKE_CYCLE := 6.0  ## Spikes are up for the last SPIKE_UP seconds of every cycle...
+const SPIKE_UP := 1.7
+const SPIKE_WARN := 1.0  ## ...and they start to tremble this long before.
+const CRUMBLE_DELAY := 1.0  ## How long a crumbling floor lasts once you're on it...
+const CRUMBLE_BACK := 8.0  ## ...and how long until it grows back.
+const ARM_SPEED := 1.15  ## Radians a second.
+const ARM_REACH := 4.6  ## Metres either side of the middle.
+const LANE_SPEED := 15.0
+const LANE_GAP := 30.0  ## Metres of empty road between one vehicle and the next.
+const VEHICLE_HALF := 2.3
+const GEYSER_CYCLE := 5.5
+const GEYSER_BLOW := 0.55
+const STONE_CYCLE := 9.0
+const STONE_SUNK := 3.0
+const TNT_BACK := 18.0
+const TNT_R := 4.6
+const WEB_BACK := 11.0
+const TIDE_CYCLE := 16.0
+const TIDE_HIGH := 6.0
 const COUNTDOWN := 3.0
 const SCORED_PAUSE := 3.2
 const MAX_POWERS := 2
@@ -54,11 +76,13 @@ enum Phase { COUNTDOWN, PLAY, SCORED, END }
 enum State { PLAY, JAIL }
 
 ## Statuses that stop you moving.
-const HELD := ["stun", "freeze", "root"]
+const HELD := ["stun", "freeze", "root", "dance", "sleep", "bubble", "charging"]
+## Bad things Cheer Squad and Rewind shake off.
+const SHAKEN_OFF := ["stun", "freeze", "root", "dance", "sleep", "bubble", "slow", "slip", "reverse", "fear", "blind", "stale", "chicken", "mini", "potato"]
 ## Short names of statuses in snapshots (index -> name).
 const STATUS_NAMES: Array[String] = ["speed", "speed2", "slow", "stun", "freeze", "root", "slip", "reverse", "fear",
 	"blind", "shield", "ghost", "invis", "giant", "tiny", "overcharge", "stale", "chain", "mirror", "fastcap",
-	"dashboost", "firetrail"]
+	"dashboost", "firetrail", "charging", "slam", "roll", "chicken", "dance", "sleep", "carpet", "mini", "bubble", "angel", "orbit", "moon", "turbo", "potato"]
 
 
 class Player:
@@ -106,6 +130,11 @@ class Player:
 	var spin_left := 0.0  ## The newest power, while its reel is still spinning.
 	var brain := {}  ## The bot's memory (BotBrain.gd).
 	var away := false  ## An online player whose connection dropped: a bot plays for them.
+	var history: Array[Vector2] = []  ## Where they've been lately, for Rewind.
+	var history_cd := 0.0
+	var slam_r := 4.6
+	var slam_push := 20.0
+	var slam_stun := 1.2
 
 
 var map_id := ""
@@ -153,10 +182,28 @@ var fountains := {}  ## Fountain tile -> when it's full again.
 var altars := {}  ## Altar tile -> when it grows its next crystal.
 var _bumpers := PackedInt32Array()
 var _vaulting := false  ## A dash is going over a low fence right now.
+var _flying := false  ## A magic carpet is over whatever's below it right now.
+var weather := "clear"
+var weather_home := "clear"  ## What it goes back to after a Weather Machine.
+var weather_until := -1.0
+var wind := Vector2.ZERO
+var sight_range := 0.0  ## From the weather: how far you can see. 0 is the whole field.
+var _wind_goal := Vector2.ZERO
+var _wind_left := 2.0
+var _strike_left := 3.0
+var _grip := 22.0
+var _speed_factor := 1.0
+var lanes: Array = []  ## Roads: {x, y0, y1, down}.
+var arms: Array = []  ## Spinning arms: [{at, dir}].
+var crumbles := {}  ## Tile -> when it falls (positive), or -(when it comes back) once it has.
+var tnt := {}  ## Tile -> when a blown crate comes back.
+var webs := {}  ## Tile -> when a used web grows back.
+var last_power := ""  ## For Copycat.
+var _potato_cd := 0.0
 
 
 ## seats: [{name, team?, bot, skill, look}], up to 10; missing seats become bots at `difficulty`.
-func setup(p_map_id: String, seats: Array, seed_value := 0, p_difficulty := 0.6) -> void:
+func setup(p_map_id: String, seats: Array, seed_value := 0, p_difficulty := 0.6, p_weather := "") -> void:
 	map_id = p_map_id
 	difficulty = p_difficulty
 	if seed_value != 0:
@@ -171,14 +218,19 @@ func setup(p_map_id: String, seats: Array, seed_value := 0, p_difficulty := 0.6)
 	jail = grid["jail"]
 	tele = grid["tele"]
 	jumps = grid["jumps"]
+	lanes = grid["lanes"]
 	fountains = {}
 	altars = {}
+	arms = []
 	_bumpers = PackedInt32Array()
 	for i in w * h:
 		match tiles[i]:
 			Maps.FOUNTAIN: fountains[i] = 0.0
 			Maps.ALTAR: altars[i] = rng.randf_range(2.0, 8.0)
 			Maps.BUMPER: _bumpers.append(i)
+			Maps.ARM: arms.append({"at": tile_center(i), "dir": 1.0 if i % w < w / 2 else -1.0})
+	set_weather(p_weather if p_weather != "" else Weather.roll(Maps.theme_info(Maps.by_id(map_id).get("theme", "")), rng))
+	weather_home = weather
 	_collect_pickup_tiles()
 	wave_next = [rng.randf_range(10.0, 20.0), rng.randf_range(10.0, 20.0)]
 	players.clear()
@@ -241,12 +293,16 @@ func _reset_round(first := false) -> void:
 			p.dash_cd = 0.0
 			p.status.clear()
 			p.brain.clear()
+			p.history.clear()
 	cap = [0.0, 0.0]
 	capturing = [0, 0]
 	zones.clear()
 	shots.clear()
 	ents.clear()
 	walls.clear()
+	crumbles.clear()
+	tnt.clear()
+	webs.clear()
 	if first:
 		pickups.clear()
 
@@ -277,19 +333,121 @@ func tile_at(at: Vector2) -> int:
 
 func _blocks_feet(i: int) -> bool:
 	match tiles[i]:
-		Maps.SOLID, Maps.PIT, Maps.BUMPER:
+		Maps.SOLID, Maps.ARM:
 			return true
+		Maps.PIT, Maps.BUMPER:
+			if not _flying:
+				return true
 		Maps.GATE:
 			if gates_shut():
 				return true
 		Maps.FENCE:
-			if not _vaulting:
+			if not _vaulting and not _flying:
+				return true
+		Maps.TNT:
+			if tnt_here(i):
+				return true
+		Maps.STONE:
+			if not _flying and stone_sunk(i):
+				return true
+		Maps.CRUMBLE:
+			if not _flying and crumble_gone(i):
 				return true
 	return walls.has(i) and walls[i] > t
 
 
 func _blocks_shots(i: int) -> bool:
-	return tiles[i] == Maps.SOLID or (tiles[i] == Maps.GATE and gates_shut()) or (walls.has(i) and walls[i] > t)
+	match tiles[i]:
+		Maps.SOLID, Maps.ARM:
+			return true
+		Maps.GATE:
+			if gates_shut():
+				return true
+		Maps.TNT:
+			if tnt_here(i):
+				return true
+	return walls.has(i) and walls[i] > t
+
+
+func spikes_up() -> bool:
+	return fmod(t, SPIKE_CYCLE) >= SPIKE_CYCLE - SPIKE_UP
+
+
+func spikes_warning() -> bool:
+	var at := fmod(t, SPIKE_CYCLE)
+	return at >= SPIKE_CYCLE - SPIKE_UP - SPIKE_WARN and at < SPIKE_CYCLE - SPIKE_UP
+
+
+func crumble_gone(i: int) -> bool:
+	return float(crumbles.get(i, 0.0)) < 0.0
+
+
+## 0 solid, up to 1 about to go.
+func crumble_shake(i: int) -> float:
+	var at := float(crumbles.get(i, 0.0))
+	return clampf(1.0 - (at - t) / CRUMBLE_DELAY, 0.0, 1.0) if at > 0.0 else 0.0
+
+
+func tnt_here(i: int) -> bool:
+	return float(tnt.get(i, -1.0)) <= t
+
+
+func web_here(i: int) -> bool:
+	return float(webs.get(i, -1.0)) <= t
+
+
+## Stones take it in turns: every other one is up.
+func stone_sunk(i: int) -> bool:
+	var turn := STONE_CYCLE * 0.5 if (i % w + i / w) % 2 == 0 else 0.0
+	return fmod(t + turn, STONE_CYCLE) >= STONE_CYCLE - STONE_SUNK
+
+
+func stone_warning(i: int) -> bool:
+	var turn := STONE_CYCLE * 0.5 if (i % w + i / w) % 2 == 0 else 0.0
+	var at := fmod(t + turn, STONE_CYCLE)
+	return at >= STONE_CYCLE - STONE_SUNK - 1.0 and at < STONE_CYCLE - STONE_SUNK
+
+
+func geyser_blowing(i: int) -> bool:
+	return fmod(t + float(i % 3) * 1.7, GEYSER_CYCLE) < GEYSER_BLOW
+
+
+func geyser_warning(i: int) -> bool:
+	return fmod(t + float(i % 3) * 1.7, GEYSER_CYCLE) >= GEYSER_CYCLE - 1.2
+
+
+func tide_high() -> bool:
+	return fmod(t, TIDE_CYCLE) >= TIDE_CYCLE - TIDE_HIGH
+
+
+## How far in the sea is, 0 to 1, for drawing: it comes in and goes out over a second or two.
+func tide_level() -> float:
+	var at := fmod(t, TIDE_CYCLE)
+	var from := TIDE_CYCLE - TIDE_HIGH
+	return clampf((at - from + 1.5) / 1.5, 0.0, 1.0) * clampf((TIDE_CYCLE - at + 0.0) / 1.2 + 0.0, 0.0, 1.0)
+
+
+func arm_angle(arm: Dictionary) -> float:
+	return t * ARM_SPEED * float(arm["dir"])
+
+
+## Where the vehicle on this lane has got to, down the road.
+func lane_at(lane: Dictionary) -> float:
+	var span: float = float(lane["y1"]) - float(lane["y0"])
+	var loop: float = span + LANE_GAP
+	var run := fmod(t * LANE_SPEED + float(lane["x"]) * 3.0, loop) - VEHICLE_HALF
+	return float(lane["y0"]) + run if lane["down"] else float(lane["y1"]) - run
+
+
+func set_weather(id: String) -> void:
+	weather = id if Weather.ALL.has(id) else "clear"
+	var def := Weather.def(weather)
+	sight_range = float(def["sight"])
+	_grip = float(def["grip"])
+	_speed_factor = float(def["speed"])
+	if float(def["wind"]) <= 0.0:
+		_wind_goal = Vector2.ZERO
+	_wind_left = 0.0
 
 
 ## Every gate on the field moves together, so you can learn the beat.
@@ -324,6 +482,11 @@ func clear_line(a: Vector2, b: Vector2, for_shot := false) -> bool:
 	return true
 
 
+## Bots go round all of this: what stops feet, and what they'd rather not step on unless they mean to.
+const BOT_KEEPS_OFF := [Maps.SOLID, Maps.PIT, Maps.BUMPER, Maps.FENCE, Maps.DASH_R, Maps.DASH_L, Maps.DASH_U, Maps.DASH_D, Maps.JUMP,
+	Maps.ARM, Maps.TNT, Maps.STONE, Maps.SPIKES, Maps.GEYSER, Maps.QUICKSAND, Maps.WEB]
+
+
 ## Distances (in tiles) from every tile to tile `target`, walking; cached for the whole match.
 func flow_field(target: int) -> PackedInt32Array:
 	if _flow.has(target):
@@ -352,7 +515,7 @@ func flow_field(target: int) -> PackedInt32Array:
 				continue
 			var code := tiles[ni]
 			# Bots walk round anything that throws them about; they choose to use those (see BotBrain).
-			if code in [Maps.SOLID, Maps.PIT, Maps.BUMPER, Maps.FENCE, Maps.DASH_R, Maps.DASH_L, Maps.DASH_U, Maps.DASH_D, Maps.JUMP]:
+			if code in BOT_KEEPS_OFF:
 				continue
 			dist[ni] = next
 			queue.append(ni)
@@ -401,13 +564,15 @@ func can_tag(a: Player, b: Player) -> bool:
 		return false
 	if has_status(a, "ghost") or has_status(b, "ghost") or is_airborne(a) or is_airborne(b):
 		return false
+	if has_status(a, "chicken") or has_status(a, "roll") or has_status(b, "roll") or has_status(a, "bubble") or has_status(b, "bubble"):
+		return false
 	return fresh_value(a) > fresh_value(b)
 
 
 func radius_of(p: Player) -> float:
 	if has_status(p, "giant"):
 		return RADIUS * 1.7
-	if has_status(p, "tiny"):
+	if has_status(p, "tiny") or has_status(p, "mini"):
 		return RADIUS * 0.6
 	return RADIUS
 
@@ -424,9 +589,24 @@ func speed_of(p: Player) -> float:
 		s *= 0.92
 	if has_status(p, "slow"):
 		s *= 0.5
-	if tile_at(p.pos) == Maps.MUD and not has_status(p, "ghost"):
-		s *= 0.6
-	return s
+	if has_status(p, "mini"):
+		s *= 0.72
+	if has_status(p, "turbo"):
+		s *= 1.8
+	if has_status(p, "roll"):
+		s *= 1.7
+	if has_status(p, "carpet"):
+		s *= 1.25
+	elif not has_status(p, "ghost"):
+		match tile_at(p.pos):
+			Maps.MUD:
+				s *= 0.6
+			Maps.QUICKSAND:
+				s *= 0.46
+			Maps.TIDE:
+				if tide_high():
+					s *= 0.55
+	return s * _speed_factor
 
 
 func is_held(p: Player) -> bool:
@@ -438,16 +618,33 @@ func is_held(p: Player) -> bool:
 
 ## Hidden from `team`'s eyes? (Invisible, or deep in tall grass with nobody close.)
 func is_hidden_from(p: Player, team: int) -> bool:
-	if p.team == team or radar[team] > t:
+	if p.team == team or radar[team] > t or p.state != State.PLAY:
 		return false
 	if has_status(p, "invis"):
 		return true
-	if tile_at(p.pos) != Maps.GRASS:
+	if has_status(p, "potato") or _under_cloud(p):  # Nobody can hide with a hot potato, or their own personal cloud.
 		return false
+	var nearest := INF
 	for other: Player in team_of(team):
-		if other.state == State.PLAY and other.pos.distance_to(p.pos) < 3.5:
-			return false
-	return true
+		if other.state == State.PLAY:
+			nearest = minf(nearest, other.pos.distance_to(p.pos))
+	if nearest >= BUSH_SIGHT and (tile_at(p.pos) == Maps.GRASS or _in_smoke(p)):
+		return true
+	return sight_range > 0.0 and nearest > sight_range
+
+
+func _in_smoke(p: Player) -> bool:
+	for z: Dictionary in zones:
+		if z["fx"] == "smoke" and int(z["team"]) == p.team and p.pos.distance_to(z["pos"]) < float(z["r"]):
+			return true
+	return false
+
+
+func _under_cloud(p: Player) -> bool:
+	for z: Dictionary in zones:
+		if z["fx"] == "cloud" and int(z.get("target", -1)) == p.id:
+			return true
+	return false
 
 
 # --- The tick -------------------------------------------------------------------------------------
@@ -477,6 +674,7 @@ func step(dt: float = TICK) -> void:
 	_tick_clock(dt)
 	if phase != Phase.PLAY:
 		return
+	_tick_weather(dt)
 	for p in players:
 		if p.bot or p.away:
 			_brain.think(self, p, dt)
@@ -492,6 +690,7 @@ func step(dt: float = TICK) -> void:
 	_tick_zones(dt)
 	_tick_ents(dt)
 	_tick_walls()
+	_tick_hazards(dt)
 	if phase == Phase.PLAY:
 		_check_wipeout()
 
@@ -561,13 +760,19 @@ func _tick_player(p: Player, dt: float) -> void:
 	if p.state == State.JAIL:
 		_tick_jailed(p, dt)
 		return
-	if p.want_dash and p.dash_cd <= 0.0 and not is_held(p) and not is_airborne(p):
+	if p.want_dash and p.dash_cd <= 0.0 and not is_held(p) and not is_airborne(p) and not has_status(p, "chicken") and not has_status(p, "roll"):
 		_start_dash(p)
 	p.want_dash = false
-	if p.want_use and can_use_power(p) and not is_held(p) and not is_airborne(p):
+	if p.want_use and can_use_power(p) and not is_held(p) and not is_airborne(p) and not has_status(p, "chicken"):
 		_use_power(p)
 	p.want_use = false
 	_move(p, dt)
+	p.history_cd -= dt
+	if p.history_cd <= 0.0:
+		p.history_cd = 0.25
+		p.history.append(p.pos)
+		if p.history.size() > 16:
+			p.history.remove_at(0)
 	if on_home_side(p) and not is_airborne(p):
 		p.fresh = maxf(p.fresh, t)
 	var home_d: float = p.pos.distance_to(base[p.team])
@@ -608,8 +813,10 @@ func _expire_statuses(p: Player) -> void:
 	for name: String in p.status.keys():
 		if float(p.status[name]) <= t:
 			p.status.erase(name)
-			if name == "ghost" or name == "giant":
+			if name == "ghost" or name == "giant" or name == "carpet":
 				_unstick(p)
+			elif name == "potato":
+				_potato_bang(p)
 
 
 func _tick_jailed(p: Player, dt: float) -> void:
@@ -641,9 +848,13 @@ func _start_dash(p: Player) -> void:
 	if has_status(p, "reverse"):
 		dir = -dir
 	p.dash_dir = dir.normalized()
-	p.dash_left = DASH_TIME
-	p.dash_cd = DASH_COOLDOWN
+	p.dash_cd = DASH_COOLDOWN * float(Weather.def(weather)["dash"])
 	p.status.erase("invis")
+	if has_status(p, "moon"):
+		_launch(p, (p.pos + p.dash_dir * 8.0).clamp(Vector2.ONE, arena_size() - Vector2.ONE), 0.55)
+		_event("jump", p.id, -1, p.pos.x, p.pos.y)
+		return
+	p.dash_left = DASH_TIME
 	_event("dash", p.id, -1, p.pos.x, p.pos.y)
 
 
@@ -657,6 +868,9 @@ func _move(p: Player, dt: float) -> void:
 			p.pad_cd = 0.6
 			_unstick(p)
 			_event("land", p.id, -1, p.pos.x, p.pos.y)
+			if has_status(p, "slam"):
+				p.status.erase("slam")
+				_blast(p.pos, p.slam_r, p.slam_push, p.slam_stun, p.team, p)
 		return
 	var input := p.mv.limit_length(1.0)
 	if has_status(p, "reverse"):
@@ -667,35 +881,45 @@ func _move(p: Player, dt: float) -> void:
 		input = Vector2.ZERO
 	var code := tile_at(p.pos)
 	var ghost := has_status(p, "ghost")
-	var slippery := (code == Maps.ICE or has_status(p, "slip")) and not ghost
+	var flying := has_status(p, "carpet")
+	var slippery := (code == Maps.ICE or has_status(p, "slip") or has_status(p, "turbo")) and not ghost and not flying
 	var desired := input * speed_of(p)
 	if p.dash_left > 0.0:
 		p.dash_left -= dt
 		p.vel = p.dash_dir * DASH_SPEED
 	else:
-		p.vel = p.vel.lerp(desired, clampf((3.0 if slippery else 22.0) * dt, 0.0, 1.0))
+		p.vel = p.vel.lerp(desired, clampf((3.0 if slippery else _grip) * dt, 0.0, 1.0))
 	if input.length() > 0.1 and not is_held(p):
 		p.face = p.face.slerp(input.normalized(), clampf(16.0 * dt, 0.0, 1.0)).normalized()
 	var total := p.vel + p.kb
-	if not ghost:
+	if not ghost and not flying:
 		match code:
 			Maps.CON_R: total.x += 5.0
 			Maps.CON_L: total.x -= 5.0
 			Maps.CON_U: total.y -= 5.0
 			Maps.CON_D: total.y += 5.0
+			Maps.QUICKSAND:  # It drags you to the middle of whichever bit you're in; a dash gets you out.
+				total += (tile_center(tile_index(p.pos)) - p.pos).limit_length(1.0) * 4.5
+	if not p.on_base:
+		total += wind
 	p.kb *= exp(-7.0 * dt)
 	if p.kb.length() < 0.05:
 		p.kb = Vector2.ZERO
 	_vaulting = p.dash_left > 0.0
+	_flying = flying
 	p.pos = move_circle(p.pos, total * dt, radius_of(p), ghost)
+	_flying = false
 	_vaulting = false
-	if ghost:
+	if p.dash_left > 0.0:
+		_dash_into_crates(p)
+	if ghost or flying:
 		return
 	_touch_bumpers(p)
-	if p.pad_cd > 0.0:
-		return
 	var here := tile_index(p.pos)
 	if here < 0:
+		return
+	_touch_floor(p, here)
+	if p.pad_cd > 0.0:
 		return
 	match tiles[here]:
 		Maps.DASH_R: _floor_dash(p, Vector2.RIGHT)
@@ -728,6 +952,209 @@ func _floor_dash(p: Player, dir: Vector2) -> void:
 	p.pad_cd = 0.14
 	p.status.erase("invis")
 	_event("boost", p.id, -1, p.pos.x, p.pos.y)
+
+
+## What the floor does to you just for being on it, however you got there.
+func _touch_floor(p: Player, here: int) -> void:
+	match tiles[here]:
+		Maps.SPIKES:
+			if spikes_up() and p.bump_cd <= 0.0 and not p.on_base:
+				p.bump_cd = 0.8
+				p.kb += p.vel.normalized() * -9.0
+				_apply_cc(p, {"stun": 0.8}, null)
+				_event("spiked", p.id, -1, p.pos.x, p.pos.y)
+		Maps.CRUMBLE:
+			if not crumbles.has(here):
+				crumbles[here] = t + CRUMBLE_DELAY
+				var at := tile_center(here)
+				_event("crack", -1, -1, at.x, at.y)
+		Maps.GEYSER:
+			if geyser_blowing(here) and p.pad_cd <= 0.0:
+				var to := _free_spot_near(p.pos, 6.0, 11.0)
+				_launch(p, to, 0.8)
+				_event("geyser", p.id, -1, p.pos.x, p.pos.y)
+		Maps.WEB:
+			if web_here(here):
+				webs[here] = t + WEB_BACK
+				_apply_cc(p, {"root": 1.3}, null)
+				_event("webbed", p.id, -1, p.pos.x, p.pos.y)
+		Maps.TOWER:
+			if float(radar[p.team]) < t:
+				_event("lookout", p.id, p.team, p.pos.x, p.pos.y)
+			radar[p.team] = maxf(float(radar[p.team]), t + 1.0)
+
+
+func _free_spot_near(at: Vector2, near: float, far: float) -> Vector2:
+	for _try in 16:
+		var spot: Vector2 = at + Vector2.RIGHT.rotated(rng.randf() * TAU) * rng.randf_range(near, far)
+		var i := tile_index(spot)
+		if i >= 0 and not _blocks_feet(i) and tiles[i] not in [Maps.GEYSER, Maps.SPIKES, Maps.CRUMBLE, Maps.ROAD]:
+			return tile_center(i)
+	return at
+
+
+func _dash_into_crates(p: Player) -> void:
+	var ahead := tile_index(p.pos + p.dash_dir * (radius_of(p) + 0.35))
+	if ahead >= 0 and tiles[ahead] == Maps.TNT and tnt_here(ahead):
+		_blow_crate(ahead)
+
+
+## Up it goes, along with anyone next to it, on either team, and any other crate close enough.
+func _blow_crate(tile: int) -> void:
+	tnt[tile] = t + TNT_BACK
+	var at := tile_center(tile)
+	_event("boom", -1, -1, at.x, at.y)
+	_blast(at, TNT_R, 20.0, 1.0, -1, null)
+	for other in w * h:
+		if tiles[other] == Maps.TNT and tnt_here(other) and tile_center(other).distance_to(at) < TNT_R:
+			_blow_crate(other)
+
+
+## Knocks away and stuns everyone in reach. `team` is who it's on the side of; -1 means nobody's safe.
+func _blast(at: Vector2, reach: float, push: float, stun: float, team: int, from: Player) -> void:
+	_event("boom", -1, -1, at.x, at.y)
+	for e: Player in players:
+		if e.team == team or e.state != State.PLAY or is_airborne(e) or e.on_base or has_status(e, "ghost") or is_free_walking(e):
+			continue
+		var d := e.pos.distance_to(at)
+		if d < reach + radius_of(e) * 0.5:
+			_apply_cc(e, {"stun": stun}, from)
+			if not has_status(e, "mirror"):
+				e.kb += (e.pos - at).normalized() * push
+
+
+## Everything on the field that moves by itself.
+func _tick_hazards(dt: float) -> void:
+	_potato_cd = maxf(_potato_cd - dt, 0.0)
+	for tile: int in crumbles.keys():
+		var at := float(crumbles[tile])
+		if at > 0.0 and t >= at:
+			crumbles[tile] = -(t + CRUMBLE_BACK)
+			var spot := tile_center(tile)
+			_event("crumble", -1, -1, spot.x, spot.y)
+		elif at < 0.0 and t >= -at:
+			crumbles.erase(tile)
+	for p: Player in players:
+		if p.state != State.PLAY or is_airborne(p):
+			continue
+		var ghost := has_status(p, "ghost")
+		var here := tile_index(p.pos)
+		_flying = has_status(p, "carpet")
+		if not ghost and here >= 0 and _blocks_feet(here) and tiles[here] in [Maps.STONE, Maps.CRUMBLE]:
+			_unstick(p)
+			_apply_cc(p, {"stun": 0.6}, null)
+			_event("fell", p.id, -1, p.pos.x, p.pos.y)
+		_flying = false
+		if has_status(p, "roll"):
+			_roll_over(p)
+		if has_status(p, "orbit"):
+			_orbit_shove(p)
+		if has_status(p, "potato") and _potato_cd <= 0.0:
+			_pass_potato(p)
+		if ghost or p.on_base or is_free_walking(p) or p.bump_cd > 0.0:
+			continue
+		_touch_arms(p)
+		_touch_traffic(p)
+
+
+func _touch_arms(p: Player) -> void:
+	for arm: Dictionary in arms:
+		var center: Vector2 = arm["at"]
+		var d := p.pos - center
+		if d.length() > ARM_REACH + radius_of(p):
+			continue
+		var along := Vector2.RIGHT.rotated(arm_angle(arm))
+		if absf(d.cross(along)) < radius_of(p) + 0.34:
+			var way := along.orthogonal() * (1.0 if d.dot(along.orthogonal()) > 0.0 else -1.0)
+			p.kb += way * 22.0
+			p.bump_cd = 0.7
+			_apply_cc(p, {"stun": 0.4}, null)
+			_event("bump", p.id, -1, p.pos.x, p.pos.y)
+			return
+
+
+func _touch_traffic(p: Player) -> void:
+	for lane: Dictionary in lanes:
+		if absf(p.pos.x - float(lane["x"])) > 1.1 + radius_of(p):
+			continue
+		if absf(p.pos.y - lane_at(lane)) < VEHICLE_HALF + radius_of(p):
+			var side := 1.0 if p.pos.x >= float(lane["x"]) else -1.0
+			p.kb += Vector2(side * 20.0, 12.0 if lane["down"] else -12.0)
+			p.bump_cd = 1.2
+			_apply_cc(p, {"stun": 1.0}, null)
+			_event("run_over", p.id, -1, p.pos.x, p.pos.y)
+			return
+
+
+func _roll_over(p: Player) -> void:
+	for e: Player in team_of(1 - p.team):
+		if e.state != State.PLAY or is_airborne(e) or e.on_base or has_status(e, "ghost") or is_free_walking(e):
+			continue
+		if e.pos.distance_to(p.pos) < radius_of(p) + radius_of(e) + 0.25 and float(e.status.get("burnt", -1.0)) <= t:
+			e.status["burnt"] = t + 1.0
+			e.kb += (e.pos - p.pos).normalized() * 22.0
+			_apply_cc(e, {"stun": 0.8}, p)
+			_event("hit", e.id, p.id, e.pos.x, e.pos.y, "cannonball")
+
+
+func _orbit_shove(p: Player) -> void:
+	for e: Player in team_of(1 - p.team):
+		if e.state != State.PLAY or is_airborne(e) or e.on_base or has_status(e, "ghost") or is_free_walking(e):
+			continue
+		if e.pos.distance_to(p.pos) < 2.5 and float(e.status.get("burnt", -1.0)) <= t:
+			e.status["burnt"] = t + 0.9
+			e.kb += (e.pos - p.pos).normalized() * 20.0
+			_apply_cc(e, {"stun": 0.5}, p)
+			_event("hit", e.id, p.id, e.pos.x, e.pos.y, "orbit_shields")
+
+
+func _pass_potato(p: Player) -> void:
+	for other: Player in players:
+		if other == p or other.state != State.PLAY or is_airborne(other) or other.on_base or is_free_walking(other):
+			continue
+		if other.pos.distance_to(p.pos) < radius_of(p) + radius_of(other) + 0.3:
+			other.status["potato"] = p.status["potato"]
+			p.status.erase("potato")
+			_potato_cd = 0.7
+			_event("potato", other.id, p.id, other.pos.x, other.pos.y)
+			return
+
+
+func _potato_bang(p: Player) -> void:
+	if p.state == State.PLAY:
+		_blast(p.pos, 3.0, 18.0, 2.0, -1, null)
+		_apply_cc(p, {"stun": 2.0}, null)
+
+
+func _tick_weather(dt: float) -> void:
+	if weather_until > 0.0 and t >= weather_until:
+		weather_until = -1.0
+		set_weather(weather_home)
+		_event("weather", -1, -1, 0.0, 0.0, weather)
+	var def := Weather.def(weather)
+	var strength := float(def["wind"])
+	_wind_left -= dt
+	if strength > 0.0 and _wind_left <= 0.0:
+		_wind_left = rng.randf_range(7.0, 13.0)
+		_wind_goal = Vector2.RIGHT.rotated(rng.randf() * TAU) * strength
+	wind = wind.lerp(_wind_goal, clampf(dt * 1.1, 0.0, 1.0))
+	var every := float(def["strike"])
+	if every > 0.0:
+		_strike_left -= dt
+		if _strike_left <= 0.0:
+			_strike_left = every * rng.randf_range(0.7, 1.3)
+			_weather_strike()
+
+
+## Somewhere near someone, more often than not, so you do have to keep an eye on the sky.
+func _weather_strike() -> void:
+	var at := Vector2(rng.randf_range(2.0, arena_size().x - 2.0), rng.randf_range(2.0, arena_size().y - 2.0))
+	if rng.randf() < 0.6:
+		var p: Player = players[rng.randi_range(0, players.size() - 1)]
+		if p.state == State.PLAY:
+			at = p.pos + p.vel * 0.7 + Vector2.RIGHT.rotated(rng.randf() * TAU) * rng.randf_range(0.0, 2.2)
+	at = at.clamp(Vector2.ONE, arena_size() - Vector2.ONE)
+	zones.append({"uid": _next_uid(), "fx": "strike", "team": -1, "pos": at, "r": 2.4, "until": t + 1.35, "drift": Vector2.ZERO, "pw": "", "armed": true})
 
 
 ## A bumper knocks anyone who touches it flying, straight away from it.
@@ -835,7 +1262,7 @@ func _separate_mates() -> void:
 				continue
 			for j in range(i + 1, mates.size()):
 				var b: Player = mates[j]
-				if b.state != State.PLAY or is_airborne(b):
+				if b.state != State.PLAY or is_airborne(b) or has_status(a, "carpet") or has_status(b, "carpet"):
 					continue
 				var d := a.pos - b.pos
 				var want := (RADIUS * 1.6)
@@ -873,6 +1300,10 @@ func _tag(a: Player, b: Player) -> void:
 		b.kb += push * 14.0
 		a.kb -= push * 14.0
 		_event("blocked", a.id, b.id, b.pos.x, b.pos.y)
+		return
+	if has_status(b, "angel"):  # Lifted clear, and set down at home.
+		_event("angel", b.id, a.id, b.pos.x, b.pos.y)
+		_send_home(b)
 		return
 	var chained := has_status(a, "chain")
 	_jail(b, a)
@@ -946,7 +1377,7 @@ func _tick_capture(dt: float) -> void:
 		var boost := 1.0
 		var last := -1
 		for p: Player in team_of(1 - team):
-			if p.state == State.PLAY and not is_airborne(p) and not is_free_walking(p) and not has_status(p, "ghost") \
+			if p.state == State.PLAY and not is_airborne(p) and not is_free_walking(p) and not has_status(p, "ghost") and not has_status(p, "chicken") and not has_status(p, "bubble") \
 					and p.pos.distance_squared_to(at) < BASE_R * BASE_R:
 				attackers += 1
 				last = p.id
@@ -991,6 +1422,9 @@ func _check_wipeout() -> void:
 # --- Pickups --------------------------------------------------------------------------------------
 
 func _tick_pickups(dt: float) -> void:
+	for i in range(pickups.size() - 1, -1, -1):
+		if pickups[i].has("gone") and float(pickups[i]["gone"]) <= t:
+			pickups.remove_at(i)
 	for tile: int in altars:
 		if float(altars[tile]) <= t:
 			altars[tile] = t + ALTAR_REGROW
@@ -1017,6 +1451,13 @@ func _tick_pickups(dt: float) -> void:
 				continue
 			var reach := radius_of(p) + 0.75
 			if p.pos.distance_squared_to(item["pos"]) <= reach * reach:
+				if item.has("trap"):  # Not a real crystal. Your own team can tell.
+					if int(item["trap"]) == p.team:
+						continue
+					_blast(item["pos"], 2.6, 16.0, 1.5, 1 - p.team, null)
+					_event("poof", p.id, -1, p.pos.x, p.pos.y)
+					pickups.remove_at(i)
+					break
 				p.powers.append(Powerups.roll(rng))
 				p.spin_left = SPIN_TIME
 				_event("pick", p.id, -1, p.pos.x, p.pos.y)
@@ -1069,15 +1510,25 @@ func can_use_power(p: Player) -> bool:
 
 func _use_power(p: Player) -> void:
 	var id: String = p.powers.pop_front()
+	p.powers_used += 1
+	_event("use", p.id, -1, p.pos.x, p.pos.y, id)
+	if id == "copycat" and last_power != "":
+		id = last_power
+	elif id == "copycat":
+		id = Powerups.roll(rng)
+	else:
+		last_power = id
+	_play_power(p, id)
+
+
+func _play_power(p: Player, id: String) -> void:
 	var def := Powerups.by_id(id)
 	if def.is_empty():
 		return
-	p.powers_used += 1
 	var aim := _resolve_aim(p, def)
 	p.aim = Vector2.ZERO
 	if id != "invisi_cloak":
 		p.status.erase("invis")
-	_event("use", p.id, -1, p.pos.x, p.pos.y, id)
 	match String(def["kind"]):
 		"self":
 			_give_statuses(p, def["status"])
@@ -1095,7 +1546,7 @@ func _use_power(p: Player) -> void:
 			_blink(p, aim, float(def["dist"]))
 		"hop":
 			var to: Vector2 = (p.pos + aim * float(def["dist"])).clamp(Vector2.ONE, arena_size() - Vector2.ONE)
-			_launch(p, to, 0.65)
+			_launch(p, to, float(def.get("dur", 0.65)))
 		"grapple":
 			_grapple(p, aim, float(def["range"]))
 		"recall":
@@ -1112,7 +1563,7 @@ func _use_power(p: Player) -> void:
 			for e: Player in team_of(1 - p.team):
 				if e.state == State.PLAY and not is_airborne(e):
 					_apply_cc(e, def["status"], p)
-			_event("quake", p.id)
+			_event(String(def.get("event", "quake")), p.id)
 		"meteors":
 			_meteors(p, def)
 		"wall":
@@ -1121,7 +1572,7 @@ func _use_power(p: Player) -> void:
 			base_lock[p.team] = t + float(def["dur"])
 			_event("lock", p.team, -1, base[p.team].x, base[p.team].y)
 		"sentry":
-			ents.append({"uid": _next_uid(), "type": "sentry", "team": p.team, "owner": p.id, "pos": p.pos, "vel": Vector2.ZERO, "until": t + float(def["dur"]), "cd": 0.5})
+			ents.append({"uid": _next_uid(), "type": "sentry", "team": p.team, "owner": p.id, "pos": p.pos, "vel": Vector2.ZERO, "until": t + float(def["dur"]), "cd": 0.5, "follow": bool(def.get("follow", false))})
 		"snares":
 			_ring_of_traps(p.team, base[p.team], BASE_R + 1.3, int(def["count"]), "snare", float(def["dur"]), id)
 		"mines":
@@ -1155,13 +1606,171 @@ func _use_power(p: Player) -> void:
 		"rain":
 			for _i in int(def["count"]):
 				_spawn_pickup(p.pos)
+		"beam":
+			p.status["charging"] = t + float(def["charge"])
+			zones.append({"uid": _next_uid(), "fx": "beam", "team": p.team, "owner": p.id, "pos": p.pos, "aim": aim, "r": float(def["r"]), "len": float(def["len"]),
+				"fires": t + float(def["charge"]), "until": t + float(def["charge"]) + float(def["hold"]), "drift": Vector2.ZERO, "pw": id, "armed": true, "hit": []})
+		"drop":
+			var victim := _nearest_enemy(p, float(def["range"]))
+			var spot: Vector2 = victim.pos if victim else (p.pos + aim * 8.0).clamp(Vector2.ONE, arena_size() - Vector2.ONE)
+			zones.append({"uid": _next_uid(), "fx": "anvil", "team": p.team, "pos": spot, "r": float(def["r"]), "until": t + float(def["fall"]), "drift": Vector2.ZERO, "pw": id, "armed": true,
+				"target": victim.id if victim else -1, "pace": 9.0})
+		"chaser":
+			var victim := _nearest_enemy(p, float(def["range"]))
+			if victim:
+				zones.append({"uid": _next_uid(), "fx": def["fx"], "team": p.team, "pos": p.pos if def["fx"] == "bees" else victim.pos, "r": float(def["r"]), "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true,
+					"target": victim.id, "pace": float(def["pace"])})
+		"wave":
+			var dir := 1.0 if p.team == 0 else -1.0
+			var start := Vector2(float(base[p.team].x) - dir * 4.0, arena_size().y * 0.5)
+			zones.append({"uid": _next_uid(), "fx": "tide", "team": p.team, "pos": start, "r": float(def["r"]), "until": t + (arena_size().x + 8.0) / float(def["speed"]), "drift": Vector2(dir * float(def["speed"]), 0.0), "pw": id, "armed": true, "free": true})
+		"fire_line":
+			for i in int(def["count"]):
+				var spot: Vector2 = p.pos + aim * float(def["gap"]) * (i + 1)
+				var tile := tile_index(spot)
+				if tile < 0 or _blocks_shots(tile):
+					break
+				zones.append({"uid": _next_uid(), "fx": "fire", "team": p.team, "pos": spot, "r": 1.25, "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true})
+		"slam":
+			var to: Vector2 = (p.pos + aim * float(def["dist"])).clamp(Vector2.ONE, arena_size() - Vector2.ONE)
+			p.status["slam"] = t + 2.0
+			p.slam_r = float(def["r"])
+			p.slam_push = float(def["push"])
+			p.slam_stun = float(def["stun"])
+			_launch(p, to, 0.7)
+		"chain_zap":
+			var from := p.pos
+			var left := int(def["count"])
+			var hit: Array = []
+			var reach := float(def["range"])
+			while left > 0:
+				var next: Player = null
+				var best := reach * reach
+				for e: Player in team_of(1 - p.team):
+					if e.state == State.PLAY and not e.on_base and not hit.has(e.id) and not has_status(e, "ghost") and e.pos.distance_squared_to(from) < best:
+						best = e.pos.distance_squared_to(from)
+						next = e
+				if next == null:
+					break
+				hit.append(next.id)
+				_event("zap", next.id, p.id, next.pos.x, next.pos.y)
+				_apply_cc(next, def["status"], p)
+				from = next.pos
+				reach = float(def["jump"])
+				left -= 1
+		"potato":
+			var victim := _nearest_enemy(p, float(def["range"]))
+			if victim:
+				victim.status["potato"] = t + float(def["dur"])
+				_event("potato", victim.id, p.id, victim.pos.x, victim.pos.y)
+		"igloo":
+			_build_igloo(p, float(def["dur"]))
+		"smoke":
+			zones.append({"uid": _next_uid(), "fx": "smoke", "team": p.team, "pos": p.pos, "r": float(def["r"]), "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true})
+		"clones":
+			var count := int(def["count"])
+			for i in count:
+				var offset := Vector2.RIGHT.rotated(TAU * i / float(count) + 0.6) * 2.4
+				var at := move_circle(p.pos, offset, RADIUS)
+				ents.append({"uid": _next_uid(), "type": "clone", "team": p.team, "owner": p.id, "pos": at, "vel": Vector2.ZERO, "until": t + float(def["dur"]), "cd": 0.0})
+				_event("poof", -1, -1, at.x, at.y)
+		"peels":
+			for i in int(def["count"]):
+				var spot: Vector2 = p.pos - p.face * (1.6 + i * 1.5) + p.face.orthogonal() * (0.7 if i % 2 == 0 else -0.7)
+				var tile := tile_index(spot)
+				if tile >= 0 and not _blocks_feet(tile):
+					zones.append({"uid": _next_uid(), "fx": "peel", "team": p.team, "pos": spot, "r": 0.8, "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true})
+		"portal":
+			var far: Vector2 = p.pos
+			for s in range(int(def["dist"]), 2, -1):
+				var spot: Vector2 = p.pos + aim * s
+				var tile := tile_index(spot)
+				if tile >= 0 and not _blocks_feet(tile):
+					far = tile_center(tile)
+					break
+			var a := _next_uid()
+			var b := _next_uid()
+			var until := t + float(def["dur"])
+			zones.append({"uid": a, "fx": "portal", "team": p.team, "pos": p.pos - aim * 0.2, "r": 1.0, "until": until, "drift": Vector2.ZERO, "pw": id, "armed": true, "link": far})
+			zones.append({"uid": b, "fx": "portal", "team": p.team, "pos": far, "r": 1.0, "until": until, "drift": Vector2.ZERO, "pw": id, "armed": true, "link": p.pos})
+			p.pad_cd = maxf(p.pad_cd, 0.8)
+		"fake":
+			pickups.append({"uid": _next_uid(), "pos": p.pos - p.face * 1.4, "born": t, "trap": p.team, "gone": t + float(def["dur"])})
+		"steal":
+			var victim := _nearest_enemy(p, float(def["range"]))
+			if victim and not victim.powers.is_empty():
+				p.powers.append(victim.powers.pop_back())
+				p.spin_left = SPIN_TIME
+				_event("stolen", victim.id, p.id, victim.pos.x, victim.pos.y)
+			else:
+				_event("poof", -1, -1, p.pos.x, p.pos.y)
+		"wild":
+			for _i in int(def["count"]):
+				if p.powers.size() < MAX_POWERS:
+					p.powers.append(Powerups.roll(rng))
+			p.spin_left = SPIN_TIME
+			_event("pick", p.id, -1, p.pos.x, p.pos.y)
+		"warp_mate":
+			var best: Player = null
+			var best_d := INF
+			for mate: Player in team_of(p.team):
+				if mate != p and mate.state == State.PLAY:
+					var d: float = mate.pos.distance_to(base[1 - p.team])
+					if d < best_d:
+						best_d = d
+						best = mate
+			if best:
+				p.pos = move_circle(best.pos, Vector2.RIGHT.rotated(rng.randf() * TAU) * 1.4, radius_of(p))
+				_event("warp", p.id, -1, p.pos.x, p.pos.y)
+		"rewind":
+			if not p.history.is_empty():
+				p.pos = p.history[0]
+				p.vel = Vector2.ZERO
+				p.kb = Vector2.ZERO
+				for name: String in SHAKEN_OFF:
+					p.status.erase(name)
+				_unstick(p)
+				_event("warp", p.id, -1, p.pos.x, p.pos.y)
+		"rally":
+			var count := 0
+			for mate: Player in team_of(p.team):
+				if mate != p and mate.state == State.PLAY:
+					mate.pos = move_circle(p.pos, Vector2.RIGHT.rotated(TAU * count / 4.0) * 1.8, radius_of(mate))
+					mate.vel = Vector2.ZERO
+					mate.leap_t = -1.0
+					mate.on_base = false
+					count += 1
+					_event("warp", mate.id, -1, mate.pos.x, mate.pos.y)
+		"vacuum":
+			var reach := float(def["r"])
+			for item: Dictionary in pickups:
+				if not item.has("trap") and p.pos.distance_to(item["pos"]) < reach:
+					item["pos"] = move_circle(p.pos, Vector2.RIGHT.rotated(rng.randf() * TAU) * 1.5, 0.4)
+					item["born"] = t + 0.2
+			_event("burst", p.id, -1, p.pos.x, p.pos.y, id)
+		"cheer":
+			for mate: Player in team_of(p.team):
+				if mate.state == State.PLAY:
+					for name: String in SHAKEN_OFF:
+						mate.status.erase(name)
+					mate.dash_cd = 0.0
+					_give_statuses(mate, def["status"])
+					_event("refreshed", mate.id, -1, mate.pos.x, mate.pos.y)
+		"weather":
+			var kinds: Array = def["kinds"]
+			var picked := String(kinds[rng.randi_range(0, kinds.size() - 1)])
+			if picked == weather:
+				picked = String(kinds[(kinds.find(picked) + 1) % kinds.size()])
+			set_weather(picked)
+			weather_until = t + float(def["dur"])
+			_event("weather", p.id, -1, 0.0, 0.0, picked)
 
 
 func _resolve_aim(p: Player, def: Dictionary) -> Vector2:
 	if p.aim.length() > 0.2:
 		return p.aim.normalized()
-	if String(def["kind"]) == "shot" or String(def["kind"]) == "zone":
-		var target := _nearest_enemy(p, float(def.get("range", 16.0)))
+	if String(def["kind"]) in ["shot", "zone", "beam", "fire_line", "slam"]:
+		var target := _nearest_enemy(p, float(def.get("range", def.get("len", 16.0))))
 		if target and clear_line(p.pos, target.pos, true):
 			return (target.pos - p.pos).normalized()
 	return p.face
@@ -1222,7 +1831,7 @@ func _fire(p: Player, def: Dictionary, aim: Vector2) -> void:
 	shots.append({"uid": _next_uid(), "pw": def["id"], "team": p.team, "owner": p.id,
 		"pos": p.pos + aim * (radius_of(p) + 0.2), "vel": aim * float(def["speed"]), "r": float(def["r"]),
 		"life": float(def["range"]) / float(def["speed"]), "bounces": int(def.get("bounces", 0)),
-		"homing": bool(def.get("homing", false)), "pierce": bool(def.get("pierce", false)), "hit": []})
+		"homing": bool(def.get("homing", false)), "pierce": bool(def.get("pierce", false)), "hit": [], "out": float(def["range"]) * 0.5 / float(def["speed"])})
 
 
 func _place_zone(p: Player, def: Dictionary, aim: Vector2) -> void:
@@ -1298,6 +1907,36 @@ func _meteors(p: Player, def: Dictionary) -> void:
 			"until": t + 0.8 + float(def["dur"]) * float(i) / float(def["count"]), "drift": Vector2.ZERO, "pw": def["id"], "armed": true})
 
 
+## A ring of ice round you, on the eight tiles next to the one you're on.
+func _build_igloo(p: Player, dur: float) -> void:
+	var here := tile_index(p.pos)
+	if here < 0:
+		return
+	var built := false
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var x := here % w + dx
+			var y := here / w + dy
+			if x < 0 or y < 0 or x >= w or y >= h:
+				continue
+			var i := y * w + x
+			if _blocks_feet(i):
+				continue
+			var c := tile_center(i)
+			if c.distance_to(base[0]) < BASE_R or c.distance_to(base[1]) < BASE_R or c.distance_to(jail[0]) < JAIL_R or c.distance_to(jail[1]) < JAIL_R:
+				continue
+			walls[i] = t + dur
+			built = true
+	if built:
+		_event("wall", p.id, -1, p.pos.x, p.pos.y)
+	p.pos = tile_center(here)
+	for other in players:
+		if other != p and other.state == State.PLAY and not has_status(other, "ghost") and not has_status(other, "carpet"):
+			other.pos = move_circle(other.pos, Vector2.ZERO, radius_of(other))
+
+
 func _build_wall(p: Player, aim: Vector2, length: int, dur: float) -> void:
 	var center := p.pos + aim * 2.4
 	var side := Vector2(-aim.y, aim.x)
@@ -1315,7 +1954,7 @@ func _build_wall(p: Player, aim: Vector2, length: int, dur: float) -> void:
 	if built > 0:
 		_event("wall", p.id, -1, center.x, center.y)
 	for other in players:  # Nobody stays stuck in the new wall.
-		if other.state == State.PLAY and not has_status(other, "ghost"):
+		if other.state == State.PLAY and not has_status(other, "ghost") and not has_status(other, "carpet"):
 			other.pos = move_circle(other.pos, Vector2.ZERO, radius_of(other))
 
 
@@ -1347,10 +1986,29 @@ func _tick_shots(dt: float) -> void:
 		s["life"] = float(s["life"]) - dt
 		if bool(s["homing"]):
 			_steer_homing(s, dt)
+		var def := Powerups.by_id(s["pw"])
+		var returning := false
+		if def.get("returns", false) and float(s["life"]) < float(s["out"]):
+			returning = true
+			var thrower := player_by_id(int(s["owner"]))
+			if thrower:
+				s["vel"] = (thrower.pos - (s["pos"] as Vector2)).normalized() * (s["vel"] as Vector2).length()
+				if thrower.pos.distance_to(s["pos"]) < 1.0:
+					s["life"] = 0.0
+			if float(s["life"]) >= float(s["out"]) * 0.98:
+				s["hit"] = []
+		if def.has("grow"):
+			s["r"] = minf(float(s["r"]) + float(def["grow"]) * dt, float(def["grow_to"]))
+		s["vel"] = (s["vel"] as Vector2) + wind * dt * 1.2
 		var next: Vector2 = s["pos"] + s["vel"] * dt
 		var tile := tile_index(next)
 		var ended := float(s["life"]) <= 0.0
-		if tile < 0 or _blocks_shots(tile):
+		if tile >= 0 and tiles[tile] == Maps.TNT and tnt_here(tile):
+			_blow_crate(tile)
+			ended = true
+		elif returning:
+			pass  # It finds its own way back, through anything.
+		elif tile < 0 or _blocks_shots(tile):
 			if int(s["bounces"]) > 0:
 				s["bounces"] = int(s["bounces"]) - 1
 				_bounce_shot(s, next)
@@ -1367,8 +2025,10 @@ func _tick_shots(dt: float) -> void:
 
 
 func _steer_homing(s: Dictionary, dt: float) -> void:
+	var def := Powerups.by_id(s["pw"])
 	var best: Player = null
-	var best_d := 18.0 * 18.0
+	var seek := float(def.get("seek", 18.0))
+	var best_d := seek * seek
 	for e: Player in team_of(1 - int(s["team"])):
 		if e.state != State.PLAY or has_status(e, "ghost") or is_airborne(e):
 			continue
@@ -1379,7 +2039,7 @@ func _steer_homing(s: Dictionary, dt: float) -> void:
 	if best:
 		var speed: float = (s["vel"] as Vector2).length()
 		var want: Vector2 = (best.pos - s["pos"]).normalized() * speed
-		s["vel"] = (s["vel"] as Vector2).lerp(want, clampf(5.0 * dt, 0.0, 1.0)).normalized() * speed
+		s["vel"] = (s["vel"] as Vector2).lerp(want, clampf(float(def.get("turn", 5.0)) * dt, 0.0, 1.0)).normalized() * speed
 
 
 func _bounce_shot(s: Dictionary, next: Vector2) -> void:
@@ -1401,7 +2061,7 @@ func _shot_hits(s: Dictionary) -> bool:
 	var def := Powerups.by_id(s["pw"])
 	for ent_i in range(ents.size() - 1, -1, -1):
 		var ent: Dictionary = ents[ent_i]
-		if int(ent["team"]) != int(s["team"]) and String(ent["type"]) == "decoy" and (ent["pos"] as Vector2).distance_to(s["pos"]) < float(s["r"]) + RADIUS:
+		if int(ent["team"]) != int(s["team"]) and String(ent["type"]) in ["decoy", "clone"] and (ent["pos"] as Vector2).distance_to(s["pos"]) < float(s["r"]) + RADIUS:
 			_event("poof", -1, -1, ent["pos"].x, ent["pos"].y)
 			ents.remove_at(ent_i)
 			return not bool(s["pierce"])
@@ -1413,6 +2073,9 @@ func _shot_hits(s: Dictionary) -> bool:
 		var reach: float = float(s["r"]) + radius_of(e)
 		if e.pos.distance_squared_to(s["pos"]) > reach * reach:
 			continue
+		if has_status(e, "orbit"):  # The orbs get it first.
+			_event("reflect", e.id, -1, e.pos.x, e.pos.y)
+			return true
 		if has_status(e, "mirror"):  # Back it goes, now on the mirror's side.
 			s["team"] = e.team
 			s["vel"] = -(s["vel"] as Vector2)
@@ -1438,24 +2101,46 @@ func _end_shot(s: Dictionary) -> void:
 		var burst: Dictionary = def["burst"]
 		zones.append({"uid": _next_uid(), "fx": burst["fx"], "team": s["team"], "pos": s["pos"], "r": float(burst["r"]),
 			"until": t + float(burst["dur"]), "drift": Vector2.ZERO, "pw": s["pw"], "armed": true})
+	if def.has("blast"):
+		var bang: Dictionary = def["blast"]
+		_blast(s["pos"], float(bang["r"]), float(bang["push"]), float(bang["stun"]), int(s["team"]), player_by_id(int(s["owner"])))
 
 
 func _tick_zones(dt: float) -> void:
 	for i in range(zones.size() - 1, -1, -1):
 		var z: Dictionary = zones[i]
 		if float(z["until"]) <= t:
-			if z["fx"] == "meteor":
+			var ending: String = z["fx"]
+			if ending == "meteor":
 				_meteor_lands(z)
+			elif ending == "strike":
+				_strike_lands(z)
+			elif ending == "anvil":
+				_anvil_lands(z)
+			elif ending == "cloud":
+				_cloud_bursts(z)
 			zones.remove_at(i)
 			continue
 		if z["drift"] != Vector2.ZERO:
 			var drifted: Vector2 = z["pos"] + z["drift"] * dt
 			var tile := tile_index(drifted)
-			if tile >= 0 and not _blocks_shots(tile):
+			if z.get("free", false) or (tile >= 0 and not _blocks_shots(tile)):
 				z["pos"] = drifted
 			else:
 				z["drift"] = -(z["drift"] as Vector2)
-		if z["fx"] == "meteor":
+		if z.has("target"):
+			_zone_chases(z, dt)
+		if z["fx"] in ["meteor", "strike", "anvil"]:
+			continue
+		if z["fx"] == "portal":
+			_tick_portal(z)
+			continue
+		if z["fx"] == "beam":
+			if t >= float(z["fires"]):
+				_beam_burns(z)
+			continue
+		if z["fx"] == "tide":
+			_tide_sweeps(z, dt)
 			continue
 		if _zone_acts(z, dt):
 			zones.remove_at(i)
@@ -1495,7 +2180,101 @@ func _zone_acts(z: Dictionary, dt: float) -> bool:
 				_apply_cc(e, {"root": 2.2}, null)
 				_event("hit", e.id, -1, e.pos.x, e.pos.y, z["pw"])
 				return true
+			"peel":
+				e.status["slip"] = t + 1.8
+				e.kb += (e.vel.normalized() if e.vel.length() > 0.5 else Vector2.RIGHT) * 18.0
+				_event("slipped", e.id, -1, e.pos.x, e.pos.y)
+				return true
+			"bees":
+				e.status["slow"] = t + 0.25
+				if float(e.status.get("burnt", -1.0)) <= t:
+					e.status["burnt"] = t + 1.6
+					_apply_cc(e, {"stun": 0.45}, null)
+					_event("hit", e.id, -1, e.pos.x, e.pos.y, z["pw"])
+			"cloud":
+				if int(z["target"]) == e.id:
+					e.status["slow"] = t + 0.25
 	return false
+
+
+## Bees, clouds and falling anvils go after whoever they were sent for, until there's nobody to go after.
+func _zone_chases(z: Dictionary, dt: float) -> void:
+	var who := player_by_id(int(z["target"]))
+	if who == null or who.state != State.PLAY:
+		if z["fx"] == "bees" or z["fx"] == "cloud":
+			z["until"] = minf(float(z["until"]), t + 0.3)
+		return
+	if z["fx"] == "anvil" and float(z["until"]) - t < 0.32:
+		return  # Too late to change where it lands.
+	var to: Vector2 = who.pos - (z["pos"] as Vector2)
+	z["pos"] = (z["pos"] as Vector2) + to.limit_length(float(z["pace"]) * dt)
+
+
+func _tick_portal(z: Dictionary) -> void:
+	for mate: Player in team_of(int(z["team"])):
+		if mate.state != State.PLAY or is_airborne(mate) or mate.pad_cd > 0.0:
+			continue
+		if mate.pos.distance_to(z["pos"]) < float(z["r"]):
+			mate.pos = z["link"]
+			mate.pad_cd = 1.2
+			_event("warp", mate.id, -1, mate.pos.x, mate.pos.y)
+
+
+func _beam_burns(z: Dictionary) -> void:
+	var def := Powerups.by_id(z["pw"])
+	if not z.get("fired", false):
+		z["fired"] = true
+		_event("beam", int(z["owner"]), -1, (z["pos"] as Vector2).x, (z["pos"] as Vector2).y)
+	var from: Vector2 = z["pos"]
+	var aim: Vector2 = z["aim"]
+	var owner := player_by_id(int(z["owner"]))
+	for e: Player in team_of(1 - int(z["team"])):
+		if e.state != State.PLAY or (z["hit"] as Array).has(e.id) or is_airborne(e) or has_status(e, "ghost"):
+			continue
+		var along := (e.pos - from).dot(aim)
+		if along < 0.0 or along > float(z["len"]):
+			continue
+		if absf((e.pos - from).cross(aim)) < float(z["r"]) + radius_of(e) * 0.5:
+			(z["hit"] as Array).append(e.id)
+			_apply_cc(e, def["status"], owner)
+			if not e.on_base and not has_status(e, "mirror") and not is_free_walking(e):
+				e.kb += aim * float(def["push"])
+			_event("hit", e.id, int(z["owner"]), e.pos.x, e.pos.y, z["pw"])
+
+
+func _tide_sweeps(z: Dictionary, dt: float) -> void:
+	var dir := signf((z["drift"] as Vector2).x)
+	var x: float = (z["pos"] as Vector2).x
+	for e: Player in team_of(1 - int(z["team"])):
+		if e.state != State.PLAY or is_airborne(e) or e.on_base or has_status(e, "ghost") or is_free_walking(e):
+			continue
+		if absf(e.pos.x - x) < float(z["r"]) + radius_of(e):
+			e.kb.x += dir * 70.0 * dt
+			e.status["slip"] = t + 1.0
+
+
+func _strike_lands(z: Dictionary) -> void:
+	_event("strike", -1, -1, (z["pos"] as Vector2).x, (z["pos"] as Vector2).y)
+	for e: Player in players:
+		if e.state == State.PLAY and not is_airborne(e) and not e.on_base and not is_free_walking(e) and not has_status(e, "ghost") \
+				and e.pos.distance_to(z["pos"]) < float(z["r"]) + radius_of(e) * 0.5:
+			_apply_cc(e, {"stun": 1.1}, null)
+			e.kb += (e.pos - (z["pos"] as Vector2)).normalized() * 10.0
+
+
+func _anvil_lands(z: Dictionary) -> void:
+	_event("anvil", -1, -1, (z["pos"] as Vector2).x, (z["pos"] as Vector2).y)
+	var def := Powerups.by_id(z["pw"])
+	for e: Player in team_of(1 - int(z["team"])):
+		if e.state == State.PLAY and not is_airborne(e) and not e.on_base and e.pos.distance_to(z["pos"]) < float(z["r"]) + radius_of(e) * 0.5:
+			_apply_cc(e, def["status"], null)
+
+
+func _cloud_bursts(z: Dictionary) -> void:
+	var who := player_by_id(int(z["target"]))
+	if who and who.state == State.PLAY:
+		_event("zap", who.id, -1, who.pos.x, who.pos.y)
+		_apply_cc(who, {"stun": 1.0}, null)
 
 
 func _meteor_lands(z: Dictionary) -> void:
@@ -1516,8 +2295,32 @@ func _tick_ents(dt: float) -> void:
 		if ent["type"] == "decoy":
 			if _tick_decoy(ent, dt):
 				ents.remove_at(i)
+		elif ent["type"] == "clone":
+			if _tick_clone(ent, dt):
+				ents.remove_at(i)
 		else:
+			if ent.get("follow", false):
+				var owner := player_by_id(int(ent["owner"]))
+				if owner and owner.state == State.PLAY:
+					var goal: Vector2 = owner.pos - owner.face * 1.6
+					ent["pos"] = (ent["pos"] as Vector2).lerp(goal, clampf(dt * 5.0, 0.0, 1.0))
 			_tick_sentry(ent, dt)
+
+
+## A clone copies its owner's every step, and goes up in smoke when anyone touches it, or the owner's caught.
+func _tick_clone(ent: Dictionary, dt: float) -> bool:
+	var owner := player_by_id(int(ent["owner"]))
+	if owner == null or owner.state != State.PLAY:
+		_event("poof", -1, -1, ent["pos"].x, ent["pos"].y)
+		return true
+	ent["vel"] = owner.vel
+	ent["pos"] = move_circle(ent["pos"], owner.vel * dt, RADIUS)
+	for e: Player in team_of(1 - int(ent["team"])):
+		if e.state == State.PLAY and not has_status(e, "ghost") and not is_airborne(e) and e.pos.distance_to(ent["pos"]) < RADIUS * 2.0:
+			_apply_cc(e, {"stun": 1.0}, null)
+			_event("poof", e.id, -1, ent["pos"].x, ent["pos"].y)
+			return true
+	return false
 
 
 ## True when a decoy got caught.
@@ -1629,15 +2432,8 @@ func to_snapshot() -> Dictionary:
 		stats.append(PackedInt32Array([p.tags, p.rescues, p.captures, p.times_jailed, p.powers_used]))
 	return {"t": t, "ph": phase, "pl": phase_left, "tl": time_left, "ot": overtime, "fi": fiesta, "sc": score, "cap": cap, "cg": capturing,
 		"lk": base_lock, "ra": radar, "w": winner, "er": end_reason, "p": floats, "st": statuses, "pw": powers, "ss": stats,
-		"pk": pickups, "fo": fountains, "zn": zones, "sh": _pack_shots(), "en": ents, "wl": walls, "ev": take_events(), "uid": _uid}
-
-
-func _pack_shots() -> Array:
-	var out: Array = []
-	for s: Dictionary in shots:
-		out.append({"uid": s["uid"], "pw": s["pw"], "team": s["team"], "owner": s["owner"], "pos": s["pos"], "vel": s["vel"], "r": s["r"],
-			"life": s["life"], "bounces": s["bounces"], "homing": s["homing"], "pierce": s["pierce"], "hit": s["hit"]})
-	return out
+		"pk": pickups, "fo": fountains, "zn": zones, "sh": shots, "en": ents, "wl": walls, "ev": take_events(), "uid": _uid,
+		"we": weather, "wn": wind, "cr": crumbles, "tn": tnt, "wb": webs}
 
 
 func apply_snapshot(snap: Dictionary) -> void:
@@ -1694,3 +2490,9 @@ func apply_snapshot(snap: Dictionary) -> void:
 	ents.assign(snap["en"])
 	walls = snap["wl"]
 	events.append_array(snap["ev"])
+	if snap["we"] != weather:
+		set_weather(snap["we"])
+	wind = snap["wn"]
+	crumbles = snap["cr"]
+	tnt = snap["tn"]
+	webs = snap["wb"]

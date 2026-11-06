@@ -36,11 +36,11 @@ var ranked := true
 
 
 ## seats: as in Sim.setup. `p_online` needs a match dictionary from the server (see Net.gd).
-func start(map_id: String, seats: Array, p_local_id: int, difficulty: float, parent_3d: Node3D, parent_ui: Control, p_online := false, host := true, seed_value := 0) -> void:
+func start(map_id: String, seats: Array, p_local_id: int, difficulty: float, parent_3d: Node3D, parent_ui: Control, p_online := false, host := true, seed_value := 0, weather := "") -> void:
 	local_id = p_local_id
 	online = p_online
 	is_host = host
-	sim.setup(map_id, seats, seed_value, difficulty)
+	sim.setup(map_id, seats, seed_value, difficulty, weather)
 	sim.authoritative = is_host
 	view = MatchView.new()
 	view.tag_bots = online

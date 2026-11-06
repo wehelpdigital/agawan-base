@@ -238,11 +238,12 @@ def make_icons():
 
 
 def make_atlas():
-    """16 white particle shapes on a 4x4 grid; the game tints them."""
+    """36 white particle shapes on a 6x6 grid; the game tints them."""
     cell = 128
     scale = 4
     big = cell * scale
-    atlas = Image.new("RGBA", (cell * 4, cell * 4), (0, 0, 0, 0))
+    grid = 6
+    atlas = Image.new("RGBA", (cell * grid, cell * grid), (0, 0, 0, 0))
 
     def cell_img(draw_fn, soft=0.0):
         img = Image.new("L", (big, big), 0)
@@ -321,11 +322,136 @@ def make_atlas():
     def confetti(d, s):
         d.polygon([(s * 0.26, s * 0.14), (s * 0.82, s * 0.32), (s * 0.74, s * 0.86), (s * 0.18, s * 0.68)], fill=255)
 
-    shapes = [(soft, 3.5), star, heart, spark, ring, flame, leaf, note, pixel, (puff, 1.2), snow, coin, bolt, petal, drop, confetti]
+    def maple(d, s):
+        pts = [(0.5, 0.04), (0.58, 0.24), (0.7, 0.18), (0.66, 0.38), (0.9, 0.3), (0.82, 0.46), (0.94, 0.52), (0.7, 0.68), (0.74, 0.76), (0.54, 0.74), (0.54, 0.96),
+               (0.46, 0.96), (0.46, 0.74), (0.26, 0.76), (0.3, 0.68), (0.06, 0.52), (0.18, 0.46), (0.1, 0.3), (0.34, 0.38), (0.3, 0.18), (0.42, 0.24)]
+        d.polygon([(x * s, y * s) for x, y in pts], fill=255)
+
+    def clover(d, s):
+        for x, y in [(0.3, 0.32), (0.7, 0.32), (0.32, 0.66), (0.68, 0.66)]:
+            d.ellipse((s * (x - 0.2), s * (y - 0.2), s * (x + 0.2), s * (y + 0.2)), fill=255)
+        d.polygon([(s * 0.46, s * 0.5), (s * 0.54, s * 0.5), (s * 0.62, s * 0.96), (s * 0.5, s * 0.96)], fill=255)
+
+    def paw(d, s):
+        d.ellipse((s * 0.26, s * 0.46, s * 0.74, s * 0.88), fill=255)
+        for x, y, r in [(0.18, 0.42, 0.11), (0.38, 0.22, 0.12), (0.62, 0.22, 0.12), (0.82, 0.42, 0.11)]:
+            d.ellipse((s * (x - r), s * (y - r * 1.2), s * (x + r), s * (y + r * 1.2)), fill=255)
+
+    def fish(d, s):
+        d.ellipse((s * 0.08, s * 0.24, s * 0.72, s * 0.76), fill=255)
+        d.polygon([(s * 0.62, s * 0.5), (s * 0.94, s * 0.22), (s * 0.94, s * 0.78)], fill=255)
+        d.ellipse((s * 0.2, s * 0.38, s * 0.3, s * 0.48), fill=60)
+
+    def lantern(d, s):
+        d.rectangle((s * 0.36, s * 0.06, s * 0.64, s * 0.14), fill=255)
+        d.ellipse((s * 0.14, s * 0.12, s * 0.86, s * 0.78), fill=255)
+        d.rectangle((s * 0.36, s * 0.76, s * 0.64, s * 0.84), fill=255)
+        d.rectangle((s * 0.46, s * 0.84, s * 0.54, s * 0.98), fill=255)
+        for x in (0.32, 0.5, 0.68):
+            d.line((s * x, s * 0.16, s * x, s * 0.74), fill=170, width=int(s * 0.03))
+
+    def skull(d, s):
+        d.ellipse((s * 0.14, s * 0.08, s * 0.86, s * 0.72), fill=255)
+        d.rounded_rectangle((s * 0.3, s * 0.58, s * 0.7, s * 0.92), radius=int(s * 0.06), fill=255)
+        d.ellipse((s * 0.26, s * 0.3, s * 0.44, s * 0.5), fill=40)
+        d.ellipse((s * 0.56, s * 0.3, s * 0.74, s * 0.5), fill=40)
+        d.polygon([(s * 0.5, s * 0.52), (s * 0.44, s * 0.62), (s * 0.56, s * 0.62)], fill=40)
+        for x in (0.42, 0.5, 0.58):
+            d.line((s * x, s * 0.72, s * x, s * 0.92), fill=60, width=int(s * 0.025))
+
+    def smile(d, s):
+        d.ellipse((s * 0.08, s * 0.08, s * 0.92, s * 0.92), fill=255)
+        d.ellipse((s * 0.3, s * 0.28, s * 0.42, s * 0.46), fill=40)
+        d.ellipse((s * 0.58, s * 0.28, s * 0.7, s * 0.46), fill=40)
+        d.chord((s * 0.24, s * 0.3, s * 0.76, s * 0.8), 10, 170, fill=40)
+
+    def crown(d, s):
+        d.polygon([(s * 0.08, s * 0.8), (s * 0.08, s * 0.28), (s * 0.3, s * 0.5), (s * 0.5, s * 0.14), (s * 0.7, s * 0.5), (s * 0.92, s * 0.28), (s * 0.92, s * 0.8)], fill=255)
+        for x, y in [(0.08, 0.26), (0.5, 0.12), (0.92, 0.26)]:
+            d.ellipse((s * (x - 0.06), s * (y - 0.06), s * (x + 0.06), s * (y + 0.06)), fill=255)
+
+    def diamond(d, s):
+        d.polygon([(s * 0.26, s * 0.14), (s * 0.74, s * 0.14), (s * 0.94, s * 0.4), (s * 0.5, s * 0.94), (s * 0.06, s * 0.4)], fill=255)
+        d.line((s * 0.06, s * 0.4, s * 0.94, s * 0.4), fill=180, width=int(s * 0.03))
+        d.line((s * 0.34, s * 0.4, s * 0.5, s * 0.94), fill=180, width=int(s * 0.03))
+        d.line((s * 0.66, s * 0.4, s * 0.5, s * 0.94), fill=180, width=int(s * 0.03))
+
+    def moon(d, s):
+        d.ellipse((s * 0.1, s * 0.08, s * 0.9, s * 0.92), fill=255)
+        d.ellipse((s * 0.36, s * 0.02, s * 1.02, s * 0.74), fill=0)
+
+    def sun(d, s):
+        for i in range(10):
+            a = i * math.tau / 10
+            x, y = s / 2 + math.cos(a) * s * 0.46, s / 2 + math.sin(a) * s * 0.46
+            d.line((s / 2, s / 2, x, y), fill=255, width=int(s * 0.09))
+        d.ellipse((s * 0.24, s * 0.24, s * 0.76, s * 0.76), fill=255)
+
+    def pizza(d, s):
+        d.polygon([(s * 0.5, s * 0.96), (s * 0.08, s * 0.2), (s * 0.92, s * 0.2)], fill=255)
+        d.chord((s * 0.04, s * 0.06, s * 0.96, s * 0.4), 180, 360, fill=255)
+        for x, y in [(0.38, 0.34), (0.62, 0.36), (0.5, 0.58)]:
+            d.ellipse((s * (x - 0.08), s * (y - 0.08), s * (x + 0.08), s * (y + 0.08)), fill=120)
+
+    def banana(d, s):
+        pts = []
+        for i in range(21):
+            a = math.pi * (0.1 + 0.75 * i / 20)
+            pts.append((s * (0.5 + math.cos(a) * 0.46), s * (0.2 + math.sin(a) * 0.7)))
+        for i in range(20, -1, -1):
+            a = math.pi * (0.1 + 0.75 * i / 20)
+            pts.append((s * (0.56 + math.cos(a) * 0.26), s * (0.2 + math.sin(a) * 0.44)))
+        d.polygon(pts, fill=255)
+
+    def feather(d, s):
+        d.polygon([(s * 0.76, s * 0.04), (s * 0.92, s * 0.26), (s * 0.7, s * 0.6), (s * 0.34, s * 0.82), (s * 0.2, s * 0.68), (s * 0.42, s * 0.3)], fill=255)
+        d.line((s * 0.08, s * 0.96, s * 0.76, s * 0.16), fill=170, width=int(s * 0.03))
+        d.line((s * 0.08, s * 0.96, s * 0.3, s * 0.72), fill=255, width=int(s * 0.04))
+
+    def swirl(d, s):
+        pts = []
+        for i in range(60):
+            t = i / 59
+            a = t * math.tau * 2.2
+            r = 0.05 + t * 0.4
+            pts.append((s * (0.5 + math.cos(a) * r), s * (0.5 + math.sin(a) * r)))
+        d.line(pts, fill=255, width=int(s * 0.09), joint="curve")
+
+    def streak(d, s):
+        d.rounded_rectangle((s * 0.42, s * 0.02, s * 0.58, s * 0.98), radius=int(s * 0.08), fill=255)
+
+    def cherry(d, s):
+        for i in range(5):
+            a = i * math.tau / 5 - math.pi / 2
+            x, y = s / 2 + math.cos(a) * s * 0.27, s / 2 + math.sin(a) * s * 0.27
+            d.ellipse((x - s * 0.17, y - s * 0.2, x + s * 0.17, y + s * 0.2), fill=255)
+            nx, ny = s / 2 + math.cos(a) * s * 0.47, s / 2 + math.sin(a) * s * 0.47
+            d.ellipse((nx - s * 0.04, ny - s * 0.04, nx + s * 0.04, ny + s * 0.04), fill=0)
+        d.ellipse((s * 0.42, s * 0.42, s * 0.58, s * 0.58), fill=150)
+
+    def tulip(d, s):
+        d.polygon([(s * 0.14, s * 0.1), (s * 0.34, s * 0.3), (s * 0.5, s * 0.06), (s * 0.66, s * 0.3), (s * 0.86, s * 0.1), (s * 0.86, s * 0.58), (s * 0.5, s * 0.74), (s * 0.14, s * 0.58)], fill=255)
+        d.ellipse((s * 0.14, s * 0.36, s * 0.86, s * 0.76), fill=255)
+        d.rectangle((s * 0.46, s * 0.72, s * 0.54, s * 0.98), fill=200)
+
+    def zzz(d, s):
+        for x, y, z in [(0.08, 0.52, 0.42), (0.52, 0.16, 0.3)]:
+            w = z
+            d.line([(s * x, s * y), (s * (x + w), s * y), (s * x, s * (y + w)), (s * (x + w), s * (y + w))], fill=255, width=int(s * 0.1), joint="curve")
+
+    def bee(d, s):
+        d.ellipse((s * 0.16, s * 0.34, s * 0.84, s * 0.84), fill=255)
+        for x in (0.42, 0.62):
+            d.rectangle((s * x, s * 0.36, s * (x + 0.08), s * 0.82), fill=50)
+        d.ellipse((s * 0.26, s * 0.08, s * 0.56, s * 0.42), fill=210)
+        d.ellipse((s * 0.5, s * 0.1, s * 0.8, s * 0.42), fill=210)
+
+    shapes = [(soft, 3.5), star, heart, spark, ring, flame, leaf, note, pixel, (puff, 1.2), snow, coin, bolt, petal, drop, confetti,
+              maple, clover, paw, fish, lantern, skull, smile, crown, diamond, moon, sun, pizza, banana, feather, swirl, (streak, 0.6), cherry, tulip, zzz, bee]
     for i, shape in enumerate(shapes):
         fn, blur = shape if isinstance(shape, tuple) else (shape, 0.0)
         mask = cell_img(fn, blur)
-        x, y = (i % 4) * cell, (i // 4) * cell
+        x, y = (i % grid) * cell, (i // grid) * cell
         # An ink edge around each shape, so particles read on any floor.
         edge = mask.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(1.0)) if not blur else None
         tile = Image.new("RGBA", (cell, cell), (0, 0, 0, 0))

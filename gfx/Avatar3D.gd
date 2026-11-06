@@ -16,7 +16,7 @@ const HAT_R := 0.56
 const HAT_DEPTH := 0.9
 const HAT_RISE := 0.34
 ## These sit above the head or round it, so the hair and ears can stay. Everything else is pulled down over them.
-const HATS_OVER_HAIR := ["headband", "flowers", "halo_ring", "ufo"]
+const HATS_OVER_HAIR := ["headband", "flowers", "halo_ring", "ufo", "hachimaki", "laurel", "lei_hat", "cat_ears", "bunny_ears", "antlers", "sprout"]
 signal gag_started(line: String)  ## With something to say about it, for whoever's listening.
 
 static var _meshes := {}  # key -> ArrayMesh
@@ -42,6 +42,7 @@ var _foot_l: Node3D
 var _foot_r: Node3D
 var _back: Node3D
 var _hat: Node3D
+var _flag_cloth: MeshInstance3D
 var _parts: Array[MeshInstance3D] = []
 var _t := randf() * 10.0
 var _emit := 0.0
@@ -79,6 +80,10 @@ var _state_seen := ""
 var _state_face := ""
 var _funny_wait := randf_range(4.0, 14.0)
 var _arm_spread := 0.0  ## Big gloves hold the arms further out, so they don't sink into the body.
+
+
+static var _flag_sheet: ArrayMesh
+static var _flag_mats := {}
 
 
 static func _material(kind: String) -> ShaderMaterial:
@@ -222,6 +227,7 @@ func setup(p_look: Dictionary, p_team_color := Color("ffffff")) -> void:
 		_hips.add_child(_back)
 		var back_key := "back|%s|%s" % [back_id, team_color.to_html() if back_id == "flag" else ""]
 		_add_part(_back, _shared(back_key, _build_back.bind(back_id, team_color)), Vector3.ZERO)
+	_add_country_flag(str(look.get("flag", "")), hero, dressed_top)
 	_trail = Cosmetics.item("trail", look.get("trail", ""))
 	_aura = Cosmetics.item("aura", look.get("aura", ""))
 	dance_id = look.get("dance", "")
@@ -1848,6 +1854,8 @@ func _build_hat(k: MeshKit, id: String) -> void:
 				var a := TAU * i / 6.0
 				k.ball(Vector3(cos(a) * 0.36, 0.665, sin(a) * 0.36), Vector3(0.04, 0.02, 0.04), Color("ffd23f"), 4, 7)
 			k.outline = 0.02
+		_:
+			WorldWear.hat(k, id)
 	k.pop()
 
 
@@ -1865,6 +1873,59 @@ func _helmet(k: MeshKit) -> void:
 		k.ball(Vector3(s * 0.6, 0.02, -0.02), Vector3(0.05, 0.13, 0.13), Color("c9d0e6"), 8, 12)
 	k.tube(PackedVector3Array([Vector3(0.2, 0.5, -0.05), Vector3(0.24, 0.74, -0.05)]), 0.016, Color("6a6a7a"))
 	k.ball(Vector3(0.24, 0.76, -0.05), Vector3(0.036, 0.036, 0.036), Color("ff5a4e"), 6, 9)
+
+
+## The flag you fly: on a thin pole from the shoulder that isn't holding anything else, flapping in the breeze.
+func _add_country_flag(id: String, hero: Dictionary, dressed: bool) -> void:
+	_flag_cloth = null
+	if id == "" or Cosmetics.item("flag", id).is_empty():
+		return
+	var mount := Node3D.new()
+	mount.position = Vector3(0, 0.56, -_back_depth(hero, dressed))
+	mount.scale = Vector3.ONE * 0.82
+	_hips.add_child(mount)
+	_add_part(mount, _shared("flagpole", _build_flagpole), Vector3.ZERO)
+	_flag_cloth = MeshInstance3D.new()
+	_flag_cloth.mesh = _flag_mesh()
+	_flag_cloth.material_override = _flag_material(id)
+	_flag_cloth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_flag_cloth.position = Vector3(-0.32, 1.92, -0.52)
+	mount.add_child(_flag_cloth)
+
+
+func _build_flagpole(k: MeshKit) -> void:
+	var end := Vector3(-0.3, -0.04, -0.52)
+	k.tube(PackedVector3Array([Vector3(0, -0.04, 0.02), Vector3(-0.05, -0.04, -0.14), Vector3(-0.18, -0.04, -0.34), end]), 0.022, Color("6a6a7a"))
+	k.cyl(end + Vector3(0, -0.14, 0), 2.16, 0.022, 0.018, Color("fff3d6"), 8)
+	k.ball(end + Vector3(0, 2.05, 0), Vector3(0.05, 0.05, 0.05), Color("ffd23f"), 6, 9)
+
+
+## A sheet of cloth 0.78 wide and 0.55 high, hanging down from its top corner at the pole, cut fine enough to ripple.
+static func _flag_mesh() -> ArrayMesh:
+	if _flag_sheet != null:
+		return _flag_sheet
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var across := 12
+	var down := 3
+	for x in across:
+		for y in down:
+			for corner: Vector2i in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(0, 0), Vector2i(1, 1), Vector2i(1, 0)]:
+				var u := float(x + corner.x) / across
+				var v := float(y + corner.y) / down
+				st.set_uv(Vector2(1.0 - u, v))
+				st.add_vertex(Vector3(-u * 0.78, -v * 0.55, 0))
+	_flag_sheet = st.commit()
+	return _flag_sheet
+
+
+static func _flag_material(id: String) -> ShaderMaterial:
+	if not _flag_mats.has(id):
+		var mat := ShaderMaterial.new()
+		mat.shader = preload("res://gfx/shaders/flag.gdshader")
+		mat.set_shader_parameter("picture", Flags.texture(id, true))
+		_flag_mats[id] = mat
+	return _flag_mats[id]
 
 
 ## Tall things go on a bracket that reaches back past the head, so nothing has to pass through it.
@@ -1990,6 +2051,8 @@ func _build_back(k: MeshKit, id: String, team: Color) -> void:
 				k.cone(Vector3.ZERO, 0.42, 0.15, [Color("ffd23f"), Color("ff4f6a"), Color("35d07f")][i % 3], 14)
 				k.pop()
 			k.ball(star, Vector3(0.13, 0.13, 0.12), Color("fff8c4"), 8, 12)
+		_:
+			WorldWear.back(k, id, _bracket(k) if id in ["banner", "kite", "hot_air"] else Vector3.ZERO)
 
 
 # --- Animation ------------------------------------------------------------------------------------
@@ -2193,6 +2256,56 @@ func _run_pose() -> Dictionary:
 			out["tilt"] = 0.0
 			out["arm_l"] = Vector3(0, 0, 1.5)
 			out["arm_r"] = Vector3(0, 0, -1.5)
+		"ninja":
+			out["tilt"] = 0.62 * m
+			out["arm_l"] = Vector3(1.75, 0, 0.12)
+			out["arm_r"] = Vector3(1.75, 0, -0.12)
+			out["head"] = -0.48 * m
+		"guard":
+			var step: float = floor(_t * 5.5)
+			var side: float = 1.0 if int(step) % 2 == 0 else -1.0
+			out["tilt"] = -0.02
+			out["y"] = 0.05 * absf(sin(_t * 17.0))
+			out["arm_l"] = Vector3(-side * 1.1, 0, 0.1)
+			out["arm_r"] = Vector3(side * 1.1, 0, -0.1)
+			out["foot_l"] = Vector3(0, 0.24 if side > 0.0 else 0.0, side * 0.22) * m
+			out["foot_r"] = Vector3(0, 0.24 if side < 0.0 else 0.0, -side * 0.22) * m
+		"gallop":
+			phase = _t * 10.0
+			var gait := sin(phase)
+			out["y"] = absf(gait) * 0.26 * m
+			out["tilt"] = 0.16 + gait * 0.14
+			out["arm_l"] = Vector3(-0.9, 0, 0.5)
+			out["arm_r"] = Vector3(-0.9, 0, -0.5)
+			out["foot_l"] = Vector3(0, maxf(gait, 0.0) * 0.2, gait * 0.22) * m
+			out["foot_r"] = Vector3(0, maxf(sin(phase - 0.8), 0.0) * 0.2, sin(phase - 0.8) * 0.22) * m
+		"kangaroo":
+			phase = _t * 6.5
+			var bounce := absf(sin(phase))
+			out["y"] = bounce * 0.62 * m
+			out["tilt"] = 0.3 - bounce * 0.2
+			out["arm_l"] = Vector3(-1.5, 0, 0.1)
+			out["arm_r"] = Vector3(-1.5, 0, -0.1)
+			out["foot_l"] = Vector3(0, bounce * 0.42, -bounce * 0.1) * m
+			out["foot_r"] = Vector3(0, bounce * 0.42, -bounce * 0.1) * m
+		"crab":
+			out["turn"] = PI * 0.5 * m
+			out["tilt"] = 0.0
+			out["y"] = absf(swing) * 0.05 * m
+			out["arm_l"] = Vector3(0, 0, 1.7 + swing * 0.3)
+			out["arm_r"] = Vector3(0, 0, -1.7 + swing * 0.3)
+			out["foot_l"] = Vector3(swing * 0.14, maxf(cos(phase), 0.0) * 0.08, 0) * m
+			out["foot_r"] = Vector3(-swing * 0.14, maxf(-cos(phase), 0.0) * 0.08, 0) * m
+		"moonwalk":
+			phase = _t * 4.5
+			var lift := absf(sin(phase))
+			out["hover"] = lift * 0.55 * m
+			out["y"] = 0.0
+			out["tilt"] = 0.05
+			out["arm_l"] = Vector3(sin(phase) * 0.5, 0, 0.9)
+			out["arm_r"] = Vector3(-sin(phase) * 0.5, 0, -0.9)
+			out["foot_l"] = Vector3(0, 0.05, sin(phase) * 0.3) * m
+			out["foot_r"] = Vector3(0, 0.05, -sin(phase) * 0.3) * m
 		"float":
 			out["hover"] = 0.3 + sin(_t * 4.0) * 0.06
 			out["y"] = 0.0
@@ -2245,6 +2358,83 @@ func _dance() -> Dictionary:
 			out["tilt"] = -air * TAU
 			out["arm_l"] = Vector3(0, 0, 2.2)
 			out["arm_r"] = Vector3(0, 0, -2.2)
+		"samba":
+			var s := sin(_t * 12.0)
+			out["y"] = absf(s) * 0.07
+			out["turn"] = sin(_t * 3.0) * 0.5
+			out["tilt"] = s * 0.06
+			out["arm_l"] = Vector3(-0.6, 0, 1.3 + s * 0.4)
+			out["arm_r"] = Vector3(-0.6, 0, -1.3 + s * 0.4)
+			out["foot_l"] = Vector3(s * 0.12, maxf(s, 0.0) * 0.1, 0)
+			out["foot_r"] = Vector3(-s * 0.12, maxf(-s, 0.0) * 0.1, 0)
+		"flamenco":
+			var stamp := absf(sin(_t * 9.0))
+			out["turn"] = sin(_t * 2.2) * 0.9
+			out["tilt"] = -0.1
+			out["arm_l"] = Vector3(0, 0, 2.7)
+			out["arm_r"] = Vector3(-1.1, 0, -0.9 + sin(_t * 4.5) * 0.4)
+			out["foot_l"] = Vector3(0, stamp * 0.1, 0)
+		"cancan":
+			var beat := sin(_t * 6.0)
+			out["y"] = absf(beat) * 0.1
+			out["arm_l"] = Vector3(0, 0, 1.1)
+			out["arm_r"] = Vector3(0, 0, -1.1)
+			out["foot_l"] = Vector3(0, maxf(beat, 0.0) * 0.5, maxf(beat, 0.0) * 0.32)
+			out["foot_r"] = Vector3(0, maxf(-beat, 0.0) * 0.5, maxf(-beat, 0.0) * 0.32)
+		"jig":
+			var beat := sin(_t * 12.0)
+			out["y"] = absf(beat) * 0.18
+			out["tilt"] = 0.0
+			out["arm_l"] = Vector3(0, 0, 0.1)
+			out["arm_r"] = Vector3(0, 0, -0.1)
+			out["foot_l"] = Vector3(beat * 0.16, maxf(beat, 0.0) * 0.26, 0)
+			out["foot_r"] = Vector3(-beat * 0.1, 0, 0)
+		"squat":
+			var beat := sin(_t * 8.0)
+			out["y"] = -0.26 + absf(beat) * 0.1
+			out["arm_l"] = Vector3(-1.5, 0.0, 0.5)
+			out["arm_r"] = Vector3(-1.5, 0.0, -0.5)
+			out["foot_l"] = Vector3(0, maxf(beat, 0.0) * 0.28, maxf(beat, 0.0) * 0.4)
+			out["foot_r"] = Vector3(0, maxf(-beat, 0.0) * 0.28, maxf(-beat, 0.0) * 0.4)
+		"bollywood":
+			var beat := sin(_t * 7.0)
+			out["y"] = absf(sin(_t * 3.5)) * 0.1
+			out["turn"] = sin(_t * 1.75) * 0.8
+			out["arm_l"] = Vector3(-0.5, 0, 2.4 + beat * 0.5)
+			out["arm_r"] = Vector3(-0.5, 0, -0.9 - beat * 0.5)
+			out["foot_l"] = Vector3(beat * 0.12, 0, 0)
+			out["foot_r"] = Vector3(beat * 0.12, 0, 0)
+		"kpop":
+			var loop := fmod(_t, 2.0)
+			var point := loop < 1.0
+			out["turn"] = 0.5 if point else -0.5
+			out["y"] = absf(sin(_t * 9.4)) * 0.07
+			out["arm_r"] = Vector3(-1.4, 0, -2.3) if point else Vector3(0, 0, -0.5)
+			out["arm_l"] = Vector3(0, 0, 0.5) if point else Vector3(-1.4, 0, 2.3)
+		"hula":
+			var sway := sin(_t * 4.0)
+			out["turn"] = sway * 0.26
+			out["tilt"] = 0.0
+			out["y"] = absf(sway) * 0.03
+			out["arm_l"] = Vector3(0, 0, 1.4 + sway * 0.3)
+			out["arm_r"] = Vector3(0, 0, -1.4 + sway * 0.3)
+			out["foot_l"] = Vector3(sway * 0.08, 0, 0)
+			out["foot_r"] = Vector3(sway * 0.08, 0, 0)
+		"lion_shake":
+			var shake := sin(_t * 22.0)
+			out["turn"] = sin(_t * 2.6) * 1.1
+			out["y"] = absf(sin(_t * 5.0)) * 0.3
+			out["tilt"] = shake * 0.08
+			out["arm_l"] = Vector3(-1.9, 0, 0.6 + shake * 0.3)
+			out["arm_r"] = Vector3(-1.9, 0, -0.6 - shake * 0.3)
+		"gwara":
+			var beat := sin(_t * 10.0)
+			out["y"] = absf(beat) * 0.14
+			out["turn"] = sin(_t * 5.0) * 0.5
+			out["arm_l"] = Vector3(beat * 0.8, 0, 0.6)
+			out["arm_r"] = Vector3(-beat * 0.8, 0, -0.6)
+			out["foot_l"] = Vector3(0, maxf(beat, 0.0) * 0.2, beat * 0.14)
+			out["foot_r"] = Vector3(0, maxf(-beat, 0.0) * 0.2, -beat * 0.14)
 		"superstar":
 			var loop := sin(_t * 6.0)
 			out["y"] = absf(loop) * 0.28
@@ -2320,4 +2510,6 @@ func accessory_mesh(slot: String, id: String) -> ArrayMesh:
 			return _shared("shoes|" + id, AvatarParts.shoe.bind(id))
 		"gloves":
 			return _shared("gloves|" + id, AvatarParts.glove.bind(id))
+		"pet":
+			return Pet3D.mesh(id)
 	return null

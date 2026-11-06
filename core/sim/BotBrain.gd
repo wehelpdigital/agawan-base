@@ -300,8 +300,23 @@ func _steer(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 	# Avoid walking into a pit edge or wall head-on when pushed off course.
 	if sim.has_status(p, "blind"):
 		dir = dir.rotated(sin(sim.t * 3.0 + p.id) * 0.9)
+	if _road_busy(sim, p, dir):
+		dir = Vector2.ZERO
 	p.mv = dir
 	p.aim = Vector2.ZERO
+
+
+## Good bots wait at the kerb when something's coming. Worse ones don't look.
+func _road_busy(sim: Sim, p: Sim.Player, dir: Vector2) -> bool:
+	if sim.lanes.is_empty() or p.skill < 0.35:
+		return false
+	var ahead := p.pos + dir * 1.8
+	if sim.tile_at(ahead) != Maps.ROAD or sim.tile_at(p.pos) == Maps.ROAD:
+		return false
+	for lane: Dictionary in sim.lanes:
+		if absf(ahead.x - float(lane["x"])) < 1.4 and absf(ahead.y - sim.lane_at(lane)) < 7.0:
+			return true
+	return false
 
 
 ## Is there a pad just ahead that the bot didn't mean to step on, and that would throw it away from its goal?
@@ -318,7 +333,7 @@ func _pad_ahead(sim: Sim, p: Sim.Player, goal: Vector2) -> bool:
 		if i < 0 or sim.tile_center(i).distance_to(goal) < 1.0:
 			continue
 		match sim.tiles[i]:
-			Maps.JUMP:
+			Maps.JUMP, Maps.SPIKES, Maps.GEYSER, Maps.QUICKSAND, Maps.WEB:
 				return true
 			Maps.DASH_R:
 				if dir.x < 0.2: return true
@@ -411,7 +426,7 @@ func _use_powers(sim: Sim, p: Sim.Player, threat: Sim.Player, target: Sim.Player
 		return
 	if aim_at:
 		p.aim = (aim_at.pos - p.pos).normalized()
-	elif String(def.get("kind", "")) in ["hop", "blink", "grapple"]:
+	elif String(def.get("kind", "")) in ["hop", "blink", "grapple", "portal", "slam"]:
 		var goal: Vector2 = p.brain.get("goal", sim.base[1 - p.team])
 		p.aim = (goal - p.pos).normalized()
 	p.want_use = true

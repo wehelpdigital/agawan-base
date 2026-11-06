@@ -3,7 +3,7 @@ extends Control
 ## The strip along the top of every menu: who you are, your league, coins, gems, and settings.
 
 var _name_label: Label
-var _level_label: Label
+var _level_badge: RoundBadge
 var _trophy_pill: PanelContainer
 var _coin_pill: PanelContainer
 var _gem_pill: PanelContainer
@@ -54,15 +54,8 @@ func _build() -> void:
 	inner.set_anchors_preset(Control.PRESET_FULL_RECT)
 	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	me.add_child(inner)
-	var badge := PanelContainer.new()
-	badge.add_theme_stylebox_override("panel", UiKit.style(UiKit.YELLOW, int(height * 0.5), 3))
-	badge.custom_minimum_size = Vector2(height, height)
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_level_label = UiKit.label("1", int(height * 0.46), UiKit.INK, 0, true)
-	_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	badge.add_child(_level_label)
-	inner.add_child(badge)
+	_level_badge = RoundBadge.new().setup("1", height)
+	inner.add_child(_level_badge)
 	var col := UiKit.vbox(-2)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -121,7 +114,8 @@ func refresh() -> void:
 	if _name_label == null or not is_instance_valid(_name_label):
 		return
 	_name_label.text = Profile.player_name
-	_level_label.text = str(Profile.level)
+	_level_badge.value = str(Profile.level)
+	_level_badge.progress = float(Profile.xp) / maxf(Ranks.xp_for_level(Profile.level), 1.0)
 	_set_value(_trophy_pill, _amount(Profile.trophies))
 	_set_value(_coin_pill, _amount(Profile.coins))
 	_set_value(_gem_pill, _amount(Profile.gems))

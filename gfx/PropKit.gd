@@ -52,7 +52,9 @@ static func draw(kit: MeshKit, prop: String, at: Vector3, yaw := 0.0, scale := 1
 		"ship": _ship(kit, accent)
 		"dish": _dish(kit)
 		"dead_tree": _dead_tree(kit)
-		_: kit.soft_box(Vector3(0, 0.6, 0), Vector3(0.65, 0.6, 0.65), accent, 0.5)
+		_:
+			if not WorldProps.draw(kit, prop, v, accent):
+				kit.soft_box(Vector3(0, 0.6, 0), Vector3(0.65, 0.6, 0.65), accent, 0.5)
 	kit.pop()
 
 
