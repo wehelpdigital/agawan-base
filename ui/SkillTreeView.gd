@@ -192,7 +192,12 @@ class SkillOrb extends Button:
 		draw_circle(c, r - 11.0, UiKit.PAPER if _open else UiKit.INK_SOFT, true, -1.0, true)
 		var side := (r - 11.0) * 1.56
 		var tint := Color.WHITE if _open else Color(0.5, 0.54, 0.68)
-		draw_texture_rect(_picture, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, tint)
+		var spot := Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side))
+		if Skills.info(skill).has("hero"):  # The hero's own skill shows their head.
+			var whole := _picture.get_size()
+			draw_texture_rect_region(_picture, spot, Rect2(whole * Vector2(0.2, 0.16), whole * 0.6), tint)
+		else:
+			draw_texture_rect(_picture, spot, false, tint)
 		if _chosen:
 			var dot := maxf(r * 0.1, 3.0)
 			for i in Skills.MAX_RANK:
