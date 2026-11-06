@@ -13,8 +13,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 TITLE_FONT = str(ROOT / "assets/fonts/RammettoOne-Regular.ttf")
 
-INK = (18, 58, 107)
-INK_DARK = (10, 38, 74)
+INK = (10, 20, 38)
+INK_DARK = (4, 9, 18)
 WHITE = (255, 255, 255)
 CORAL = (255, 82, 71)
 MINT = (53, 208, 127)

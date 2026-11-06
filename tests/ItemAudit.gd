@@ -76,7 +76,7 @@ func _ready() -> void:
 		label.outline_size = 10
 		label.pixel_size = 0.0065
 		label.modulate = Color.WHITE
-		label.outline_modulate = Color("123a6b")
+		label.outline_modulate = Color("0a1426")
 		label.position = avatar.position + Vector3(0, 1.98 if _close else 2.2, 0)
 		label.no_depth_test = true
 		world.add_child(label)

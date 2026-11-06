@@ -31,6 +31,6 @@ void fragment() {
 	// Avatars' outline: a dark edge where a round surface turns away, smooth at any distance. Vertex alpha
 	// switches it off for paint (cheeks, spots, mouths).
 	float line = soft * COLOR.a * smoothstep(0.7, 0.8, 1.0 - facing);
-	surface = mix(surface, mix(col * 0.32, vec3(0.05, 0.15, 0.3), 0.55), line);
+	surface = mix(surface, vec3(0.039, 0.078, 0.149), line);
 	ALBEDO = mix(surface, vec3(1.0), flash);
 }

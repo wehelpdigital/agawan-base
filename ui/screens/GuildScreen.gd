@@ -3,7 +3,7 @@ extends Control
 
 const CREATE_COST := 500
 const BADGES := ["flag", "crown", "skull", "shield", "star", "swords", "trophy", "gem"]
-const BADGE_COLORS := [Color("ffb21f"), Color("23a7ff"), Color("ff4f6b"), Color("35d07f"), Color("b768ff"), Color("ff6fb5"), Color("19d3e6"), Color("c5d0e6")]
+const BADGE_COLORS := [Color("ffb21f"), Color("23a7ff"), Color("ff4f6b"), Color("35d07f"), Color("b768ff"), Color("ff6fb5"), Color("19d3e6"), UiKit.INK]
 
 var root: UiRoot
 var args: Dictionary
@@ -276,7 +276,7 @@ func _member_row(rank: int, member: Dictionary, leader_id: int, me_id: int) -> C
 	var card := UiKit.panel(UiKit.CARD, 12, 3)
 	var box := UiKit.hbox(8)
 	card.add_child(box)
-	var number := UiKit.title(str(rank), 16, UiKit.MUTED)
+	var number := UiKit.title(str(rank), 16, UiKit.WHITE)
 	number.custom_minimum_size.x = 26
 	box.add_child(number)
 	var id := int(member.get("id", 0))

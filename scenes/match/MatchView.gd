@@ -15,7 +15,7 @@ const GATE_WARNING := 1.0
 const STATUS_ICONS := {
 	"stun": [Cosmetics.Fx.STAR, "ffd23f"], "freeze": [Cosmetics.Fx.SNOW, "bff3ff"], "root": [Cosmetics.Fx.RING, "c9b95c"],
 	"slow": [Cosmetics.Fx.DROP, "62e0a0"], "slip": [Cosmetics.Fx.RING, "bff3ff"], "reverse": [Cosmetics.Fx.SPARK, "b768ff"],
-	"fear": [Cosmetics.Fx.DROP, "9fe6ff"], "blind": [Cosmetics.Fx.DROP, "123a6b"], "stale": [Cosmetics.Fx.PUFF, "8a8a6a"],
+	"fear": [Cosmetics.Fx.DROP, "9fe6ff"], "blind": [Cosmetics.Fx.DROP, "0a1426"], "stale": [Cosmetics.Fx.PUFF, "8a8a6a"],
 	"overcharge": [Cosmetics.Fx.BOLT, "fff176"], "firetrail": [Cosmetics.Fx.FLAME, "ff7a1f"], "chain": [Cosmetics.Fx.BOLT, "7ee8ff"],
 	"speed": [Cosmetics.Fx.PUFF, "ffffff"], "speed2": [Cosmetics.Fx.PUFF, "ffffff"], "dashboost": [Cosmetics.Fx.BOLT, "35d07f"],
 	"fastcap": [Cosmetics.Fx.STAR, "ffc21f"],
@@ -197,7 +197,7 @@ func _build_players() -> void:
 		label.outline_size = 10
 		label.pixel_size = 0.0098
 		label.modulate = Color("ffe9a8") if is_me else (Color("c9f1ff") if p.team == my_team else Color("ffc4bd"))
-		label.outline_modulate = Color("123a6b")
+		label.outline_modulate = Color("0a1426")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.no_depth_test = true
 		label.render_priority = 1
@@ -255,7 +255,7 @@ func _build_base_markers() -> void:
 		jail_label.pixel_size = 0.012
 		jail_label.text = "JAIL"
 		jail_label.modulate = Color("fff3d6")
-		jail_label.outline_modulate = Color("123a6b")
+		jail_label.outline_modulate = Color("0a1426")
 		jail_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		jail_label.position = Vector3(sim.jail[team].x, 2.4, sim.jail[team].y - Sim.JAIL_R)
 		add_child(jail_label)
@@ -1174,7 +1174,7 @@ func _float_text(at: Vector3, text: String, color: Color) -> void:
 	label.outline_size = 18
 	label.pixel_size = 0.013
 	label.modulate = color
-	label.outline_modulate = Color("123a6b")
+	label.outline_modulate = Color("0a1426")
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.render_priority = 3
@@ -1203,7 +1203,7 @@ func show_emote(player_id: int, text: String) -> void:
 	label.outline_size = 16
 	label.pixel_size = 0.013
 	label.modulate = Color("ffffff")
-	label.outline_modulate = Color("123a6b")
+	label.outline_modulate = Color("0a1426")
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.render_priority = 3

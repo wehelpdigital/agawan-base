@@ -129,7 +129,7 @@ func _build_room(room: Dictionary) -> void:
 	top.add_child(top_row)
 	var code_col := UiKit.vbox(0)
 	code_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	code_col.add_child(UiKit.label("ROOM CODE", 14, UiKit.MUTED, 3, true))
+	code_col.add_child(UiKit.label("ROOM CODE", 14, UiKit.WHITE, 3, true))
 	code_col.add_child(UiKit.title(code, 38, UiKit.YELLOW))
 	top_row.add_child(code_col)
 	var share := UiKit.button("Copy", "blue", 17)

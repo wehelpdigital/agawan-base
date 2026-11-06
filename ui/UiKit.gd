@@ -3,13 +3,13 @@ extends RefCounted
 ## The look of the interface: colours, fonts, panels and the small factories every screen builds from.
 ## Bright glossy toys under a blue sky: white-rimmed plastic panels and buttons, and fat bouncy letters.
 
-const INK := Color("123a6b")
-const INK_SOFT := Color("1d5a9c")
+const INK := Color("0a1426")
+const INK_SOFT := Color("1c2740")
 const SKY := Color("2f8fff")
 const SKY_LIGHT := Color("5fb6ff")
 const PAPER := Color("fffdf4")
-const CARD := Color("1f77e0")
-const CARD_LIGHT := Color("3b90f0")
+const CARD := Color("2f8bf0")
+const CARD_LIGHT := Color("4a9ff5")
 const RIM := Color("eef8ff")
 const YELLOW := Color("ffd23f")
 const ORANGE := Color("ff9d2e")
@@ -20,7 +20,7 @@ const AQUA := Color("19d3e6")
 const BLUE := Color("3aa6ff")
 const PURPLE := Color("a98bff")
 const WHITE := Color("ffffff")
-const MUTED := Color("d6ebff")
+const MUTED := INK  ## Secondary text is no paler than the rest: small and dark, never grey.
 const COIN := Color("ffc21f")
 const GEM := Color("5ce8ff")
 const TROPHY := Color("ffd23f")
@@ -32,9 +32,9 @@ const BUTTON_COLORS := {
 	"pink": {"top": Color("ff9ccb"), "low": Color("ff5aa5"), "lip": Color("c42a78"), "text": WHITE},
 	"coral": {"top": Color("ff8f7a"), "low": Color("f44a3c"), "lip": Color("b52a22"), "text": WHITE},
 	"teal": {"top": Color("62e6e0"), "low": Color("1fc0c4"), "lip": Color("0f8791"), "text": WHITE},
-	"gray": {"top": Color("c3d0de"), "low": Color("95a8bd"), "lip": Color("6b7f96"), "text": WHITE},
+	"black": {"top": Color("2a3650"), "low": Color("141d30"), "lip": INK, "text": WHITE},
 	"ink": {"top": Color("3f8fe8"), "low": Color("1f6fd0"), "lip": Color("124a96"), "text": WHITE},
-	"white": {"top": Color("ffffff"), "low": Color("e8f2fb"), "lip": Color("a9c4de"), "text": INK},
+	"white": {"top": Color("ffffff"), "low": Color("e8f2fb"), "lip": INK, "text": INK},
 }
 
 static var _title_font: Font
@@ -60,7 +60,7 @@ static func font_body() -> Font:
 		var base: Font = load("res://assets/fonts/Nunito.ttf")
 		var variation := FontVariation.new()
 		variation.base_font = base
-		variation.variation_opentype = {"wght": 700}
+		variation.variation_opentype = {"wght": 800}
 		_body_font = variation
 	return _body_font
 
@@ -83,10 +83,10 @@ static func theme() -> Theme:
 	t.default_font_size = 20
 	t.set_color("font_color", "Label", WHITE)
 	var scroll := StyleBoxFlat.new()
-	scroll.bg_color = Color(1, 1, 1, 0.1)
+	scroll.bg_color = Color(0, 0, 0, 0)
 	scroll.set_corner_radius_all(6)
 	var grabber := StyleBoxFlat.new()
-	grabber.bg_color = Color(1, 1, 1, 0.75)
+	grabber.bg_color = INK
 	grabber.set_corner_radius_all(6)
 	for kind: String in ["VScrollBar", "HScrollBar"]:
 		t.set_stylebox("scroll", kind, scroll)
@@ -108,11 +108,11 @@ static func theme() -> Theme:
 	t.set_stylebox("focus", "LineEdit", field_focus)
 	t.set_stylebox("read_only", "LineEdit", field)
 	t.set_color("font_color", "LineEdit", INK)
-	t.set_color("font_placeholder_color", "LineEdit", Color(INK, 0.45))
+	t.set_color("font_placeholder_color", "LineEdit", Color(INK, 0.7))
 	t.set_color("caret_color", "LineEdit", INK)
 	t.set_color("selection_color", "LineEdit", Color(ORANGE, 0.45))
 	t.set_font_size("font_size", "LineEdit", 20)
-	var slider := style(Color(0, 0, 0, 0.3), 8)
+	var slider := style(INK, 8)
 	slider.content_margin_top = 8
 	slider.content_margin_bottom = 8
 	var slider_fill := style(YELLOW, 8)
@@ -129,7 +129,7 @@ static func theme() -> Theme:
 
 
 static func _knob_texture() -> Texture2D:
-	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='17' fill='#123a6b'/><circle cx='20' cy='20' r='12' fill='#fff'/></svg>"
+	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='17' fill='#0a1426'/><circle cx='20' cy='20' r='12' fill='#fff'/></svg>"
 	return _svg_texture(svg)
 
 
@@ -191,7 +191,7 @@ static func title(text: String, size := 34, color := WHITE) -> Label:
 	return l
 
 
-static func body(text: String, size := 18, color := WHITE) -> Label:
+static func body(text: String, size := 18, color := INK) -> Label:
 	var l := label(text, size, color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -318,11 +318,11 @@ static func marker_texture(kind: String) -> Texture2D:
 	var svg := ""
 	match kind:
 		"catch":  # A green hand-free "get them" arrow: you can tag this enemy.
-			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 88 L10 42 H30 V8 H66 V42 H86 Z' fill='#123a6b' stroke='#123a6b' stroke-width='10' stroke-linejoin='round'/><path d='M48 80 L19 46 H37 V15 H59 V46 H77 Z' fill='#3bff7a'/><path d='M37 15 H59 V30 H37 Z' fill='#b6ffcf'/></svg>"
+			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 88 L10 42 H30 V8 H66 V42 H86 Z' fill='#0a1426' stroke='#0a1426' stroke-width='10' stroke-linejoin='round'/><path d='M48 80 L19 46 H37 V15 H59 V46 H77 Z' fill='#3bff7a'/><path d='M37 15 H59 V30 H37 Z' fill='#b6ffcf'/></svg>"
 		"danger":  # A red warning sign: this enemy can tag you.
-			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 84 H6 Z' fill='#123a6b' stroke='#123a6b' stroke-width='10' stroke-linejoin='round'/><path d='M48 17 L80 77 H16 Z' fill='#ff3f5a'/><rect x='42' y='36' width='12' height='23' rx='5' fill='#fff'/><circle cx='48' cy='68' r='6.5' fill='#fff'/></svg>"
+			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 84 H6 Z' fill='#0a1426' stroke='#0a1426' stroke-width='10' stroke-linejoin='round'/><path d='M48 17 L80 77 H16 Z' fill='#ff3f5a'/><rect x='42' y='36' width='12' height='23' rx='5' fill='#fff'/><circle cx='48' cy='68' r='6.5' fill='#fff'/></svg>"
 		"free":  # A white house: walk home, nobody can touch you.
-			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 46 H74 V86 H22 V46 H6 Z' fill='#123a6b' stroke='#123a6b' stroke-width='8' stroke-linejoin='round'/><path d='M48 16 L78 42 H66 V78 H30 V42 H18 Z' fill='#fff'/><rect x='41' y='52' width='14' height='26' fill='#123a6b'/></svg>"
+			svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><path d='M48 8 L90 46 H74 V86 H22 V46 H6 Z' fill='#0a1426' stroke='#0a1426' stroke-width='8' stroke-linejoin='round'/><path d='M48 16 L78 42 H66 V78 H30 V42 H18 Z' fill='#fff'/><rect x='41' y='52' width='14' height='26' fill='#0a1426'/></svg>"
 	_markers[kind] = _svg_texture(svg)
 	return _markers[kind]
 

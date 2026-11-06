@@ -193,9 +193,9 @@ func _draw() -> void:
 	if _id == "":
 		if not compact:
 			var radius := int(size.x * 0.14)
-			draw_style_box(UiKit.style(Color(UiKit.INK, 0.5), radius, 3, Color(1, 1, 1, 0.3)), rect)
+			draw_style_box(UiKit.style(UiKit.INK, radius, 3, UiKit.RIM), rect)
 			var side := size.x * 0.62
-			draw_texture_rect(UiKit.icon_texture("power"), Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side)), false, Color(1, 1, 1, 0.4))
+			draw_texture_rect(UiKit.icon_texture("power"), Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side)), false)
 		return
 	var shadow := Rect2(rect.position + Vector2(0, size.y * 0.025), rect.size)
 	draw_style_box(UiKit.style(Color(UiKit.INK, 0.45), int(size.x * 0.13)), shadow)

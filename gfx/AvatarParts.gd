@@ -431,7 +431,7 @@ static func mask(k: MeshKit, id: String, hatted := false) -> void:
 				_paint(k, s * 0.21, -0.03, 0.09, 0.08, Color("fff8ea"), M * 1.0, 0.004)
 			_eyes_on(k, -0.03, 0.21, 0.06, DARK, M, 0.006)
 		"snorkel":
-			var frame := Color("123a6b")
+			var frame := Color("0a1426")
 			var strap := PackedVector3Array()
 			for i in 29:
 				var a := lerpf(PI * 0.5 + 0.8, PI * 2.5 - 0.8, i / 28.0)

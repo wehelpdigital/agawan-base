@@ -52,7 +52,7 @@ func _ready() -> void:
 		label.font_size = 40
 		label.outline_size = 10
 		label.pixel_size = 0.012
-		label.outline_modulate = Color("123a6b")
+		label.outline_modulate = Color("0a1426")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.no_depth_test = true
 		label.position = at + Vector3(0, 0.1, 1.75)

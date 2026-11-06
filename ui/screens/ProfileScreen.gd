@@ -64,7 +64,7 @@ func _name_card() -> Control:
 	xp_bar.custom_minimum_size.y = 14
 	xp_bar.max_value = Ranks.xp_for_level(Profile.level)
 	xp_bar.value = Profile.xp
-	xp_bar.add_theme_stylebox_override("background", UiKit.style(Color(UiKit.INK, 0.85), 7))
+	xp_bar.add_theme_stylebox_override("background", UiKit.style(UiKit.INK, 7))
 	xp_bar.add_theme_stylebox_override("fill", UiKit.style(UiKit.AQUA, 7))
 	col.add_child(xp_bar)
 	return card

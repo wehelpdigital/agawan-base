@@ -11,7 +11,7 @@ void vertex() {
 
 void fragment() {
 	if (COLOR.a < 0.5) {
-		ALBEDO = vec3(0.14, 0.075, 0.37);
+		ALBEDO = vec3(0.039, 0.078, 0.149);
 	} else {
 		float hue = COLOR.r + TIME * 0.14;
 		vec3 rainbow = 0.5 + 0.5 * cos(6.28318 * (hue + vec3(0.0, 0.33, 0.67)));

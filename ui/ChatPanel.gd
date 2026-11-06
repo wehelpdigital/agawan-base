@@ -22,7 +22,7 @@ func _init(p_channel := "global") -> void:
 
 func _ready() -> void:
 	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", UiKit.card_style(Color(UiKit.INK, 0.72), 14, 3))
+	frame.add_theme_stylebox_override("panel", UiKit.card_style(UiKit.INK, 14, 3))
 	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(frame)
 	_scroll = UiKit.scroller()
@@ -30,7 +30,7 @@ func _ready() -> void:
 	_list = UiKit.vbox(5)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_list)
-	_note = UiKit.body("", 17, UiKit.MUTED)
+	_note = UiKit.body("", 17, UiKit.WHITE)
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_list.add_child(_note)
 	var quick_scroll := UiKit.scroller(true)
@@ -123,9 +123,9 @@ func _add_line(message: Dictionary) -> void:
 	var rank := UiKit.label(String(league["name"]), 12, league["color"])
 	head.add_child(rank)
 	if str(message.get("guild", "")) != "":
-		head.add_child(UiKit.label("[%s]" % str(message["guild"]), 12, UiKit.MUTED))
+		head.add_child(UiKit.label("[%s]" % str(message["guild"]), 12, UiKit.WHITE))
 	line.add_child(head)
-	var text := UiKit.body(str(message.get("text", "")), 17)
+	var text := UiKit.body(str(message.get("text", "")), 17, UiKit.WHITE)
 	line.add_child(text)
 	_list.add_child(line)
 

@@ -9,7 +9,7 @@ extends RefCounted
 ##
 
 
-const INK := Color("123a6b")
+const INK := Color("0a1426")
 
 var verts := PackedVector3Array()
 var norms := PackedVector3Array()

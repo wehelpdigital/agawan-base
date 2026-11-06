@@ -283,7 +283,7 @@ func _quests_popup() -> void:
 		bar.custom_minimum_size = Vector2(0, 14)
 		bar.max_value = goal
 		bar.value = progress
-		bar.add_theme_stylebox_override("background", UiKit.style(Color(UiKit.INK, 0.8), 7))
+		bar.add_theme_stylebox_override("background", UiKit.style(UiKit.INK, 7))
 		bar.add_theme_stylebox_override("fill", UiKit.style(UiKit.MINT, 7))
 		text.add_child(bar)
 		row.add_child(text)

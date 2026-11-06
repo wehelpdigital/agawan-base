@@ -155,7 +155,7 @@ func _draw_fountains(long: float) -> void:
 		var at := _to_map(_sim.tile_center(tile))
 		var ready := _sim.fountain_ready(tile)
 		draw_circle(at, r + 1.2, UiKit.INK)
-		draw_circle(at, r, Color("4fc8f4") if ready else Color("7a8aa0"))
+		draw_circle(at, r, Color("4fc8f4") if ready else UiKit.INK)
 		if ready:
 			draw_circle(at, r * 0.45, Color.WHITE)
 

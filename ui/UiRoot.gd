@@ -228,7 +228,7 @@ func show_all() -> void:
 
 func toast(text: String, color := UiKit.WHITE) -> void:
 	var pill := PanelContainer.new()
-	var box := UiKit.card_style(Color(UiKit.INK, 0.96), 16, 3)
+	var box := UiKit.card_style(UiKit.INK, 16, 3)
 	pill.add_theme_stylebox_override("panel", box)
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var line := UiKit.body(text, 18, color)

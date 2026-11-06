@@ -163,7 +163,7 @@ func _build() -> void:
 func _build_scoreboard() -> void:
 	var board := PanelContainer.new()
 	board.name = "Board"
-	board.add_theme_stylebox_override("panel", UiKit.card_style(Color(UiKit.INK, 0.86), 20, 3))
+	board.add_theme_stylebox_override("panel", UiKit.card_style(UiKit.INK, 20, 3))
 	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_top.add_child(board)
 	var row := UiKit.hbox(12)
@@ -205,7 +205,7 @@ func _score_side(team: int) -> Control:
 	for i in Sim.WIN_POINTS:
 		var pip := Panel.new()
 		pip.custom_minimum_size = Vector2(24, 24)
-		pip.add_theme_stylebox_override("panel", UiKit.style(Color(1, 1, 1, 0.16), 12, 3, UiKit.INK))
+		pip.add_theme_stylebox_override("panel", UiKit.style(UiKit.INK, 12, 3, UiKit.RIM))
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(pip)
 		pips.append(pip)
@@ -254,7 +254,7 @@ func _build_jail_panel() -> void:
 	var title := UiKit.title("IN JAIL", 34, Color("ff8a78"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_jail_panel.add_child(title)
-	_jail_time = UiKit.body("", 18)
+	_jail_time = UiKit.body("", 18, UiKit.WHITE)
 	_jail_time.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_jail_time.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_jail_time.add_theme_color_override("font_outline_color", UiKit.INK)
@@ -263,7 +263,7 @@ func _build_jail_panel() -> void:
 	_jail_bar = ProgressBar.new()
 	_jail_bar.show_percentage = false
 	_jail_bar.custom_minimum_size = Vector2(260, 22)
-	_jail_bar.add_theme_stylebox_override("background", UiKit.style(Color(UiKit.INK, 0.9), 11, 3))
+	_jail_bar.add_theme_stylebox_override("background", UiKit.style(UiKit.INK, 11, 3))
 	_jail_bar.add_theme_stylebox_override("fill", UiKit.style(UiKit.CORAL, 9))
 	_jail_panel.add_child(_jail_bar)
 	_mash_btn = UiKit.button("TAP TO BREAK OUT!", "coral", 26)
@@ -420,7 +420,7 @@ func _refresh_top() -> void:
 		var color := ArenaBuilder.team_color(team)
 		for i in pips.size():
 			var on: bool = i < int(sim.score[team])
-			(pips[i] as Panel).add_theme_stylebox_override("panel", UiKit.style(color if on else Color(1, 1, 1, 0.16), 12, 3, UiKit.INK))
+			(pips[i] as Panel).add_theme_stylebox_override("panel", UiKit.style(color if on else UiKit.INK, 12, 3, UiKit.RIM))
 	for chip: Control in _roster:
 		(chip as RosterChip).refresh(sim)
 
@@ -814,7 +814,7 @@ func _pad_right_vec() -> Vector2:
 
 func _draw() -> void:
 	if _stick_touch >= 0:
-		draw_circle(_stick_center, STICK_R + 6.0, Color(UiKit.INK, 0.35))
+		draw_circle(_stick_center, STICK_R + 6.0, Color(UiKit.INK, 0.6))
 		draw_arc(_stick_center, STICK_R + 6.0, 0.0, TAU, 48, Color(1, 1, 1, 0.5), 4.0, true)
 		var knob := _stick_center + _stick_vec * STICK_R
 		draw_circle(knob, 34.0, UiKit.INK)

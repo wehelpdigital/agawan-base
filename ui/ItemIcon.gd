@@ -28,7 +28,7 @@ func _draw() -> void:
 		draw_texture_rect(_thumb, rect, false)
 		return
 	var center := size * 0.5
-	var tint: Color = (Cosmetics.RARITY[_entry["rarity"]]["color"] as Color).lightened(0.3)
+	var tint: Color = Color.WHITE if _entry["rarity"] == "free" else (Cosmetics.RARITY[_entry["rarity"]]["color"] as Color).lightened(0.3)
 	match _slot:
 		"trail", "aura", "burst":
 			_draw_particles(center, side)
@@ -62,8 +62,8 @@ func _draw() -> void:
 ## An empty slot: "nothing here".
 func _draw_none(center: Vector2, side: float) -> void:
 	var r := side * 0.27
-	draw_arc(center, r, 0.0, TAU, 32, Color(1, 1, 1, 0.45), 6.0, true)
-	draw_line(center + Vector2(-r, r) * 0.7, center + Vector2(r, -r) * 0.7, Color(1, 1, 1, 0.45), 6.0, true)
+	draw_arc(center, r, 0.0, TAU, 32, UiKit.INK, 6.0, true)
+	draw_line(center + Vector2(-r, r) * 0.7, center + Vector2(r, -r) * 0.7, UiKit.INK, 6.0, true)
 
 
 func _draw_swatch(center: Vector2, side: float) -> void:

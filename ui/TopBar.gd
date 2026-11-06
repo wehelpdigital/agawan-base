@@ -79,8 +79,6 @@ func _build() -> void:
 	status.add_child(_status_dot)
 	var state := UiKit.label("", 13, UiKit.MUTED)
 	state.name = "State"
-	state.add_theme_color_override("font_outline_color", UiKit.INK)
-	state.add_theme_constant_override("outline_size", 4)
 	status.add_child(state)
 	col.add_child(status)
 	col.visible = not _narrow
@@ -128,7 +126,7 @@ func refresh() -> void:
 	_set_value(_coin_pill, _amount(Profile.coins))
 	_set_value(_gem_pill, _amount(Profile.gems))
 	var on := Net.online
-	_status_dot.add_theme_stylebox_override("panel", UiKit.style(UiKit.MINT if on else Color("8f8cb0"), 5, 2))
+	_status_dot.add_theme_stylebox_override("panel", UiKit.style(UiKit.MINT if on else UiKit.INK, 5, 2))
 	var state := find_child("State", true, false) as Label
 	if state:
 		if on:

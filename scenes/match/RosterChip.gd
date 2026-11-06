@@ -31,12 +31,13 @@ func _draw() -> void:
 	var r := SIZE * 0.5
 	var c := Vector2(r, r)
 	draw_circle(c, r, UiKit.INK)
-	draw_circle(c, r - 2.5, _color.darkened(0.5) if _jailed else _color)
+	draw_circle(c, r - 2.5, UiKit.INK if _jailed else _color)
 	if _is_me:
 		draw_arc(c, r - 1.0, 0.0, TAU, 20, Color.WHITE, 2.5, true)
+	if _jailed:  # Black, behind white bars.
+		for x: float in [-5.5, 0.0, 5.5]:
+			draw_line(c + Vector2(x, -r + 4.0), c + Vector2(x, r - 4.0), Color.WHITE, 2.5)
+		return
 	var font := UiKit.font_title()
 	var w := font.get_string_size(_letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	draw_string(font, c + Vector2(-w * 0.5, 5.0), _letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE if not _jailed else Color(1, 1, 1, 0.5))
-	if _jailed:
-		for x: float in [-5.5, 0.0, 5.5]:
-			draw_line(c + Vector2(x, -r + 2.0), c + Vector2(x, r - 2.0), UiKit.INK, 2.5)
+	draw_string(font, c + Vector2(-w * 0.5, 5.0), _letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)

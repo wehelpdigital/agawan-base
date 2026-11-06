@@ -39,7 +39,7 @@ const GROUPS: Array[Dictionary] = [
 ## Slots whose shop card is a picture of the item alone, rendered from its 3D model.
 const BAKED_SLOTS := ["char", "face", "mask", "hat", "top", "pants", "shoes", "gloves", "back"]
 const RARITY := {
-	"free": {"name": "Free", "color": Color("9aa3b8"), "coins": 0, "gems": 0},
+	"free": {"name": "Free", "color": Color("0a1426"), "coins": 0, "gems": 0},
 	"common": {"name": "Common", "color": Color("6fcf6a"), "coins": 200, "gems": 0},
 	"rare": {"name": "Rare", "color": Color("3aa6ff"), "coins": 600, "gems": 0},
 	"epic": {"name": "Epic", "color": Color("b768ff"), "coins": 1500, "gems": 0},

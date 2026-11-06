@@ -84,7 +84,7 @@ func _card(def: Dictionary) -> Control:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	text.add_child(head)
-	var tier := UiKit.label("%s %s" % [Powerups.TIER_NAMES[int(def["tier"])], Powerups.CATS[def["cat"]]["name"]], 13, (Powerups.CATS[def["cat"]]["color"] as Color).lightened(0.72))
+	var tier := UiKit.label("%s %s" % [Powerups.TIER_NAMES[int(def["tier"])], Powerups.CATS[def["cat"]]["name"]], 13, UiKit.INK)
 	text.add_child(tier)
 	text.add_child(UiKit.body(String(def["desc"]), 15))
 	row.add_child(text)

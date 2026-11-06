@@ -126,13 +126,13 @@ func _toggle(title: String, value: bool, on_change: Callable) -> Control:
 	var caption := UiKit.label(title, 18)
 	caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(caption)
-	var b := UiKit.button("ON" if value else "OFF", "green" if value else "gray", 16)
+	var b := UiKit.button("ON" if value else "OFF", "green" if value else "black", 16)
 	b.custom_minimum_size = Vector2(84, 46)
 	var state := [value]
 	b.pressed.connect(func() -> void:
 		state[0] = not state[0]
 		b.set_text("ON" if state[0] else "OFF")
-		b.set_kind("green" if state[0] else "gray")
+		b.set_kind("green" if state[0] else "black")
 		on_change.call(state[0]))
 	row.add_child(b)
 	return row

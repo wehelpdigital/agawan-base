@@ -251,7 +251,7 @@ func _card(slot: String, id: String, cell: float, deal: bool) -> Control:
 	if equipped:
 		foot.add_child(UiKit.label("WORN" if slot != "emote" else "IN WHEEL", 13, UiKit.MINT, 3, true))
 	elif owned:
-		foot.add_child(UiKit.label("OWNED", 13, UiKit.MUTED, 3, true))
+		foot.add_child(UiKit.label("OWNED", 13, UiKit.WHITE, 3, true))
 	else:
 		var price := Cosmetics.price(slot, id)
 		var gems := int(price["gems"])
@@ -298,12 +298,12 @@ func _show_item(slot: String, id: String) -> void:
 	var entry := Cosmetics.item(slot, id)
 	var rarity: Dictionary = Cosmetics.RARITY[entry["rarity"]]
 	_name_label.text = String(entry["name"])
-	_name_label.add_theme_color_override("font_color", (rarity["color"] as Color).lightened(0.25))
+	_name_label.add_theme_color_override("font_color", UiKit.WHITE if entry["rarity"] == "free" else (rarity["color"] as Color).lightened(0.25))
 	_info_label.text = String(entry.get("blurb", "%s %s" % [rarity["name"], String(Cosmetics.SLOT_INFO[slot]["name"]).trim_suffix("s")]))
 	_action.visible = true
 	if Profile.owns(slot, id):
 		if _is_equipped(slot, id):
-			_action.set_kind("gray" if slot != "emote" else "ink")
+			_action.set_kind("black" if slot != "emote" else "ink")
 			_action.set_text("WORN" if slot != "emote" else "REMOVE")
 			_action.disabled = slot != "emote"
 		else:

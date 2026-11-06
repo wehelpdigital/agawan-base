@@ -158,7 +158,7 @@ static func _draw_floor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumb
 					_disc(k, center, t * 0.3, 0.012, Color("ffd23f"), 18)
 					_disc(k, center, t * 0.14, 0.014, Color("ff4f8b"), 12)
 				Maps.TELE:
-					_disc(k, center, t * 0.48, 0.01, Color("123a6b"), 20)
+					_disc(k, center, t * 0.48, 0.01, Color("0a1426"), 20)
 					_disc(k, center, t * 0.38, 0.012, Color("b768ff"), 20)
 					_disc(k, center, t * 0.2, 0.014, Color("27e9ff"), 16)
 				Maps.LAND:
@@ -233,7 +233,7 @@ static func _landing_box(k: MeshKit, center: Vector2) -> void:
 ## The slot in the ground that a gate comes up out of: warning stripes.
 static func _gate_track(k: MeshKit, center: Vector2) -> void:
 	var half := Maps.TILE * 0.5
-	k.ground(Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0), 0.008, Color("3a3a58"))
+	k.ground(Rect2(center - Vector2(half, half), Vector2(half, half) * 2.0), 0.008, Color("0a1426"))
 	for i in 4:
 		var at := center.x - half + 0.08 + i * (half * 2.0 - 0.16) / 4.0
 		k.ground(Rect2(at, center.y - half + 0.1, 0.25, half * 2.0 - 0.2), 0.012, Color("ffc21f"))
@@ -262,7 +262,7 @@ static func _draw_tricks(k: MeshKit, sim: Sim) -> void:
 ## A big spring, with a dotted line through the air to the box it lands you on.
 static func _jump_pad(k: MeshKit, at: Vector3, land: Vector2) -> void:
 	var red := Color("ff5a4e")
-	k.ball(at + Vector3(0, 0.05, 0), Vector3(0.85, 0.08, 0.85), Color("3a3a58"), 6, 16)
+	k.ball(at + Vector3(0, 0.05, 0), Vector3(0.85, 0.08, 0.85), Color("0a1426"), 6, 16)
 	for i in 3:
 		k.torus(at + Vector3(0, 0.12 + i * 0.13, 0), 0.54, 0.075, Color("dfe4f4"), 18, 6)
 	k.ball(at + Vector3(0, 0.5, 0), Vector3(0.78, 0.13, 0.78), red, 8, 18)
@@ -328,9 +328,9 @@ static func _bumper(k: MeshKit, at: Vector3) -> void:
 static func _draw_pads(k: MeshKit, sim: Sim) -> void:
 	for team in 2:
 		var c: Color = team_color(team)
-		_disc(k, sim.jail[team], Sim.JAIL_R + 0.18, 0.012, Color("123a6b"), 36)
+		_disc(k, sim.jail[team], Sim.JAIL_R + 0.18, 0.012, Color("0a1426"), 36)
 		_disc(k, sim.jail[team], Sim.JAIL_R, 0.014, c.lerp(Color("3a3058"), 0.68), 36)
-		_disc(k, sim.base[team], Sim.BASE_R + 0.22, 0.012, Color("123a6b"), 64)
+		_disc(k, sim.base[team], Sim.BASE_R + 0.22, 0.012, Color("0a1426"), 64)
 		_disc(k, sim.base[team], Sim.BASE_R, 0.014, c, 64)
 		_rays(k, sim.base[team], Sim.BASE_R * 0.32, Sim.BASE_R * 0.86, 0.016, c.lightened(0.34), 14)
 		_disc(k, sim.base[team], Sim.BASE_R * 0.36, 0.018, c.darkened(0.08), 40)
@@ -586,8 +586,8 @@ static func _draw_jails(k: MeshKit, sim: Sim) -> void:
 		var sign := p + Vector3(0, 0, -Sim.JAIL_R - 0.2)
 		k.box(sign + Vector3(0, 1.3, 0), Vector3(1.5, 0.5, 0.1), team_color(team), 0.02)
 		for s: float in [-0.5, 0.5]:
-			k.decal_box(sign + Vector3(s, 1.3, 0.06), Vector3(0.09, 0.42, 0.02), Color("123a6b"))
-		k.decal_box(sign + Vector3(0, 1.3, 0.06), Vector3(0.09, 0.42, 0.02), Color("123a6b"))
+			k.decal_box(sign + Vector3(s, 1.3, 0.06), Vector3(0.09, 0.42, 0.02), Color("0a1426"))
+		k.decal_box(sign + Vector3(0, 1.3, 0.06), Vector3(0.09, 0.42, 0.02), Color("0a1426"))
 
 
 static func _draw_decor(k: MeshKit, sim: Sim, theme: Dictionary, rng: RandomNumberGenerator, low_detail: bool) -> void:

@@ -45,7 +45,7 @@ func _draw() -> void:
 			var a := -PI * 0.5 + TAU * _cooldown * float(i) / steps
 			pts.append(c + Vector2(cos(a), sin(a)) * (r - 5.0))
 		if pts.size() >= 3:
-			draw_colored_polygon(pts, Color(UiKit.INK, 0.55))
+			draw_colored_polygon(pts, Color(UiKit.INK, 0.82))
 	if _label_text != "":
 		var font := UiKit.font_title()
 		var font_size := int(r * 0.32)

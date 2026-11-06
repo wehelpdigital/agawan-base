@@ -50,7 +50,7 @@ func _my_card() -> Control:
 	bar.custom_minimum_size = Vector2(0, 16)
 	bar.max_value = 1.0
 	bar.value = progress["fraction"]
-	bar.add_theme_stylebox_override("background", UiKit.style(Color(UiKit.INK, 0.85), 8))
+	bar.add_theme_stylebox_override("background", UiKit.style(UiKit.INK, 8))
 	bar.add_theme_stylebox_override("fill", UiKit.style(league["color"], 8))
 	text.add_child(bar)
 	var next: Dictionary = progress["next"]
@@ -99,7 +99,7 @@ func _fill_leagues() -> void:
 		var row := UiKit.hbox(10)
 		card.add_child(row)
 		var dot := PanelContainer.new()
-		dot.add_theme_stylebox_override("panel", UiKit.style(league["color"] if reached else Color("7f91a5"), 12, 3))
+		dot.add_theme_stylebox_override("panel", UiKit.style(league["color"] if reached else UiKit.INK, 12, 3))
 		dot.custom_minimum_size = Vector2(36, 36)
 		dot.add_child(UiKit.icon("trophy", 24))
 		row.add_child(dot)

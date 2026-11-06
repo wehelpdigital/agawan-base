@@ -168,7 +168,7 @@ static func _snowman(k: MeshKit, accent: Color) -> void:
 	k.pop()
 	k.torus(Vector3(0, 0.88, 0), 0.32, 0.08, accent, 10, 4)
 	for s: float in [-0.13, 0.13]:
-		k.decal_box(Vector3(s, 1.25, 0.34), Vector3(0.07, 0.07, 0.04), Color("123a6b"))
+		k.decal_box(Vector3(s, 1.25, 0.34), Vector3(0.07, 0.07, 0.04), Color("0a1426"))
 
 
 static func _cake(k: MeshKit, v: float) -> void:

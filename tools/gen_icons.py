@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-INK = "#123a6b"
+INK = "#0a1426"
 OUTLINE = 34
 W = "#ffffff"
 CREAM = "#fff6dd"
@@ -30,8 +30,8 @@ CYAN = "#7ee8ff"
 PURPLE = "#b768ff"
 DPURPLE = "#7f38d6"
 PINK = "#ff6fb5"
-GRAY = "#c9d0e6"
-DGRAY = "#6a6a8a"
+GRAY = "#1c2740"
+DGRAY = "#0a1426"
 BROWN = "#b5763c"
 DBROWN = "#7a4a26"
 BLACK = "#2b2448"
