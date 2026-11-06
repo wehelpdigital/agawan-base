@@ -15,6 +15,10 @@ const PHONE_LANDSCAPE := 0.82
 const TABLET := 1.05
 const DESKTOP_MIN := 0.78
 const MAX_FACTOR := 3.6
+## The narrowest a held-upright phone's menus are laid out for. Small phones and Large text shrink to keep to it, or
+## the top bar's settings button slides off the side, and with it the way to turn Large text back off.
+const PHONE_MIN_WIDTH := 424.0
+const PHONE_MIN_LANDSCAPE_WIDTH := 880.0
 const TEXT_SIZES := {"small": 0.88, "normal": 1.0, "large": 1.15}
 
 static var kind := "desktop"
@@ -37,6 +41,9 @@ static func apply(tree: SceneTree) -> void:
 		_:
 			target = maxf(fit, DESKTOP_MIN)
 	var next := clampf(target / maxf(fit, 0.01), 1.0, MAX_FACTOR) * float(TEXT_SIZES.get(Settings.text_size, 1.0))
+	if kind == "phone":
+		var least := PHONE_MIN_LANDSCAPE_WIDTH if css.x > css.y else PHONE_MIN_WIDTH
+		next = minf(next, css.x / (least * maxf(fit, 0.01)))
 	if DisplayServer.get_name() == "headless" and not TEST_SIZES.has(_test_device):
 		next = 1.0
 	if is_equal_approx(next, window.content_scale_factor):

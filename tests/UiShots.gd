@@ -1,7 +1,7 @@
 extends Node
 ## Visits every screen and saves a screenshot, and reports anything spilling off the screen:
 ##   godot --path . --rendering-driver opengl3 --audio-driver Dummy --resolution 390x844 res://tests/UiShots.tscn
-##       -- --out=<dir> --tag=phone --device=phone_portrait [--server=http://127.0.0.1:8787]
+##       -- --out=<dir> --tag=phone --device=phone_portrait [--server=http://127.0.0.1:8787] [--rich] [--text=large]
 
 const SCREENS := ["title", "howto", "home", "maps", "shop", "locker", "room", "ranks", "guild", "chat", "profile", "settings", "powers", "credits", "results"]
 
@@ -27,6 +27,15 @@ func _ready() -> void:
 	Profile.best_trophies = 640
 	Profile.tutorial_done = true
 	Profile.daily_day = Time.get_date_string_from_system()
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--rich":
+			Profile.coins = 1250000
+			Profile.gems = 12400
+			Profile.trophies = 12400
+			Profile.best_trophies = 12400
+			Profile.level = 99
+		elif arg.begins_with("--text="):
+			Settings.text_size = arg.trim_prefix("--text=")
 	_main = load("res://scenes/Main.gd").new()
 	add_child(_main)
 	_run.call_deferred()
@@ -98,7 +107,7 @@ func _audit(ui: UiRoot, screen_name: String) -> void:
 	var visible_rect := Rect2(Vector2.ZERO, view).grow(1.0)
 	for node: Node in ui.find_children("*", "Control", true, false):
 		var c := node as Control
-		if not c.is_visible_in_tree() or c.get_parent() is ScrollContainer:
+		if not c.is_visible_in_tree() or c.get_parent() is ScrollContainer or c.get_parent().name == "Backdrop":
 			continue
 		var inside_scroll := false
 		var parent := c.get_parent()

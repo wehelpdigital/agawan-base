@@ -294,18 +294,18 @@ static func image(path: String, size: Vector2) -> TextureRect:
 
 
 ## A number with a little icon, in a white pill: coins, gems, trophies.
-static func stat_pill(icon_name: String, text: String, color: Color, height := 40.0) -> PanelContainer:
+static func stat_pill(icon_name: String, text: String, color: Color, height := 40.0, tight := false) -> PanelContainer:
 	var pill := PanelContainer.new()
 	var box := style(PAPER, int(height * 0.5), 3, Color("a9d6ff"))
 	box.shadow_color = Color(INK, 0.28)
 	box.shadow_size = 2
 	box.shadow_offset = Vector2(0, 3)
-	box.content_margin_left = 8
-	box.content_margin_right = 14
+	box.content_margin_left = 5 if tight else 8
+	box.content_margin_right = 9 if tight else 14
 	box.content_margin_top = 2
 	box.content_margin_bottom = 2
 	pill.add_theme_stylebox_override("panel", box)
-	var row := hbox(6)
+	var row := hbox(3 if tight else 6)
 	row.add_child(icon(icon_name, height * 0.68))
 	var value := label(text, int(height * 0.46), INK, 0, true)
 	value.name = "Value"

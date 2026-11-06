@@ -24,10 +24,10 @@ func _ready() -> void:
 	add_child(col)
 	var head := UiKit.hbox(8)
 	var back := UiKit.button("", "ink", 18, "arrow_left")
-	back.custom_minimum_size = Vector2(56, 48)
+	back.custom_minimum_size = Vector2(48 if root.phone_narrow else 56, 48)
 	back.pressed.connect(func() -> void: root.go_back())
 	head.add_child(back)
-	var heading := UiKit.title("MAPS" if root.phone_narrow else "MAPS (%d)" % Maps.all().size(), 28 if not root.compact else 22)
+	var heading := UiKit.title("MAPS" if root.phone_narrow else "MAPS (%d)" % Maps.all().size(), 28 if not (root.compact or root.phone_narrow) else 22)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(heading)
@@ -36,7 +36,7 @@ func _ready() -> void:
 		_weather_button.pressed.connect(_weather_popup)
 		head.add_child(_weather_button)
 		_show_weather()
-	var random := UiKit.button("Random", "pink", 18, "star")
+	var random := UiKit.button("Random", "pink", 14 if root.phone_narrow else 18, "star")
 	random.pressed.connect(func() -> void: _pick(""))
 	head.add_child(random)
 	col.add_child(head)
@@ -167,7 +167,7 @@ func _card(map: Dictionary, info: Dictionary) -> Control:
 func _show_weather() -> void:
 	var chosen := Profile.favorite_weather
 	if _weather_button:
-		_weather_button.set_text("Sky: " + (String(Weather.def(chosen)["name"]) if chosen != "" else "Surprise") if not root.phone_narrow else "Sky")
+		_weather_button.set_text("Sky: " + (String(Weather.def(chosen)["name"]) if chosen != "" else "Surprise") if not root.phone_narrow else "")
 
 
 ## Choose what the sky does in your AI matches. Online, it's whatever the map feels like.

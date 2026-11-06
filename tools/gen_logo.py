@@ -247,12 +247,12 @@ def make_logo(path, width=1800, font_path=None):
     font_path = font_path or FONT
     # Everything's drawn twice the size, for smooth edges.
     W = width * 2
-    H = int(W * 0.68)
+    H = int(W * 0.74)
     canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     mid = W // 2
     # The planet, with its flag, behind the words.
     r = int(W * 0.135)
-    globe_y = int(H * 0.3)
+    globe_y = int(H * 0.335)
     globe(canvas, mid, globe_y, r)
     team_flag(canvas, mid + int(r * 0.12), globe_y - int(r * 0.92), int(r * 0.74), int(r * 0.92))
     # CAPTURE across the planet's middle, on a shallow arch.
@@ -263,7 +263,7 @@ def make_logo(path, width=1800, font_path=None):
     advance = [font_top.getlength(c) * 1.03 * stretch_top for c in word]
     total = sum(advance)
     x = mid - total / 2
-    arch_y = H * 0.345
+    arch_y = H * 0.375
     for i, ch in enumerate(word):
         cx = x + advance[i] / 2
         off = (cx - mid) / (total / 2)
@@ -281,7 +281,7 @@ def make_logo(path, width=1800, font_path=None):
     gap = size_big * 0.3  # Room for the bolt.
     total = sum(advance) + gap
     x = mid - total / 2
-    base_y = H * 0.63
+    base_y = H * 0.645
     sun = ((255, 226, 92), (255, 150, 30), (196, 88, 12))
     wave = ((130, 226, 255), (28, 136, 244), (12, 76, 170))
     for i, ch in enumerate(word):
@@ -301,7 +301,7 @@ def make_logo(path, width=1800, font_path=None):
     d.polygon(bolt, fill=WHITE + (255,))
     # THE, in a little round tag tucked between the words.
     font_the = ImageFont.truetype(font_path, int(W * 0.036))
-    tag = (mid - total * 0.5 + W * 0.02, H * 0.44)
+    tag = (mid - total * 0.5 + W * 0.02, H * 0.465)
     tr = W * 0.044
     d.ellipse((tag[0] - tr - 12, tag[1] - tr - 12, tag[0] + tr + 12, tag[1] + tr + 12), fill=INK + (255,))
     d.ellipse((tag[0] - tr, tag[1] - tr, tag[0] + tr, tag[1] + tr), fill=(255, 90, 78, 255))
@@ -309,10 +309,10 @@ def make_logo(path, width=1800, font_path=None):
     bb = d.textbbox((0, 0), "THE", font=font_the)
     d.text((tag[0] - (bb[2] - bb[0]) / 2 - bb[0], tag[1] - (bb[3] - bb[1]) / 2 - bb[1]), "THE", font=font_the, fill=WHITE + (255,))
     # A crystal and some sparkle.
-    crystal(canvas, mid + total * 0.5 - W * 0.012, H * 0.43, W * 0.034)
+    crystal(canvas, mid + total * 0.5 - W * 0.012, H * 0.455, W * 0.034)
     sparkle(canvas, mid - r * 1.5, globe_y - r * 0.6, W * 0.024)
     sparkle(canvas, mid + r * 1.9, globe_y - r * 0.2, W * 0.018, (255, 226, 92))
-    sparkle(canvas, mid - total * 0.53, H * 0.83, W * 0.016, (255, 226, 92))
+    sparkle(canvas, mid - total * 0.53, H * 0.82, W * 0.016, (255, 226, 92))
     # A soft shadow under the lot, then down to size.
     alpha = canvas.getchannel("A")
     shadow = Image.new("RGBA", canvas.size, (4, 9, 18, 0))

@@ -20,6 +20,10 @@ var fx: FxField
 var preview_slot := ""
 var zoomable := false  ## Shows zoom buttons, and lets the wheel and a pinch zoom too.
 var planet := false  ## Stands on a little turning world, not a patch of grass. Set before it's added.
+## If set, the picture is drawn here, behind the rest of the screen and wider than this view, so a big planet doesn't
+## end in a straight line. Set before it's added.
+var backdrop: Control
+var _drawn := Rect2()
 var _viewport: SubViewport
 var _picture: TextureRect
 var _camera: Camera3D
@@ -59,12 +63,15 @@ func _ready() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_viewport)
 	_picture = TextureRect.new()
-	_picture.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_picture.stretch_mode = TextureRect.STRETCH_SCALE
 	_picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_picture.texture = _viewport.get_texture()
-	add_child(_picture)
+	if backdrop:
+		backdrop.add_child(_picture)
+	else:
+		_picture.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(_picture)
 	var world := Node3D.new()
 	_viewport.add_child(world)
 	_camera = Camera3D.new()
@@ -116,12 +123,27 @@ func _ready() -> void:
 func _fit_viewport() -> void:
 	if size.x < 1.0 or size.y < 1.0:
 		return
+	_drawn = _drawn_rect()
+	if backdrop:
+		_picture.position = _drawn.position
+		_picture.size = _drawn.size
 	var scale_now := get_viewport().get_final_transform().get_scale()
-	var wanted := size * scale_now
+	var wanted := _drawn.size * scale_now
 	var longest := maxf(wanted.x, wanted.y)
 	if longest > MAX_SIDE:
 		wanted *= MAX_SIDE / longest
 	_viewport.size = Vector2i(ceili(wanted.x), ceili(wanted.y))
+
+
+## Where the picture goes: over this view or, on a backdrop, centred on it and reaching out to the edge of the screen or
+## the end of the planet, whichever comes first. The camera keeps its height, so a wider picture only shows more.
+func _drawn_rect() -> Rect2:
+	if backdrop == null:
+		return Rect2(Vector2.ZERO, size)
+	var at: Vector2 = backdrop.get_global_transform().affine_inverse() * get_global_position()
+	var reach := maxf(at.x, backdrop.size.x - at.x - size.x)
+	reach = clampf(reach, 0.0, maxf(size.y * 1.4 - size.x * 0.5, 0.0))
+	return Rect2(at.x - reach, at.y, size.x + reach * 2.0, size.y)
 
 
 func set_look(look: Dictionary, slot := "") -> void:
@@ -217,6 +239,8 @@ func show_emote(text: String) -> void:
 
 
 func _process(delta: float) -> void:
+	if backdrop and not _drawn_rect().is_equal_approx(_drawn):
+		_fit_viewport()
 	if avatar == null:
 		return
 	if _dragging:

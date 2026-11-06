@@ -63,6 +63,7 @@ func _build_landscape() -> void:
 	row.offset_right = -12
 	row.offset_top = 6
 	row.offset_bottom = -6
+	var behind := _backdrop()
 	add_child(FlagBunting.new().setup(3, 18.0, 28.0))
 	add_child(row)
 	var left := UiKit.vbox(8)
@@ -83,6 +84,7 @@ func _build_landscape() -> void:
 		center.add_child(logo)
 	_avatar = AvatarView.new()
 	_avatar.planet = true
+	_avatar.backdrop = behind
 	center.add_child(_avatar)
 	if not root.compact:
 		center.add_child(_news_strip())
@@ -103,6 +105,7 @@ func _build_portrait() -> void:
 	col.offset_right = -10
 	col.offset_top = 4
 	col.offset_bottom = -6
+	var behind := _backdrop()
 	add_child(FlagBunting.new().setup(2, 14.0, 24.0))
 	add_child(col)
 	var logo := UiKit.image("res://assets/brand/logo.png", Vector2(0, minf(size.y * 0.2, 150.0)))
@@ -113,12 +116,23 @@ func _build_portrait() -> void:
 	col.add_child(mid)
 	_avatar = AvatarView.new()
 	_avatar.planet = true
+	_avatar.backdrop = behind
 	mid.add_child(_avatar)
 	mid.add_child(_side_buttons(false))
 	if size.y > 640.0:
 		col.add_child(_quest_card())
 	col.add_child(_map_card(Vector2(0, 0)))
 	col.add_child(_play_buttons())
+
+
+## A layer behind everything, for the planet to run under the buttons and off the screen.
+func _backdrop() -> Control:
+	var behind := Control.new()
+	behind.name = "Backdrop"
+	behind.set_anchors_preset(Control.PRESET_FULL_RECT)
+	behind.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(behind)
+	return behind
 
 
 ## Your league, and how far to the next: a little trophy road.
@@ -412,7 +426,7 @@ func _play_buttons() -> Control:
 	ai.pressed.connect(func() -> void: root.main.start_practice(DIFFICULTIES[Profile.difficulty]["skill"]))
 	row.add_child(ai)
 	_difficulty_btn = UiKit.button(DIFFICULTIES[clampi(Profile.difficulty, 0, 3)]["name"], "blue", 15)
-	_difficulty_btn.custom_minimum_size = Vector2(78, 56 if not root.compact else 50)
+	_difficulty_btn.custom_minimum_size = Vector2(98, 56 if not root.compact else 50)
 	_difficulty_btn.pressed.connect(_next_difficulty)
 	row.add_child(_difficulty_btn)
 	col.add_child(row)
