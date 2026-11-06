@@ -12,7 +12,9 @@ const AVATAR_SCALE := 1.2  ## Heroes are drawn bigger than their footprint: they
 const SCORED_FACE_SECONDS := 3.0
 const GATE_HEIGHT := 1.5
 const GATE_WARNING := 1.0
+const MAX_CRYSTALS := 72
 const STATUS_ICONS := {
+	"stink": [Cosmetics.Fx.PUFF, "9be36a"], "tickle": [Cosmetics.Fx.FEATHER, "fff6dd"], "itch": [Cosmetics.Fx.SPARK, "ffb21f"],
 	"stun": [Cosmetics.Fx.STAR, "ffd23f"], "freeze": [Cosmetics.Fx.SNOW, "bff3ff"], "root": [Cosmetics.Fx.RING, "c9b95c"],
 	"slow": [Cosmetics.Fx.DROP, "62e0a0"], "slip": [Cosmetics.Fx.RING, "bff3ff"], "reverse": [Cosmetics.Fx.SPARK, "b768ff"],
 	"fear": [Cosmetics.Fx.DROP, "9fe6ff"], "blind": [Cosmetics.Fx.DROP, "0a1426"], "stale": [Cosmetics.Fx.PUFF, "8a8a6a"],
@@ -42,7 +44,12 @@ var _ices: Array[MeshInstance3D] = []
 var _shadows: Array[MeshInstance3D] = []
 var _status_cd := PackedFloat32Array()
 var _shown_pos: Array[Vector3] = []
-var _pickups := {}
+var _crystal_born := {}  ## Crystal uid -> when it appeared, for the pop.
+var _crystal_warnings := {}  ## Crystal uid -> the "!" over a fake one, for the team that left it.
+var _crystal_gems: MultiMesh
+var _crystal_marks: Array[MultiMesh] = []  ## Shield, target.
+var _crystal_rings: Array[MultiMesh] = []
+static var _zone_meshes := {}
 var _zones := {}
 var _shots := {}
 var _ents := {}
@@ -153,6 +160,7 @@ func _build_shared_meshes() -> void:
 	_ring_mesh = QuadMesh.new()
 	_ring_mesh.orientation = PlaneMesh.FACE_Y
 	_ring_mesh.size = Vector2.ONE
+	_build_crystals()
 	_blob_mat = StandardMaterial3D.new()
 	_blob_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_blob_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -166,6 +174,61 @@ func _build_shared_meshes() -> void:
 	kit = MeshKit.new()
 	kit.box(Vector3(0, 0.95, 0), Vector3(1.45, 1.9, 1.45), Color("bfeeff"), 0.12)
 	_ice_mesh = kit.to_mesh()
+
+
+## Every crystal on the field at one go. There can be a lot of them, and this keeps them to a handful of draw calls.
+func _build_crystals() -> void:
+	_crystal_gems = _crystal_layer(Crystal.mesh(), Crystal.material())
+	for icon_name: String in ["mode_defend", "mode_attack"]:
+		var quad := QuadMesh.new()
+		quad.size = Vector2.ONE * 1.05
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_texture = UiKit.icon_texture(icon_name)
+		mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		mat.billboard_keep_scale = true
+		mat.no_depth_test = true
+		mat.render_priority = 1
+		_crystal_marks.append(_crystal_layer(quad, mat))
+	if not low_detail:
+		for color: Color in [Color("7ec8ff"), Color("ff8a78")]:
+			var disc := QuadMesh.new()
+			disc.orientation = PlaneMesh.FACE_Y
+			disc.size = Vector2.ONE * 1.9
+			_crystal_rings.append(_crystal_layer(disc, _disc_material(color, 3.0, 0.3, 2.5)))
+
+
+func _crystal_layer(mesh: Mesh, mat: Material) -> MultiMesh:
+	var layer := MultiMesh.new()
+	layer.transform_format = MultiMesh.TRANSFORM_3D
+	layer.mesh = mesh
+	layer.instance_count = MAX_CRYSTALS
+	layer.visible_instance_count = 0
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = layer
+	inst.material_override = mat
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	inst.extra_cull_margin = 200.0
+	add_child(inst)
+	return layer
+
+
+## A piece of a zone, drawn once however many there are.
+func _zone_mesh(key: String, draw_it: Callable) -> MeshInstance3D:
+	if not _zone_meshes.has(key):
+		var k := MeshKit.new()
+		k.soften = true
+		k.shells = false
+		k.outline = 0.02
+		k.detail = 0.8
+		draw_it.call(k)
+		_zone_meshes[key] = k.to_mesh()
+	var inst := MeshInstance3D.new()
+	inst.mesh = _zone_meshes[key]
+	inst.material_override = Avatar3D._material("normal")
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return inst
 
 
 func _soft_circle() -> GradientTexture2D:
@@ -533,8 +596,10 @@ func _anim_state(p: Sim.Player, airborne: bool, is_moving: bool) -> String:
 		return "jail"
 	if airborne:
 		return "air"
-	if sim.has_status(p, "dance"):
+	if sim.has_status(p, "dance") or sim.has_status(p, "tickle"):
 		return "dance"
+	if sim.has_status(p, "itch") and sim.is_held(p):
+		return "root"
 	if sim.has_status(p, "freeze"):
 		return "freeze"
 	if sim.has_status(p, "stun") or sim.has_status(p, "sleep"):
@@ -695,60 +760,71 @@ func _status_particles(i: int, p: Sim.Player, shown: Vector3, delta: float, hidd
 			return
 
 
+## Each crystal shows what it'll be for you: on your side of the line a shield, over the line a target.
 func _update_pickups(_delta: float) -> void:
 	var seen := {}
 	var now := Time.get_ticks_msec() * 0.001
+	var gems := 0
+	var marks := [0, 0]
+	var middle := sim.arena_size().x * 0.5
 	for item: Dictionary in sim.pickups:
+		if gems >= MAX_CRYSTALS:
+			break
 		var uid: int = item["uid"]
 		seen[uid] = true
-		if not _pickups.has(uid):
-			_pickups[uid] = _make_pickup(item)
-		var node: Node3D = _pickups[uid]
 		var at: Vector2 = item["pos"]
-		node.position = Vector3(at.x, 0.55 + sin(now * 3.0 + uid) * 0.12, at.y)
-		node.get_child(0).rotation.y = now * 1.6 + uid
-	_erase_missing(_pickups, seen)
+		if not _crystal_born.has(uid):
+			_crystal_born[uid] = now
+			fx.burst(Vector3(at.x, 1.0, at.y), 10, 3.5, 0.45, 0.3, Cosmetics.Fx.SPARK, Crystal.COLOURS, 2.0)
+			if item.has("trap") and int(item["trap"]) == my_team:
+				_crystal_warnings[uid] = _crystal_warning(at)
+		var pop := clampf((now - float(_crystal_born[uid])) / 0.28, 0.0, 1.0)
+		var grow := 1.0 + 2.2 * pow(pop - 1.0, 3.0) + 1.2 * pow(pop - 1.0, 2.0) if pop > 0.0 else 0.05  # Overshoots a little as it lands.
+		var y := 0.55 + sin(now * 3.0 + uid) * 0.12
+		_crystal_gems.set_instance_transform(gems, Transform3D(Basis(Vector3.UP, now * 1.6 + uid).scaled(Vector3.ONE * 1.12 * grow), Vector3(at.x, y + 0.62, at.y)))
+		var side := 0 if (at.x < middle) == (my_team == 0) else 1
+		_crystal_marks[side].set_instance_transform(marks[side], Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * grow), Vector3(at.x, y + 1.6, at.y)))
+		if not _crystal_rings.is_empty():
+			_crystal_rings[side].set_instance_transform(marks[side], Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * grow), Vector3(at.x, 0.05, at.y)))
+		gems += 1
+		marks[side] += 1
+	_crystal_gems.visible_instance_count = gems
+	for side in 2:
+		_crystal_marks[side].visible_instance_count = marks[side]
+		if not _crystal_rings.is_empty():
+			_crystal_rings[side].visible_instance_count = marks[side]
+	if _crystal_born.size() != seen.size():
+		for uid: int in _crystal_born.keys():
+			if not seen.has(uid):
+				_crystal_born.erase(uid)
+				if _crystal_warnings.has(uid):
+					(_crystal_warnings[uid] as Node).queue_free()
+					_crystal_warnings.erase(uid)
 
 
-func _make_pickup(item: Dictionary) -> Node3D:
-	var node := Node3D.new()
-	add_child(node)
-	var gem := MeshInstance3D.new()
-	gem.mesh = Crystal.mesh()
-	gem.material_override = Crystal.material()
-	gem.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	gem.position.y = 0.62
-	gem.scale = Vector3.ONE * 1.12
-	node.add_child(gem)
-	var mark := Label3D.new()
-	mark.text = "?"
-	mark.font = UiKit.font_title()
-	mark.font_size = 96
-	mark.outline_size = 26
-	mark.outline_modulate = UiKit.INK
-	mark.pixel_size = 0.0072
-	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	mark.no_depth_test = true
-	mark.render_priority = 1
-	mark.position.y = 0.72
-	node.add_child(mark)
-	if item.has("trap") and int(item["trap"]) == my_team:
-		mark.text = "!"
-		mark.modulate = Color("ff5a4e")
-	var ring := _flat_quad(_disc_material(Color("fff1a8"), 3.0, 0.3, 2.5), 1.9, 0.0)
-	ring.position.y = -0.5
-	node.add_child(ring)
-	node.scale = Vector3.ONE * 0.2
-	create_tween().tween_property(node, "scale", Vector3.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	fx.burst(Vector3((item["pos"] as Vector2).x, 1.0, (item["pos"] as Vector2).y), 10, 3.5, 0.45, 0.3, Cosmetics.Fx.SPARK, Crystal.COLOURS, 2.0)
-	return node
+## Your own team can tell it's a fake.
+func _crystal_warning(at: Vector2) -> Label3D:
+	var warning := Label3D.new()
+	warning.text = "!"
+	warning.font = UiKit.font_title()
+	warning.font_size = 96
+	warning.outline_size = 26
+	warning.outline_modulate = UiKit.INK
+	warning.pixel_size = 0.0072
+	warning.modulate = Color("ff5a4e")
+	warning.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	warning.no_depth_test = true
+	warning.render_priority = 2
+	warning.position = Vector3(at.x, 1.3, at.y)
+	add_child(warning)
+	return warning
 
 
 func _update_zones() -> void:
 	var seen := {}
 	for z: Dictionary in sim.zones:
 		var uid: int = z["uid"]
-		var hidden_trap: bool = (z["fx"] == "mine" or z["fx"] == "snare") and int(z["team"]) != my_team and float(sim.radar[my_team]) <= sim.t
+		var hidden_trap: bool = z["fx"] in ["mine", "snare", "whoopee"] and int(z["team"]) != my_team and float(sim.radar[my_team]) <= sim.t
 		seen[uid] = true
 		if not _zones.has(uid):
 			_zones[uid] = _make_zone(z)
@@ -826,11 +902,21 @@ func _make_zone(z: Dictionary) -> Node3D:
 		"peel":
 			color = Color("ffe05c")
 			inner = 0.12
+		"fart":
+			color = Color("9be36a")
+			inner = 0.5
+		"poop":
+			color = Color("8a5a2b")
+			inner = 0.1
+		"whoopee":
+			color = Color("ff6fb5")
+			inner = 0.1
 		"beam", "tide":
 			color = Color(0, 0, 0, 0.0)
 	var node := Node3D.new()
 	add_child(node)
-	if String(z["fx"]) not in ["beam", "tide", "cloud", "bees"]:
+	var plain_on_a_phone: bool = low_detail and String(z["fx"]) in ["peel", "poop", "whoopee", "mine", "snare"]  # They're easy to see, and there can be a lot of them.
+	if String(z["fx"]) not in ["beam", "tide", "cloud", "bees"] and not plain_on_a_phone:
 		node.add_child(_flat_quad(_disc_material(color, style, inner, spin), float(z["r"]) * 2.0, 0.0))
 	_dress_zone(z, node)
 	if z["fx"] == "thorn":
@@ -917,6 +1003,19 @@ func _dress_zone(z: Dictionary, node: Node3D) -> void:
 			k.ball(Vector3(signf((z["drift"] as Vector2).x) * float(z["r"]) * 0.6, 1.8, 0), Vector3(float(z["r"]) * 0.5, 0.6, half), Color("eaf8ff"), 5, 16)
 			var wave := _toon_mesh(k)
 			node.add_child(wave)
+		"poop":
+			node.add_child(_zone_mesh("poop", _draw_poop))
+		"whoopee":
+			node.add_child(_zone_mesh("whoopee", _draw_whoopee))
+		"fart":
+			var ghost := ShaderMaterial.new()
+			ghost.shader = preload("res://gfx/shaders/ghost.gdshader")
+			ghost.set_shader_parameter("alpha", 0.5)
+			ghost.set_shader_parameter("tint", Color("9be36a"))
+			var cloud := _zone_mesh("fart", _draw_fart)
+			cloud.scale = Vector3.ONE * float(z["r"])
+			cloud.material_override = ghost
+			node.add_child(cloud)
 		"smoke":
 			var r := float(z["r"])
 			var ghost := ShaderMaterial.new()
@@ -941,7 +1040,7 @@ func _dress_zone(z: Dictionary, node: Node3D) -> void:
 			k.soft_box(Vector3(0, 0.46, 0), Vector3(0.62, 0.14, 0.36), Color("3a4258"), 0.6, 4, 10)
 			k.soft_box(Vector3(0, 0.22, 0), Vector3(0.26, 0.16, 0.3), Color("3a4258"), 0.6, 4, 10)
 			k.soft_box(Vector3(0, 0.05, 0), Vector3(0.5, 0.08, 0.36), Color("2b3a5a"), 0.6, 4, 10)
-			var iron := _toon_mesh(k)
+			var iron := _zone_mesh("cow", _draw_cow) if z["pw"] == "cow_drop" else _toon_mesh(k)
 			iron.name = "Falling"
 			node.add_child(iron)
 		"strike":
@@ -973,9 +1072,60 @@ func _dress_zone(z: Dictionary, node: Node3D) -> void:
 			node.add_child(_toon_mesh(k))
 
 
+func _draw_poop(k: MeshKit) -> void:
+	k.ball(Vector3(0, 0.13, 0), Vector3(0.42, 0.15, 0.42), Color("8a5a2b"), 6, 12)
+	k.ball(Vector3(0, 0.33, 0), Vector3(0.3, 0.13, 0.3), Color("9c6a35"), 6, 12)
+	k.ball(Vector3(0, 0.5, 0), Vector3(0.18, 0.11, 0.18), Color("8a5a2b"), 6, 10)
+	k.cone(Vector3(0.02, 0.56, 0), 0.2, 0.09, Color("9c6a35"), 7)
+	k.outline = 0.0
+	for s: float in [-1.0, 1.0]:
+		k.ball(Vector3(s * 0.1, 0.36, 0.26), Vector3(0.075, 0.09, 0.03), Color.WHITE, 4, 8)
+		k.ball(Vector3(s * 0.1, 0.35, 0.285), Vector3(0.036, 0.045, 0.02), Color("1a1030"), 3, 6)
+
+
+func _draw_whoopee(k: MeshKit) -> void:
+	k.ball(Vector3(0, 0.1, 0), Vector3(0.6, 0.13, 0.5), Color("ff6fb5"), 6, 14)
+	k.ball(Vector3(0, 0.08, 0.58), Vector3(0.14, 0.05, 0.16), Color("e8488f"), 4, 8)
+
+
+## Made one unit across, and scaled to fit.
+func _draw_fart(k: MeshKit) -> void:
+	k.outline = 0.0
+	for i in 7:
+		var a := TAU * i / 7.0
+		k.ball(Vector3(cos(a) * 0.6, 0.14, sin(a) * 0.6), Vector3.ONE * 0.38, Color.WHITE, 5, 8)
+	k.ball(Vector3(0, 0.2, 0), Vector3.ONE * 0.5, Color.WHITE, 5, 9)
+
+
+## A cow, legs out, on its way down.
+func _draw_cow(k: MeshKit) -> void:
+	k.ball(Vector3(0, 0.75, 0), Vector3(0.95, 0.6, 0.6), Color("fffdf4"), 8, 14)
+	k.ball(Vector3(1.05, 1.05, 0), Vector3(0.42, 0.38, 0.38), Color("fffdf4"), 7, 12)
+	k.ball(Vector3(1.32, 0.96, 0), Vector3(0.2, 0.18, 0.26), Color("ffb3b3"), 5, 8)
+	k.outline = 0.0
+	k.ball(Vector3(0.2, 1.2, 0.2), Vector3(0.36, 0.2, 0.34), Color("1a1030"), 5, 10)
+	k.ball(Vector3(-0.5, 0.8, 0.46), Vector3(0.3, 0.26, 0.16), Color("1a1030"), 5, 8)
+	k.ball(Vector3(1.14, 1.2, 0.3), Vector3(0.07, 0.09, 0.05), Color("1a1030"), 3, 6)
+	k.ball(Vector3(1.14, 1.2, -0.3), Vector3(0.07, 0.09, 0.05), Color("1a1030"), 3, 6)
+	k.outline = 0.02
+	for x: float in [-0.55, 0.55]:
+		for s: float in [-1.0, 1.0]:
+			k.cyl(Vector3(x, 0.0, s * 0.35), 0.4, 0.13, 0.15, Color("fffdf4"), 8)
+	k.cone(Vector3(1.0, 1.38, 0.2), 0.2, 0.06, Color("ffd23f"), 6)
+	k.cone(Vector3(1.0, 1.38, -0.2), 0.2, 0.06, Color("ffd23f"), 6)
+
+
 func _animate_zone(z: Dictionary, node: Node3D, at: Vector2) -> void:
 	var left: float = float(z["until"]) - sim.t
 	match String(z["fx"]):
+		"fart":
+			if randf() < 0.28:
+				var a := randf() * TAU
+				var r := float(z["r"]) * randf()
+				fx.spawn(Vector3(at.x + cos(a) * r, randf_range(0.4, 1.8), at.y + sin(a) * r), Vector3(0, 0.7, 0), 0.9, 0.7, Cosmetics.Fx.PUFF, Color("9be36a"), 1.0)
+		"poop":
+			if randf() < 0.05:
+				fx.spawn(Vector3(at.x + randf_range(-0.5, 0.5), 0.9, at.y + randf_range(-0.5, 0.5)), Vector3(randf_range(-0.6, 0.6), 0.5, randf_range(-0.6, 0.6)), 0.6, 0.16, Cosmetics.Fx.BEE, Color("1a1030"))
 		"beam":
 			var fired: bool = sim.t >= float(z["fires"])
 			node.get_node("Warn").visible = not fired
@@ -1041,7 +1191,9 @@ func _update_shots(delta: float) -> void:
 		var goal := Vector3(at.x, 0.85, at.y)
 		node.position = node.position.lerp(goal, clampf(delta * 28.0, 0.0, 1.0)) if node.position.distance_to(goal) < 4.0 else goal
 		var going: Vector2 = s["vel"]
-		match String(s["pw"]):
+		var def_now := Powerups.by_id(s["pw"])
+		var model := String(def_now.get("model", s["pw"]))
+		match model:
 			"homing_missile":
 				node.rotation.y = atan2(going.x, going.y)
 				fx.spawn(node.position - Vector3(going.x, 0, going.y).normalized() * 0.6, Vector3(0, 0.4, 0), 0.4, 0.34, Cosmetics.Fx.PUFF, Color("ffffff"))
@@ -1052,11 +1204,15 @@ func _update_shots(delta: float) -> void:
 				node.position.y = float(s["r"]) * 0.9
 				node.rotation.x += delta * 6.0
 		var color := Powerups.color(s["pw"])
-		if s["pw"] == "giant_snowball":
+		if model == "giant_snowball":
 			if randf() < 0.4:
 				fx.spawn(node.position - Vector3(0, float(s["r"]) * 0.7, 0), Vector3(randf_range(-0.6, 0.6), 0.8, randf_range(-0.6, 0.6)), 0.4, 0.3, Cosmetics.Fx.SNOW, Color.WHITE)
 		elif randf() < 0.6:
-			fx.spawn(node.position, Vector3(randf_range(-0.4, 0.4), 0.3, randf_range(-0.4, 0.4)), 0.3, float(s["r"]) * 0.8, Cosmetics.Fx.SOFT, color)
+			# A skill leaves a trail of what its hero's made of: flames, bats, little tacos.
+			if def_now.has("cell"):
+				fx.spawn(node.position, Vector3(randf_range(-0.4, 0.4), 0.3, randf_range(-0.4, 0.4)), 0.42, maxf(float(s["r"]) * 0.8, 0.36), int(def_now["cell"]), Color.WHITE if def_now.has("hero") else color, 2.0)
+			else:
+				fx.spawn(node.position, Vector3(randf_range(-0.4, 0.4), 0.3, randf_range(-0.4, 0.4)), 0.3, float(s["r"]) * 0.8, Cosmetics.Fx.SOFT, color)
 	_erase_missing(_shots, seen)
 
 
@@ -1071,7 +1227,30 @@ func _make_shot(s: Dictionary) -> Node3D:
 	kit.detail = 0.8
 	var r: float = s["r"]
 	var color := Powerups.color(pw)
-	match pw:
+	match String(Powerups.by_id(pw).get("model", pw)):
+		"fireball":
+			kit.outline = 0.0
+			kit.ball(Vector3.ZERO, Vector3.ONE * r, Color("ff7a1f"), 5, 10)
+			kit.ball(Vector3(0, 0.05, 0.08), Vector3.ONE * r * 0.62, Color("ffd23f"), 4, 8)
+		"stink_bomb":
+			kit.ball(Vector3.ZERO, Vector3.ONE * r, Color("6fbf3f"), 5, 10)
+			kit.cyl(Vector3(0, r * 0.9, 0), 0.22, 0.05, 0.04, Color("3a2a1c"), 6)
+		"banana_bomb":
+			for a: float in [-0.5, 0.0, 0.5]:
+				kit.push(Transform3D(Basis(Vector3.BACK, a), Vector3.ZERO))
+				kit.ball(Vector3(0, r * 0.7, 0), Vector3(r * 0.32, r * 0.95, r * 0.32), Color("ffe05c"), 5, 8)
+				kit.pop()
+		"big_sneeze":
+			kit.ball(Vector3.ZERO, Vector3(r, r * 0.55, r), Color("9be36a"), 5, 10)
+			kit.ball(Vector3(r * 0.7, 0, 0.3), Vector3.ONE * r * 0.3, Color("9be36a"), 3, 6)
+			kit.ball(Vector3(-r * 0.6, 0.1, -0.3), Vector3.ONE * r * 0.26, Color("7ed957"), 3, 6)
+		"bubble_gum":
+			kit.ball(Vector3.ZERO, Vector3.ONE * r, Color("ff6fb5"), 5, 10)
+			kit.outline = 0.0
+			kit.ball(Vector3(-r * 0.35, r * 0.4, r * 0.55), Vector3.ONE * r * 0.22, Color.WHITE, 3, 6)
+		"lockup":
+			kit.torus(Vector3(-r * 0.5, 0, 0), r * 0.5, 0.07, Color("ffd23f"), 12, 5)
+			kit.torus(Vector3(r * 0.5, 0, 0), r * 0.5, 0.07, Color("ffd23f"), 12, 5)
 		"coconut_shot":
 			kit.ball(Vector3.ZERO, Vector3.ONE * r, Color("7a5230"), 4, 8)
 		"rolling_barrel":
@@ -1634,6 +1813,33 @@ func _event(ev: Array) -> void:
 			fx.burst(_world(x, y, 1.0), 14, 4.0, 0.4, 0.34, Cosmetics.Fx.SPARK, ["b768ff", "27e9ff"], 0.0)
 			if mine or _audible(at2) > 0.6:
 				Audio.sfx("move_teleport", _audible(at2))
+		"reshuffle":
+			fx.burst(_world(x, y, 1.4), 12, 3.5, 0.4, 0.3, Cosmetics.Fx.STAR, ["ffd23f", "ffffff"], 1.0)
+			if mine:
+				Audio.sfx("move_swirl", 0.8)
+				Haptics.buzz("power")
+				var over := not sim.on_home_side(pa)
+				announce.emit("ATTACK DECK!" if over else "DEFENCE DECK!", Color("ff8a78") if over else Color("8fd8ff"), false)
+		"splat":
+			fx.burst(_world(x, y, 0.5), 16, 4.0, 0.5, 0.4, Cosmetics.Fx.PUFF, ["8a5a2b", "9be36a"], 3.0)
+			_float_text(_world(x, y, 2.2), "EWWW!", Color("9be36a"))
+			Audio.sfx("squelch", _audible(at2))
+			if a >= 0:
+				_avatars[a].react("queasy", 2.0)
+			if a == local_id:
+				shake(0.2)
+		"toot":
+			fx.burst(_world(x, y, 0.4), 14, 4.0, 0.5, 0.5, Cosmetics.Fx.PUFF, ["9be36a", "ff6fb5"], 1.0)
+			_float_text(_world(x, y, 2.2), "PFFFT!", Color("ff6fb5"))
+			Audio.sfx("fart_long", maxf(_audible(at2), 0.5))
+			if a >= 0:
+				_avatars[a].react("flustered", 1.8)
+		"cough":
+			_float_text(_world(x, y, 2.2), "COUGH!", Color("9be36a"), 0.6)
+			if a >= 0:
+				_avatars[a].react("queasy", 1.4)
+		"word":
+			_float_text(_world(x, y, 2.4), String(extra), Color("ffd23f"), 0.85)
 		"pick":
 			fx.burst(_world(x, y, 1.0), 16, 4.5, 0.5, 0.32, Cosmetics.Fx.STAR, Crystal.COLOURS, 2.0)
 			if a >= 0:
@@ -1660,7 +1866,7 @@ func _event(ev: Array) -> void:
 			if a >= 0 and a < _avatars.size():
 				_avatars[a].flash()
 			if a == local_id:
-				var words := {"stun": "STUNNED!", "freeze": "FROZEN!", "root": "PINNED!", "fear": "PANIC!", "reverse": "CONTROLS FLIPPED!", "blind": "SPLAT! Can't see!", "stale": "CURSED!", "chicken": "BAWK!", "dance": "DANCE!", "sleep": "SO SLEEPY...", "bubble": "BLOOP!", "mini": "TINY!"}
+				var words := {"tickle": "HA HA HA!", "stink": "EWWW!", "stun": "STUNNED!", "freeze": "FROZEN!", "root": "PINNED!", "fear": "PANIC!", "reverse": "CONTROLS FLIPPED!", "blind": "SPLAT! Can't see!", "stale": "CURSED!", "chicken": "BAWK!", "dance": "DANCE!", "sleep": "SO SLEEPY...", "bubble": "BLOOP!", "mini": "TINY!"}
 				if words.has(extra):
 					announce.emit(words[extra], Color("ffc4bd"), false)
 				if extra == "blind":
@@ -1765,7 +1971,11 @@ func _event(ev: Array) -> void:
 			_weather_strike_lands(x, y, at2)
 		"anvil":
 			fx.burst(_world(x, y, 0.2), 20, 6.0, 0.4, 0.45, Cosmetics.Fx.PUFF, ["ffffff", "c9d0e6"], 3.0)
-			_float_text(_world(x, y, 2.2), "CLANG!", Color("ffffff"))
+			if extra == "cow_drop":
+				_float_text(_world(x, y, 2.2), "MOOO!", Color("ffffff"))
+				Audio.sfx("moo", _audible(at2))
+			else:
+				_float_text(_world(x, y, 2.2), "CLANG!", Color("ffffff"))
 			Audio.sfx("kill_giant_stomp", _audible(at2))
 			shake(0.4 * _audible(at2))
 		"beam":
@@ -1875,9 +2085,13 @@ func _on_use(p: Sim.Player, id: String, at2: Vector2) -> void:
 	if def.is_empty():
 		return
 	var c := Powerups.color(id)
-	fx.burst(_world(at2.x, at2.y, 1.1), 12, 4.0, 0.4, 0.34, Cosmetics.Fx.SPARK, [c, "ffffff"], 0.0)
+	var has_cell := def.has("cell")
+	var colours: Array = [Color.WHITE] if def.has("hero") else [c, "ffffff"]
+	fx.burst(_world(at2.x, at2.y, 1.1), 18 if has_cell else 12, 4.5, 0.5, 0.42 if has_cell else 0.34, int(def.get("cell", Cosmetics.Fx.SPARK)), colours, 0.0)
 	if p:
 		_avatars[p.id].squash(0.25)
+		if def.has("skill"):  # Everybody gets to see whose skill that was.
+			_float_text(_avatars[p.id].position + Vector3(0, 2.6, 0), String(def["name"]), c.lightened(0.3), 0.55)
 	Audio.sfx(String(def["sfx"]), _audible(at2))
 	if p and p.id != local_id and p.team != my_team and int(def["tier"]) >= 2:
 		feed.emit("%s used %s" % [p.name, def["name"]], Color("ffc4bd"))
@@ -1901,13 +2115,13 @@ func _on_score(team: int, who: int, at2: Vector2, reason: String) -> void:
 		stat_flash.emit("capture")
 
 
-func _float_text(at: Vector3, text: String, color: Color) -> void:
+func _float_text(at: Vector3, text: String, color: Color, size := 1.0) -> void:
 	var label := Label3D.new()
 	label.text = text
 	label.font = UiKit.font_title()
 	label.font_size = 72
 	label.outline_size = 18
-	label.pixel_size = 0.013
+	label.pixel_size = 0.013 * size
 	label.modulate = color
 	label.outline_modulate = Color("0a1426")
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED

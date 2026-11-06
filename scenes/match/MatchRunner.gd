@@ -13,6 +13,7 @@ signal finished(result: Dictionary)
 
 const SNAPSHOT_EVERY := 2  ## Physics ticks between snapshots: 15 per second.
 const INPUT_EVERY := 2
+const SNAPSHOT_MOST := 1 << 20  ## The most a snapshot can unpack to. It's about 5 KB, and goes over the wire at about 1 KB.
 
 var sim := Sim.new()
 var view: MatchView
@@ -27,6 +28,7 @@ var _end_wait := 3.2
 var _dash_pressed := false
 var _use_pressed := false
 var _mash_pressed := false
+var _skill_pressed := -1
 var _aim := Vector2.ZERO
 var _client_pos := Vector2.ZERO
 var _last_snapshot_at := 0
@@ -52,6 +54,9 @@ func start(map_id: String, seats: Array, p_local_id: int, difficulty: float, par
 	hud.dash_pressed.connect(func() -> void: _dash_pressed = true)
 	hud.use_pressed.connect(func(aim: Vector2) -> void:
 		_use_pressed = true
+		_aim = aim)
+	hud.skill_pressed.connect(func(index: int, aim: Vector2) -> void:
+		_skill_pressed = index
 		_aim = aim)
 	hud.mash_pressed.connect(func() -> void: _mash_pressed = true)
 	hud.emote_pressed.connect(send_emote)
@@ -97,10 +102,10 @@ func _physics_process(_delta: float) -> void:
 			_apply_local_input(me)
 		sim.step(Sim.TICK)
 		if online and _tick % SNAPSHOT_EVERY == 0:
-			Net.send_match_binary(Net.BIN_SNAPSHOT, var_to_bytes(sim.to_snapshot()))
+			Net.send_match_binary(Net.BIN_SNAPSHOT, var_to_bytes(sim.to_snapshot()).compress(FileAccess.COMPRESSION_DEFLATE))
 	elif me:
 		_predict_client(me)
-		if _tick % INPUT_EVERY == 0 or _dash_pressed or _use_pressed or _mash_pressed:
+		if _tick % INPUT_EVERY == 0 or _dash_pressed or _use_pressed or _mash_pressed or _skill_pressed >= 0:
 			_send_input(me)
 	if sim.phase == Sim.Phase.END:
 		_on_end(Sim.TICK)
@@ -120,9 +125,13 @@ func _apply_local_input(me: Sim.Player) -> void:
 		me.aim = _aim
 	if _mash_pressed:
 		me.want_mash = true
+	if _skill_pressed >= 0:
+		me.want_skill = _skill_pressed
+		me.aim = _aim
 	_dash_pressed = false
 	_use_pressed = false
 	_mash_pressed = false
+	_skill_pressed = -1
 
 
 ## An online client moves itself at once, using the same movement code, and drifts toward what the host
@@ -148,17 +157,21 @@ func _predict_client(me: Sim.Player) -> void:
 
 func _send_input(me: Sim.Player) -> void:
 	var data := PackedFloat32Array([me.id, hud.move_vector().x, hud.move_vector().y, _aim.x, _aim.y,
-		1.0 if _dash_pressed else 0.0, 1.0 if _use_pressed else 0.0, 1.0 if _mash_pressed else 0.0])
+		1.0 if _dash_pressed else 0.0, 1.0 if _use_pressed else 0.0, 1.0 if _mash_pressed else 0.0, float(_skill_pressed)])
 	Net.send_match_binary(Net.BIN_INPUT, data.to_byte_array())
 	_dash_pressed = false
 	_use_pressed = false
 	_mash_pressed = false
+	_skill_pressed = -1
 
 
 func _on_snapshot(bytes: PackedByteArray) -> void:
 	if is_host:
 		return
-	var snap: Variant = bytes_to_var(bytes)
+	var opened := bytes.decompress_dynamic(SNAPSHOT_MOST, FileAccess.COMPRESSION_DEFLATE)
+	if opened.is_empty():
+		return
+	var snap: Variant = bytes_to_var(opened)
 	if snap is Dictionary:
 		var me := sim.player_by_id(local_id)
 		var predicted := _client_pos
@@ -187,6 +200,9 @@ func _on_remote_input(bytes: PackedByteArray) -> void:
 		p.aim = Vector2(data[3], data[4])
 	if data[7] > 0.5:
 		p.want_mash = true
+	if data.size() >= 9 and data[8] >= 0.0:
+		p.want_skill = int(data[8])
+		p.aim = Vector2(data[3], data[4])
 
 
 func _on_host_changed(new_host: int) -> void:

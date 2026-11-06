@@ -123,13 +123,20 @@ func _play_out(runner: MatchRunner) -> void:
 	if _role == "guest":
 		var start := sim.players[runner.local_id].pos
 		runner.hud._stick_vec = Vector2(1.0, 0.0)
-		await get_tree().create_timer(2.0).timeout
+		await get_tree().create_timer(0.5).timeout
+		runner.hud.skill_pressed.emit(0, Vector2.ZERO)
+		await get_tree().create_timer(1.0).timeout
+		_ok(sim.players[runner.local_id].skill_cd[0] > 0.0, "the guest's skill goes off, and the host says so")
+		await get_tree().create_timer(0.5).timeout
 		runner.hud._stick_vec = Vector2.ZERO
 		_ok(sim.players[runner.local_id].pos.distance_to(start) > 2.0, "the guest's own stick moves their avatar")
 		_ok(_snapshots > 15, "snapshots arrive (%d)" % _snapshots)
 		_ok(sim.t > 3.0, "the guest's copy follows the host's clock (%.1f)" % sim.t)
+		_ok(sim.pickups.size() > 5, "the crystals come over too (%d)" % sim.pickups.size())
+		_ok(sim.players[runner.local_id].skills.size() >= 1, "the guest brought a skill")
 	else:
 		var seat := sim.player_by_id(_guest_seat)
+		_ok(seat.skills.size() >= 1, "the host knows the guest's skills")
 		var moved := false
 		var left := 4.0
 		while left > 0.0 and not moved:

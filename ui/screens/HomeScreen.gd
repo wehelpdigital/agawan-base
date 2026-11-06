@@ -3,6 +3,9 @@ extends Control
 ## powerup list and how-to are one tap away.
 
 const NEWS := [
+	"NEW: Every hero has a skill of their own. Level up and pick two. Tap Skills.",
+	"NEW: Shield cards on your side, target cards over the line. Cross it and your hand reshuffles!",
+	"NEW: Poop Drop. Fart Fog. Banana Bomb. Cow Drop. You're welcome.",
 	"NEW: Your friends are out playing. Tap your hero and they all cheer.",
 	"NEW: Knights, ninjas, pharaohs and a slice of pizza. 105 heroes!",
 	"NEW: Watch any map being played before you pick it. Tap Maps.",
@@ -323,6 +326,7 @@ func _side_buttons(wide := true) -> Control:
 	var entries := [
 		{"icon": "gift", "text": "Daily", "action": _daily_popup, "dot": Profile.daily_ready()},
 		{"icon": "star", "text": "Quests", "action": _quests_popup, "dot": Profile.quest_ready_count() > 0},
+		{"icon": "skills", "text": "Skills", "action": func() -> void: root.show_screen("skills", {}, true), "dot": Profile.hero_points(str(Profile.look.get("char", "kiko"))) > 0},
 		{"icon": "power", "text": "Cards", "action": func() -> void: root.show_screen("powers", {}, true), "dot": false},
 		{"icon": "help", "text": "Rules", "action": func() -> void: root.show_screen("howto", {}, true), "dot": false},
 	]
@@ -333,7 +337,7 @@ func _side_buttons(wide := true) -> Control:
 	col.add_child(grid)
 	for entry: Dictionary in entries:
 		var b := UiKit.button(entry["text"] if wide else "", "teal", 14, entry["icon"])
-		b.custom_minimum_size = Vector2(66, 48) if not wide else Vector2(104, 46)
+		b.custom_minimum_size = Vector2(66, 42 if root.compact else 48) if not wide else Vector2(104, 46)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(entry["action"])
 		if entry["dot"]:

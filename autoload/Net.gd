@@ -392,7 +392,7 @@ func request_chat_history(channel: String) -> void:
 
 func queue_join(map_id: String) -> void:
 	_queueing = true
-	_send({"t": "queue", "map": map_id, "look": Profile.look, "name": Profile.player_name, "trophies": Profile.trophies})
+	_send({"t": "queue", "map": map_id, "look": Profile.seat_look(), "name": Profile.player_name, "trophies": Profile.trophies})
 
 
 func queue_leave() -> void:
@@ -401,7 +401,7 @@ func queue_leave() -> void:
 
 
 func _me_payload() -> Dictionary:
-	return {"name": Profile.player_name, "look": Profile.look, "trophies": Profile.trophies}
+	return {"name": Profile.player_name, "look": Profile.seat_look(), "trophies": Profile.trophies}
 
 
 func room_create(map_id: String, skill: float) -> void:

@@ -282,6 +282,15 @@ static func icon(icon_name: String, size := 28.0) -> TextureRect:
 	return r
 
 
+## The picture for a skill: its icon, or for a hero's own skill, the hero.
+static func skill_icon(skill: String) -> Texture2D:
+	var def := Skills.info(skill)
+	if def.has("hero"):
+		var path := Cosmetics.thumb_path("char", String(def["hero"]))
+		return load(path) if ResourceLoader.exists(path) else icon_texture("star")
+	return icon_texture("sk_" + skill)
+
+
 static func image(path: String, size: Vector2) -> TextureRect:
 	var r := TextureRect.new()
 	if ResourceLoader.exists(path):

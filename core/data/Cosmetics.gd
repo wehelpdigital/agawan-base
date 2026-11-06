@@ -45,7 +45,7 @@ const BAKED_SLOTS := ["char", "face", "mask", "hat", "top", "pants", "shoes", "g
 ## The World tab's second row: a flag for everyone, then everything from each part of the planet.
 const REGIONS: Array[Dictionary] = [
 	{"id": "asia", "name": "Asia"}, {"id": "europe", "name": "Europe"}, {"id": "americas", "name": "Americas"},
-	{"id": "africa", "name": "Africa"}, {"id": "oceania", "name": "Oceania"},
+	{"id": "africa", "name": "Africa"}, {"id": "oceania", "name": "Oceania"}, {"id": "stories", "name": "Old Stories"},
 ]
 const RARITY := {
 	"free": {"name": "Free", "color": Color("0a1426"), "coins": 0, "gems": 0},

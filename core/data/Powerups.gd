@@ -2,7 +2,9 @@ class_name Powerups
 extends RefCounted
 ## Every power a crystal can hold. Sim reads `kind` and its parameters; the HUD, the codex and the 3D view read
 ## the name, description, category, card and sound. `tier` sets how often it comes up
-## (1 common, 2 rare, 3 epic). `ai` tells the bots when it makes sense:
+## (1 common, 2 rare, 3 epic). There are two decks: on your own side of the line you draw from the defence deck, and over
+## the line from the attack deck. Cross the line and whatever you're holding gets reshuffled into the other deck.
+## `ai` tells the bots when it makes sense:
 ##   chase: an enemy you can tag is close      flee: someone who can tag you is close
 ##   crowd: several enemies are close          attack: going for the enemy base
 ##   guard: intruders near your base           jail: teammates in jail
@@ -17,6 +19,14 @@ const CATS := {
 }
 const TIER_NAMES := ["", "Common", "Rare", "Epic"]
 const TIER_WEIGHT := [0, 60, 30, 12]
+const ATTACK := "attack"
+const DEFEND := "defend"
+## Everything else is in the attack deck: anything that goes fast, gets you in, or hits someone.
+const DEFENCE_DECK := ["bubble_shield", "popup_wall", "base_lock", "sentry_buddy", "snare_ring", "pop_mines", "slow_dome", "thorn_hedge", "mirror_shield",
+	"fresh_start", "instant_igloo", "guardian_angel", "orbit_shields", "robo_buddy", "stop_clock", "smoke_bomb", "fishing_net", "slime_ball", "big_magnet",
+	"black_hole", "freeze_ray", "sky_zap", "bubble_trap", "shrink_ray", "tidal_wave", "soap_slick", "scare_horn", "banana_peels", "fake_crystal", "lullaby",
+	"group_hug", "radar_ping", "cheer_squad", "crystal_vacuum", "power_rain", "jailbreak",
+	"poop_drop", "stink_bomb", "whoopee_cushion", "bubble_gum", "itching_powder"]
 
 const ALL: Array[Dictionary] = [
 	# --- Speed -----------------------------------------------------------------------------------
@@ -127,9 +137,9 @@ const ALL: Array[Dictionary] = [
 	{"id": "sentry_buddy", "name": "Sentry Buddy", "cat": "defend", "tier": 2, "ai": "guard", "sfx": "taunt_drone_drop",
 		"desc": "Plant a little turret that stuns enemies who come near. Lasts 12 seconds.", "kind": "sentry", "dur": 12.0},
 	{"id": "snare_ring", "name": "Snare Ring", "cat": "defend", "tier": 2, "ai": "guard", "sfx": "kill_grave_grab",
-		"desc": "Hidden snares appear around your base and pin any intruder who steps on one.", "kind": "snares", "count": 6, "dur": 25.0},
+		"desc": "Hidden snares appear around your base and pin any intruder who steps on one.", "kind": "snares", "count": 6, "dur": 16.0},
 	{"id": "pop_mines", "name": "Pop Mines", "cat": "defend", "tier": 1, "ai": "flee", "sfx": "taunt_popcorn_pop",
-		"desc": "Drop three mines around you. Whoever steps on one goes flying.", "kind": "mines", "count": 3, "dur": 20.0},
+		"desc": "Drop three mines around you. Whoever steps on one goes flying.", "kind": "mines", "count": 3, "dur": 14.0},
 	{"id": "slow_dome", "name": "Slow Dome", "cat": "defend", "tier": 1, "ai": "flee", "sfx": "aura_shimmer",
 		"desc": "A dome that drags enemies down to half speed for 6 seconds.", "kind": "zone", "fx": "slow", "r": 5.5, "dur": 6.0, "at": 0.0},
 	{"id": "thorn_hedge", "name": "Thorn Hedge", "cat": "defend", "tier": 2, "ai": "guard", "sfx": "aura_nature",
@@ -174,7 +184,7 @@ const ALL: Array[Dictionary] = [
 	{"id": "ninja_clones", "name": "Ninja Clones", "cat": "trick", "tier": 2, "ai": "attack", "sfx": "kill_ghost_pop",
 		"desc": "Poof! Four clones run beside you, copying every step for 8 seconds. Touch the wrong one and it's a nasty surprise.", "kind": "clones", "count": 4, "dur": 8.0},
 	{"id": "banana_peels", "name": "Banana Peels", "cat": "trick", "tier": 1, "ai": "flee", "sfx": "taunt_jelly_wobble",
-		"desc": "Drop a trail of peels behind you. Oldest joke in the book, and it still works.", "kind": "peels", "count": 4, "dur": 25.0},
+		"desc": "Drop a trail of peels behind you. Oldest joke in the book, and it still works.", "kind": "peels", "count": 4, "dur": 15.0},
 	{"id": "chicken_curse", "name": "Chicken Curse", "cat": "trick", "tier": 3, "ai": "chase", "sfx": "taunt_foghorn",
 		"desc": "Turn the nearest enemy into a chicken for 4.5 seconds. Chickens can't tag, capture, dash or use cards.", "kind": "curse", "range": 22.0, "status": {"chicken": 4.5}},
 	{"id": "dance_fever", "name": "Dance Fever", "cat": "trick", "tier": 2, "ai": "flee", "sfx": "finale_fiesta",
@@ -191,6 +201,33 @@ const ALL: Array[Dictionary] = [
 		"desc": "Spin the slots again and draw two brand new cards.", "kind": "wild", "count": 2},
 	{"id": "copycat", "name": "Copycat", "cat": "trick", "tier": 1, "ai": "any", "sfx": "move_swirl",
 		"desc": "Plays the last card anyone used, for your team.", "kind": "copy"},
+	# --- Funny -----------------------------------------------------------------------------------
+	{"id": "poop_drop", "name": "Poop Drop", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "squelch", "funny": true,
+		"desc": "Leave three fresh ones behind you. Step in one and you're stuck, you stink, and nobody can miss you for 7 seconds.", "kind": "traps", "fx": "poop", "count": 3, "dur": 16.0, "r": 0.9},
+	{"id": "fart_fog", "name": "Fart Fog", "cat": "trick", "tier": 1, "ai": "flee", "sfx": "fart_long", "funny": true,
+		"desc": "Let one go. A green cloud hangs round you for 7 seconds. Enemies inside cough, slow down, and run the wrong way.", "kind": "zone", "fx": "fart", "r": 5.5, "dur": 7.0, "at": 0.0},
+	{"id": "stink_bomb", "name": "Stink Bomb", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "fart_short", "funny": true,
+		"desc": "Lob a little green bomb. It bursts into a cloud of fart fog wherever it lands.", "kind": "shot", "speed": 15.0, "range": 15.0, "r": 0.55, "status": {"slow": 2.0}, "burst": {"fx": "fart", "r": 4.2, "dur": 6.0}},
+	{"id": "whoopee_cushion", "name": "Whoopee Cushion", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "fart_short", "funny": true,
+		"desc": "Hide two cushions on the ground. Sit on one and the whole field hears about it. You also go flying.", "kind": "traps", "fx": "whoopee", "count": 2, "dur": 18.0, "r": 1.0},
+	{"id": "banana_bomb", "name": "Banana Bomb", "cat": "trick", "tier": 2, "ai": "chase", "sfx": "slide_whistle", "funny": true,
+		"desc": "Throw a whole bunch. It bursts into six peels around where it lands, and every one of them sends somebody sliding.", "kind": "shot", "speed": 16.0, "range": 16.0, "r": 0.6, "burst": {"fx": "peel_ring", "count": 6, "r": 2.6, "dur": 12.0}},
+	{"id": "giant_burp", "name": "Giant Burp", "cat": "attack", "tier": 1, "ai": "flee", "sfx": "burp", "funny": true,
+		"desc": "Too much soda. Everyone nearby is blown off their feet, and nobody will ever speak of it.", "kind": "aoe", "r": 8.0, "push": 24.0, "status": {"stun": 0.4}, "word": "BUUURP!"},
+	{"id": "big_sneeze", "name": "Big Sneeze", "cat": "attack", "tier": 1, "ai": "chase", "sfx": "sneeze", "funny": true,
+		"desc": "Ah... ah... CHOO! A big wet splat flies forward, and everyone it hits goes sliding.", "kind": "shot", "speed": 18.0, "range": 18.0, "r": 1.1, "pierce": true, "push": 12.0, "status": {"slip": 2.5}},
+	{"id": "cow_drop", "name": "Cow Drop", "cat": "attack", "tier": 2, "ai": "chase", "sfx": "slide_whistle", "funny": true,
+		"desc": "Look up! A cow falls on the nearest enemy. Its shadow follows them, then: moo.", "kind": "drop", "range": 24.0, "fall": 1.2, "r": 2.1, "status": {"stun": 2.2}},
+	{"id": "tickle_attack", "name": "Tickle Attack", "cat": "trick", "tier": 1, "ai": "chase", "sfx": "giggle", "funny": true,
+		"desc": "A hundred feathers go for everyone nearby. For 4 seconds they can barely stand, let alone run straight.", "kind": "aoe", "r": 9.0, "status": {"tickle": 4.0}},
+	{"id": "rubber_chicken", "name": "Rubber Chicken", "cat": "attack", "tier": 1, "ai": "chase", "sfx": "honk", "funny": true,
+		"desc": "Slap everyone close to you with a rubber chicken. It's mostly the noise that hurts.", "kind": "aoe", "r": 3.4, "push": 30.0, "status": {"stun": 0.7}, "word": "SQUEAK!"},
+	{"id": "wedgie", "name": "Mega Wedgie", "cat": "trick", "tier": 2, "ai": "chase", "sfx": "slide_whistle", "funny": true,
+		"desc": "The nearest enemy gets hauled up by their pants. They can't move for 2 seconds. They'll never forget it.", "kind": "curse", "range": 18.0, "status": {"stun": 2.0}, "word": "WEDGIE!"},
+	{"id": "bubble_gum", "name": "Bubble Gum", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "squelch", "funny": true,
+		"desc": "Spit a big pink wad. Whoever it hits is stuck for 2.5 seconds, and it leaves a sticky mess behind.", "kind": "shot", "speed": 15.0, "range": 16.0, "r": 0.6, "status": {"root": 2.5}, "burst": {"fx": "slow", "r": 2.6, "dur": 5.0}},
+	{"id": "itching_powder", "name": "Itching Powder", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "giggle", "funny": true,
+		"desc": "Throw some down the nearest enemy's neck. For 6 seconds they keep stopping to scratch.", "kind": "curse", "range": 20.0, "status": {"itch": 6.0}, "word": "SO ITCHY!"},
 	# --- Team ------------------------------------------------------------------------------------
 	{"id": "jailbreak", "name": "Jailbreak", "cat": "team", "tier": 3, "ai": "jail", "sfx": "finale_fireworks",
 		"desc": "Every teammate in jail walks free, from anywhere on the map.", "kind": "jailbreak"},
@@ -217,27 +254,38 @@ const ALL: Array[Dictionary] = [
 ]
 
 static var _by_id := {}
-static var _pool: Array[String] = []
+static var _pools := {}
 
 
 static func by_id(id: String) -> Dictionary:
 	if _by_id.is_empty():
 		for def: Dictionary in ALL:
 			_by_id[def["id"]] = def
-	return _by_id.get(id, {})
+	var found: Variant = _by_id.get(id)
+	if found != null:
+		return found
+	return Skills.power_def(id) if id.begins_with("sk:") else {}
 
 
 static func has(id: String) -> bool:
 	return not by_id(id).is_empty()
 
 
-## A random powerup id, weighted by tier.
-static func roll(rng: RandomNumberGenerator) -> String:
-	if _pool.is_empty():
+## Which deck it's in: a card's, or for a skill, what kind of skill it is.
+static func side_of(id: String) -> String:
+	return DEFEND if id in DEFENCE_DECK else ATTACK
+
+
+## A random powerup id from one deck, or from both, weighted by tier.
+static func roll(rng: RandomNumberGenerator, side := "") -> String:
+	if _pools.is_empty():
+		_pools = {"": [], ATTACK: [], DEFEND: []}
 		for def: Dictionary in ALL:
 			for _i in int(TIER_WEIGHT[int(def["tier"])]):
-				_pool.append(String(def["id"]))
-	return _pool[rng.randi_range(0, _pool.size() - 1)]
+				_pools[""].append(String(def["id"]))
+				_pools[side_of(String(def["id"]))].append(String(def["id"]))
+	var pool: Array = _pools[side]
+	return pool[rng.randi_range(0, pool.size() - 1)]
 
 
 static func index_of(id: String) -> int:
@@ -253,7 +301,11 @@ static func id_at(i: int) -> String:
 
 static func color(id: String) -> Color:
 	var def := by_id(id)
-	return CATS[def["cat"]]["color"] if not def.is_empty() else Color.WHITE
+	if def.is_empty():
+		return Color.WHITE
+	if def.has("color"):
+		return Color(def["color"])
+	return CATS[def["cat"]]["color"]
 
 
 static func icon_path(id: String) -> String:

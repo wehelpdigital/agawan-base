@@ -99,7 +99,7 @@ func _pick_map() -> String:
 
 
 func _my_seat(team: int) -> Dictionary:
-	return {"name": Profile.player_name, "bot": false, "team": team, "look": Profile.look}
+	return {"name": Profile.player_name, "bot": false, "team": team, "look": Profile.seat_look()}
 
 
 func _bot_seats(rng: RandomNumberGenerator, skill: float) -> Array:

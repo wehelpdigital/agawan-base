@@ -62,6 +62,40 @@ func _ready() -> void:
 	row.add_child(again)
 	outer.add_child(row)
 	Net.match_result.connect(_on_server_result)
+	if rewards.get("hero_leveled", false):
+		_level_up.call_deferred(String(rewards["hero"]), int(rewards["hero_level"]))
+
+
+## A hero went up a level: pick something to spend the point on, now or later.
+func _level_up(hero_id: String, level: int) -> void:
+	Audio.sfx("achievement")
+	var col := root.popup("%s reached level %d!" % [String(Cosmetics.item("char", hero_id).get("name", "")), level])
+	var options := Profile.skill_options(hero_id)
+	var note := UiKit.body("Pick a skill to learn or level up." if not options.is_empty() else "Nothing to spend it on just yet.", 17)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(note)
+	for skill: String in options:
+		var state := Profile.hero_state(hero_id)
+		var rank := int(state["ranks"].get(skill, 0))
+		var def := Skills.info(skill)
+		var b := UiKit.button("%s: rank %d" % [def["name"], rank + 1] if rank > 0 else "Learn %s" % def["name"], "green" if rank > 0 else "yellow", 18)
+		b.pressed.connect(func() -> void:
+			Profile.raise_skill(hero_id, skill)
+			Audio.sfx("powerup_good")
+			root.close_popup(col))
+		col.add_child(b)
+	var row := UiKit.hbox(8)
+	var later := UiKit.button("Later", "ink", 18)
+	later.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	later.pressed.connect(func() -> void: root.close_popup(col))
+	row.add_child(later)
+	var tree := UiKit.button("See the tree", "teal", 18, "skills")
+	tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tree.pressed.connect(func() -> void:
+		root.close_popup(col)
+		root.show_screen("skills", {"hero": hero_id}, true))
+	row.add_child(tree)
+	col.add_child(row)
 
 
 func _reason_text(result: Dictionary) -> String:

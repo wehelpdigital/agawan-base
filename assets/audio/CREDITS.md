@@ -44,3 +44,5 @@ The icons and power cards are original to this game, drawn by `tools/gen_icons.p
 
 Rammetto One by Vernon Adams and Nunito by Vernon Adams, Cyreal and Jacques Le Bailly, both SIL Open Font License (texts
 beside the fonts in `assets/fonts`).
+
+Made for this game, from nothing, by tools/gen_sfx.py: fart_short, fart_long, squelch, burp, sneeze, moo, honk, slide_whistle, giggle.

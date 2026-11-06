@@ -27,6 +27,7 @@ const SCREENS := {
 	"settings": "res://ui/screens/SettingsScreen.gd",
 	"howto": "res://ui/screens/HowToScreen.gd",
 	"powers": "res://ui/screens/PowersScreen.gd",
+	"skills": "res://ui/screens/SkillsScreen.gd",
 	"results": "res://ui/screens/ResultsScreen.gd",
 	"credits": "res://ui/screens/CreditsScreen.gd",
 }

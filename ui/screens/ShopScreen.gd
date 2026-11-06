@@ -123,7 +123,16 @@ func _info_panel() -> Control:
 	_action = UiKit.button("", "green", 15 if root.portrait else 19)
 	_action.pressed.connect(_on_action)
 	col.add_child(_action)
+	var skills := UiKit.button("Skills", "teal", 15, "skills")
+	skills.pressed.connect(func() -> void: root.show_screen("skills", {"hero": _skills_hero()}, true))
+	col.add_child(skills)
 	return card
+
+
+## The hero you're looking at, or else the one you're wearing.
+func _skills_hero() -> String:
+	var hero := str(_preview.get("char", "kiko"))
+	return hero if Skills.SIGNATURE.has(hero) else "kiko"
 
 
 ## Top row: Deals, Wear, Moves, Effects, Profile, Avatars. Second row: the kinds of item in that group.
@@ -309,6 +318,8 @@ func _show_item(slot: String, id: String) -> void:
 		words = "Fly it with pride. It's free."
 	elif entry.has("from"):
 		words = "From %s. %s" % [entry["from"], words] if slot != "emote" else "Say it the %s way." % entry["from"]
+	if slot == "char" and Skills.SIGNATURE.has(id):
+		words += " Skill: %s." % Skills.SIGNATURE[id][0]
 	_info_label.text = words
 	_action.visible = true
 	if Profile.owns(slot, id):
@@ -348,7 +359,7 @@ func _price_now(slot: String, id: String) -> Dictionary:
 func _region_name(slot: String) -> String:
 	for region: Dictionary in Cosmetics.REGIONS:
 		if slot == "region:" + String(region["id"]):
-			return "From %s" % region["name"]
+			return "From %s" % region["name"] if region["id"] != "stories" else "From the Old Stories"
 	return ""
 
 

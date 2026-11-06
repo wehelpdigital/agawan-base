@@ -3,7 +3,7 @@ extends Node
 ##   godot --path . --rendering-driver opengl3 --audio-driver Dummy --resolution 390x844 res://tests/UiShots.tscn
 ##       -- --out=<dir> --tag=phone --device=phone_portrait [--server=http://127.0.0.1:8787] [--rich] [--text=large]
 
-const SCREENS := ["title", "howto", "home", "maps", "shop", "locker", "room", "ranks", "guild", "chat", "profile", "settings", "powers", "credits", "results"]
+const SCREENS := ["title", "howto", "home", "maps", "shop", "locker", "room", "ranks", "guild", "chat", "profile", "settings", "powers", "skills", "credits", "results"]
 
 var _out := "user://shots"
 var _tag := "ui"
@@ -56,10 +56,30 @@ func _run() -> void:
 		_audit(ui, screen_name)
 	if _only == "":
 		await _shop_extras(ui)
+		await _skill_extras(ui)
 	get_tree().quit()
 
 
 ## The shop's newer shelves, and a button you can't afford.
+## A hero some way along, and the moment they go up a level.
+func _skill_extras(ui: UiRoot) -> void:
+	var hero := "bramble"
+	var nodes := Skills.tree(hero)
+	Profile.heroes[hero] = {"xp": 120, "level": 7, "chosen": [Skills.own_skill(hero), String(nodes[1]["skill"])], "ranks": {Skills.own_skill(hero): 3, String(nodes[1]["skill"]): 2}}
+	ui.show_screen("skills", {"hero": hero})
+	await _wait(0.5)
+	await _shot("skills_along")
+	_audit(ui, "skills_along")
+	Profile.heroes["kiko"] = {"xp": 0, "level": 2, "chosen": [Skills.own_skill("kiko")], "ranks": {Skills.own_skill("kiko"): 1}}
+	var args := _sample_result()
+	args["rewards"] = {"coins": 40, "xp": 90, "hero": "kiko", "hero_leveled": true, "hero_level": 2}
+	ui.show_screen("results", args)
+	await _wait(0.7)
+	await _shot("level_up")
+	Profile.heroes.erase("kiko")
+	Profile.heroes.erase(hero)
+
+
 func _shop_extras(ui: UiRoot) -> void:
 	ui.show_screen("shop")
 	await _wait(0.5)

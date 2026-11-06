@@ -26,6 +26,10 @@ static func texture(id: String) -> Texture2D:
 
 static func paint(canvas: CanvasItem, rect: Rect2, id: String, with_name := true) -> void:
 	canvas.draw_texture_rect(texture(id), rect, false)
+	# A target for the attack deck, a shield for the defence deck.
+	var badge := rect.size.x * 0.27
+	var corner := rect.position + Vector2(rect.size.x - badge * 1.06, rect.size.y * 0.02)
+	canvas.draw_texture_rect(UiKit.icon_texture("mode_" + Powerups.side_of(id)), Rect2(corner, Vector2(badge, badge)), false)
 	if with_name:
 		_write_name(canvas, rect, String(Powerups.by_id(id).get("name", "")))
 

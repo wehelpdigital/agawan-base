@@ -9,6 +9,7 @@ extends Node
 signal changed
 signal item_unlocked(slot: String, id: String)
 signal leveled_up(level: int)
+signal hero_leveled_up(hero_id: String, level: int)
 
 const DEFAULT_FILE := "user://profile.json"
 const VERSION := 1
@@ -37,6 +38,7 @@ var owned := {}
 var look: Dictionary = Cosmetics.default_look()
 var emotes: Array[String] = []
 var stats := {"games": 0, "wins": 0, "tags": 0, "rescues": 0, "captures": 0, "powers": 0, "mvps": 0}
+var heroes := {}  ## Hero id -> how far they've come: xp, level, chosen (their skills, two at most), ranks (skill -> rank).
 var favorite_map := ""
 var favorite_weather := ""  ## Empty: whatever the map's sky feels like today.
 var difficulty := 1  ## Index into DIFFICULTIES for practice matches.
@@ -90,7 +92,7 @@ func _guess_flag() -> void:
 
 func to_data() -> Dictionary:
 	return {"version": VERSION, "name": player_name, "coins": coins, "gems": gems, "trophies": trophies, "best_trophies": best_trophies,
-		"xp": xp, "level": level, "owned": owned, "look": look, "look_version": 2, "emotes": emotes, "stats": stats, "favorite_map": favorite_map, "favorite_weather": favorite_weather,
+		"xp": xp, "level": level, "heroes": heroes, "owned": owned, "look": look, "look_version": 2, "emotes": emotes, "stats": stats, "favorite_map": favorite_map, "favorite_weather": favorite_weather,
 		"difficulty": difficulty, "tutorial_done": tutorial_done, "matches_played": matches_played, "daily_day": daily_day,
 		"daily_streak": daily_streak, "quest_day": quest_day, "quest_ids": quest_ids, "quest_progress": quest_progress,
 		"quest_claimed": quest_claimed, "claimed_leagues": claimed_leagues, "saved_at": saved_at}
@@ -109,6 +111,11 @@ func apply_data(data: Dictionary) -> void:
 	level = maxi(int(data.get("level", level)), 1)
 	if data.get("owned") is Dictionary:
 		owned = data["owned"]
+	if data.get("heroes") is Dictionary:
+		heroes = {}
+		for hero_id: Variant in data["heroes"]:
+			if Skills.SIGNATURE.has(str(hero_id)) and data["heroes"][hero_id] is Dictionary:
+				heroes[str(hero_id)] = _clean_hero(str(hero_id), data["heroes"][hero_id])
 	if data.get("look") is Dictionary:
 		var saved_look: Dictionary = data["look"]
 		look = Cosmetics.default_look()
@@ -259,6 +266,121 @@ func rename(new_name: String) -> void:
 		notify_changed()
 
 
+# --- Heroes and their skills ----------------------------------------------------------------------
+
+## How far a hero's come. A hero you've never played has their own skill ready to go.
+func hero_state(hero_id: String) -> Dictionary:
+	if heroes.has(hero_id):
+		return heroes[hero_id]
+	var own := Skills.own_skill(hero_id)
+	return {"xp": 0, "level": 1, "chosen": [own], "ranks": {own: 1}}
+
+
+## A save can say anything, so only what could really have happened gets through.
+func _clean_hero(hero_id: String, saved: Dictionary) -> Dictionary:
+	var level := clampi(int(saved.get("level", 1)), 1, Skills.MAX_LEVEL)
+	var out := {"xp": maxi(int(saved.get("xp", 0)), 0), "level": level, "chosen": [], "ranks": {}}
+	var ranks: Variant = saved.get("ranks", {})
+	var chosen: Variant = saved.get("chosen", [])
+	var left := level
+	if chosen is Array and ranks is Dictionary:
+		for skill: Variant in chosen:
+			var id := str(skill)
+			if out["chosen"].size() >= Skills.MAX_CHOSEN or not _in_tree(hero_id, id, level) or out["chosen"].has(id):
+				continue
+			var rank := clampi(int((ranks as Dictionary).get(id, 1)), 1, mini(Skills.MAX_RANK, left))
+			if left <= 0:
+				continue
+			left -= rank
+			out["chosen"].append(id)
+			out["ranks"][id] = rank
+	return out
+
+
+func _in_tree(hero_id: String, skill: String, level: int) -> bool:
+	for node: Dictionary in Skills.tree(hero_id):
+		if node["skill"] == skill:
+			return level >= int(node["level"])
+	return false
+
+
+## Points waiting to be spent: one a level, less what's already in their skills.
+func hero_points(hero_id: String) -> int:
+	var state := hero_state(hero_id)
+	var spent := 0
+	for skill: String in state["ranks"]:
+		spent += int(state["ranks"][skill])
+	return int(state["level"]) - spent
+
+
+## Whether this skill can be learned or ranked up right now.
+func can_raise_skill(hero_id: String, skill: String) -> bool:
+	var state := hero_state(hero_id)
+	if hero_points(hero_id) <= 0 or not _in_tree(hero_id, skill, int(state["level"])):
+		return false
+	if (state["chosen"] as Array).has(skill):
+		return int(state["ranks"].get(skill, 0)) < Skills.MAX_RANK
+	return (state["chosen"] as Array).size() < Skills.MAX_CHOSEN
+
+
+func raise_skill(hero_id: String, skill: String) -> bool:
+	if not can_raise_skill(hero_id, skill):
+		return false
+	var state := hero_state(hero_id)
+	if not (state["chosen"] as Array).has(skill):
+		state["chosen"].append(skill)
+	state["ranks"][skill] = int(state["ranks"].get(skill, 0)) + 1
+	heroes[hero_id] = state
+	notify_changed()
+	return true
+
+
+## Takes a skill out of the two, and gives back the points in it.
+func drop_skill(hero_id: String, skill: String) -> void:
+	var state := hero_state(hero_id)
+	if not (state["chosen"] as Array).has(skill):
+		return
+	state["chosen"].erase(skill)
+	state["ranks"].erase(skill)
+	heroes[hero_id] = state
+	notify_changed()
+
+
+## Everything a point could go on right now.
+func skill_options(hero_id: String) -> Array[String]:
+	var out: Array[String] = []
+	for node: Dictionary in Skills.tree(hero_id):
+		if can_raise_skill(hero_id, String(node["skill"])):
+			out.append(String(node["skill"]))
+	return out
+
+
+## What the other players need to know about you: how you look, and which two skills you've brought.
+func seat_look() -> Dictionary:
+	var out := look.duplicate()
+	var state := hero_state(str(look.get("char", "kiko")))
+	var skills: Array = []
+	for skill: String in state["chosen"]:
+		skills.append([skill, int(state["ranks"].get(skill, 1))])
+	out["skills"] = skills
+	return out
+
+
+func _add_hero_xp(hero_id: String, amount: int) -> bool:
+	if not Skills.SIGNATURE.has(hero_id):
+		return false
+	var state := hero_state(hero_id)
+	var old_level := int(state["level"])
+	state["xp"] = int(state["xp"]) + amount
+	while int(state["level"]) < Skills.MAX_LEVEL and int(state["xp"]) >= Skills.xp_for_level(int(state["level"])):
+		state["xp"] = int(state["xp"]) - Skills.xp_for_level(int(state["level"]))
+		state["level"] = int(state["level"]) + 1
+	if int(state["level"]) >= Skills.MAX_LEVEL:
+		state["xp"] = 0
+	heroes[hero_id] = state
+	return int(state["level"]) > old_level
+
+
 # --- Matches --------------------------------------------------------------------------------------
 
 ## Adds a finished match to the profile. Returns what was earned, for the results screen.
@@ -286,6 +408,10 @@ func apply_match(mine: Dictionary, online: bool) -> Dictionary:
 		gems += 5
 	if level > old_level:
 		leveled_up.emit(level)
+	var hero_id := str(look.get("char", "kiko"))
+	var hero_leveled := _add_hero_xp(hero_id, earned_xp)
+	if hero_leveled:
+		hero_leveled_up.emit(hero_id, int(hero_state(hero_id)["level"]))
 	stats["games"] = int(stats["games"]) + 1
 	stats["tags"] = int(stats["tags"]) + tags
 	stats["rescues"] = int(stats["rescues"]) + rescues
@@ -305,7 +431,7 @@ func apply_match(mine: Dictionary, online: bool) -> Dictionary:
 	if won:
 		_add_quest("wins", 1)
 	notify_changed()
-	return {"coins": earned_coins, "xp": earned_xp, "leveled": level > old_level, "level": level}
+	return {"coins": earned_coins, "xp": earned_xp, "leveled": level > old_level, "level": level, "hero": hero_id, "hero_leveled": hero_leveled, "hero_level": int(hero_state(hero_id)["level"])}
 
 
 ## Trophies only ever arrive from the server (online matches).

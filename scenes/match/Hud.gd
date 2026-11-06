@@ -5,6 +5,7 @@ extends Control
 
 signal dash_pressed
 signal use_pressed(aim: Vector2)
+signal skill_pressed(index: int, aim: Vector2)
 signal mash_pressed
 signal emote_pressed(id: String)
 signal pause_pressed
@@ -35,12 +36,14 @@ var _wind_arrow: Control
 var _weather_shown := ""
 var _side_pill: PanelContainer
 var _side_text: Label
+var _side_icon: TextureRect
 var _side_shown := ""
 var _side_line_y := 0.0
 var _mini: Minimap
 var _dash_btn: HudButton
 var _use_btn: PowerSlot
 var _next_slot: PowerSlot
+var _skill_btns: Array[HudButton] = []
 var _jail_panel: Control
 var _jail_time: Label
 var _jail_bar: ProgressBar
@@ -75,6 +78,8 @@ const HINTS: Array[String] = [
 	"Stand on the enemy base to capture it. First team to 3 captures wins!",
 	"In jail? Tap to break out. Or a free teammate can touch the jail and spring everyone.",
 	"Grab the crystals! Each one spins up a random power card. Tap the card to use it, or drag to aim.",
+	"On your side you draw shield cards. Over the line you draw target cards. Cross the line and your hand reshuffles!",
+	"Your hero has a skill of their own: tap the round button above DASH. It comes back on its own.",
 	"Hide in the bushes to ambush someone. Arrow floors, jump pads and fountains are all there to be used!",
 ]
 
@@ -136,10 +141,15 @@ func _build() -> void:
 	_side_pill.visible = false
 	add_child(_side_pill)
 	_build_weather_chip()
+	var side_row := UiKit.hbox(5)
+	side_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_side_pill.add_child(side_row)
+	_side_icon = UiKit.icon("mode_defend", 26)
+	side_row.add_child(_side_icon)
 	_side_text = UiKit.title("", 17)
 	_side_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_side_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_side_pill.add_child(_side_text)
+	side_row.add_child(_side_text)
 	_countdown = UiKit.title("", 110, UiKit.YELLOW)
 	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_countdown.visible = false
@@ -153,6 +163,13 @@ func _build() -> void:
 	add_child(_next_slot)
 	_use_btn = PowerSlot.new()
 	add_child(_use_btn)
+	var me := sim.player_by_id(runner.local_id)
+	if me:
+		for entry: Array in me.skills:
+			var button := HudButton.new()
+			button.setup_skill(String(entry[0]))
+			add_child(button)
+			_skill_btns.append(button)
 	_build_emotes()
 	_build_jail_panel()
 	_build_hint()
@@ -398,6 +415,11 @@ func _relayout() -> void:
 	var next := card * 0.46
 	_next_slot.size = next
 	_next_slot.position = Vector2(use_pos.x + (card.x - next.x) * 0.5, use_pos.y - next.y - 6.0)
+	# Skills stand on top of the dash button.
+	var small := mid * 0.84
+	for i in _skill_btns.size():
+		_skill_btns[i].size = Vector2(small, small)
+		_skill_btns[i].position = Vector2(dash_x + (mid - small) * 0.5, bottom - mid - 2.0 - (small + 16.0) * (i + 1))
 	# Top-right buttons.
 	var pause: Control = get_node("Pause")
 	pause.position = Vector2(right - 54.0, top)
@@ -414,7 +436,8 @@ func _relayout() -> void:
 	var hint_w := minf(view_size.x - 32.0, 480.0)
 	_hint.size = Vector2(hint_w, 0)
 	if _portrait:
-		_hint.position = Vector2((view_size.x - hint_w) * 0.5, bottom - big - 150.0)
+		var buttons_up := mid + (small + 16.0) * _skill_btns.size()
+		_hint.position = Vector2((view_size.x - hint_w) * 0.5, bottom - maxf(big, buttons_up) - 130.0)
 	else:
 		_hint.position = Vector2((view_size.x - hint_w) * 0.5, bottom - 98.0)
 	_hint_label.custom_minimum_size = Vector2(hint_w - 34.0, 0)
@@ -473,10 +496,15 @@ func _refresh_buttons(me: Sim.Player) -> void:
 	if me == null:
 		return
 	_dash_btn.set_cooldown(me.dash_cd / Sim.DASH_COOLDOWN)
-	# The newest card is the one spinning: the second if there are two, or else the first.
+	for i in _skill_btns.size():
+		_skill_btns[i].visible = alive
+		var left: float = me.skill_cd[i]
+		_skill_btns[i].set_cooldown(left / Skills.cooldown(me.skills[i][0], me.skills[i][1]))
+		_skill_btns[i].set_seconds(ceili(left))
+	# The newest card is the one spinning: the second if there are two, or else the first. Crossing the line spins them all.
 	var held := me.powers
-	_use_btn.show_state(held[0] if held.size() > 0 else "", me.spin_left if held.size() == 1 else 0.0)
-	_next_slot.show_state(held[1] if held.size() > 1 else "", me.spin_left if held.size() > 1 else 0.0)
+	_use_btn.show_state(held[0] if held.size() > 0 else "", maxf(me.spin_left if held.size() == 1 else 0.0, me.swap_left))
+	_next_slot.show_state(held[1] if held.size() > 1 else "", maxf(me.spin_left if held.size() > 1 else 0.0, me.swap_left))
 
 
 func _refresh_jail(me: Sim.Player) -> void:
@@ -506,9 +534,10 @@ func _refresh_side(me: Sim.Player) -> void:
 		return
 	var first := _side_shown == ""
 	_side_shown = state
-	var look: Array = {"home": ["YOUR SIDE: TAG THEM!", Color("22b85c")], "enemy": ["ENEMY SIDE: RUN!", Color("f0413a")],
-		"charged": ["CHARGED: TAG ANYONE!", Color("ffb31f")], "free": ["FREE WALK HOME", Color("3f8fe8")]}[state]
+	var look: Array = {"home": ["DEFEND: TAG THEM!", Color("22b85c"), "mode_defend"], "enemy": ["ATTACK: DON'T GET CAUGHT!", Color("f0413a"), "mode_attack"],
+		"charged": ["CHARGED: TAG ANYONE!", Color("ffb31f"), "mode_attack"], "free": ["FREE WALK HOME", Color("3f8fe8"), "mode_defend"]}[state]
 	_side_text.text = look[0]
+	_side_icon.texture = UiKit.icon_texture(look[2])
 	var box := UiKit.style(look[1], 18, 3, UiKit.RIM)
 	box.content_margin_left = 16
 	box.content_margin_right = 16
@@ -560,6 +589,12 @@ func _refresh_status(me: Sim.Player) -> void:
 			text = "Zzz..."
 		elif sim.has_status(me, "bubble"):
 			text = "STUCK IN A BUBBLE!"
+		elif sim.has_status(me, "tickle"):
+			text = "HA HA HA! IT TICKLES!"
+		elif sim.has_status(me, "itch"):
+			text = "SO ITCHY! Scratch, scratch."
+		elif sim.has_status(me, "stink"):
+			text = "EWW! You stink. Everyone can find you."
 		elif sim.has_status(me, "potato"):
 			text = "HOT POTATO! Touch someone to pass it on!"
 		elif sim.has_status(me, "charging"):
@@ -747,6 +782,10 @@ func _on_touch(event: InputEventScreenTouch) -> void:
 			_dash_btn.set_pressed_look(true)
 			dash_pressed.emit()
 			return
+		for i in _skill_btns.size():
+			if _hit(_skill_btns[i], at, 6.0):
+				_press_skill(i, Vector2.ZERO)
+				return
 		var mine := at.x < get_viewport_rect().size.x * 0.5 if not Settings.left_handed else at.x > get_viewport_rect().size.x * 0.5
 		if _stick_touch < 0 and mine:
 			_stick_touch = event.index
@@ -805,6 +844,8 @@ func _on_mouse_button(event: InputEventMouseButton) -> void:
 		elif _hit(_dash_btn, at, 0.0):
 			_dash_btn.set_pressed_look(true)
 			dash_pressed.emit()
+		elif _skill_at(at) >= 0:
+			_press_skill(_skill_at(at), Vector2.ZERO)
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			use_pressed.emit(_mouse_world_aim(at))
 	else:
@@ -812,6 +853,20 @@ func _on_mouse_button(event: InputEventMouseButton) -> void:
 			_mouse_aiming = false
 			_release_power()
 		_dash_btn.set_pressed_look(false)
+
+
+func _skill_at(at: Vector2) -> int:
+	for i in _skill_btns.size():
+		if _hit(_skill_btns[i], at, 0.0):
+			return i
+	return -1
+
+
+func _press_skill(index: int, aim: Vector2) -> void:
+	if index >= _skill_btns.size():
+		return
+	Haptics.buzz("power")
+	skill_pressed.emit(index, aim)
 
 
 ## Right-click aims a powerup at the spot under the mouse.
@@ -835,6 +890,10 @@ func _on_key(event: InputEventKey) -> void:
 			_press_action(true)
 		KEY_E, KEY_ENTER, KEY_F:
 			_press_action(false)
+		KEY_Q:
+			_press_skill(0, _mouse_world_aim(get_viewport().get_mouse_position()))
+		KEY_R:
+			_press_skill(1, _mouse_world_aim(get_viewport().get_mouse_position()))
 		KEY_ESCAPE, KEY_P:
 			pause_pressed.emit()
 		KEY_1, KEY_2, KEY_3, KEY_4:
@@ -846,10 +905,14 @@ func _on_key(event: InputEventKey) -> void:
 
 func _on_pad(event: InputEventJoypadButton) -> void:
 	match event.button_index:
-		JOY_BUTTON_A, JOY_BUTTON_LEFT_SHOULDER:
+		JOY_BUTTON_A:
 			_press_action(true)
-		JOY_BUTTON_X, JOY_BUTTON_B, JOY_BUTTON_RIGHT_SHOULDER:
+		JOY_BUTTON_X, JOY_BUTTON_B:
 			_press_action(false)
+		JOY_BUTTON_LEFT_SHOULDER:
+			_press_skill(0, Vector2.ZERO)
+		JOY_BUTTON_RIGHT_SHOULDER:
+			_press_skill(1, Vector2.ZERO)
 		JOY_BUTTON_START:
 			pause_pressed.emit()
 		JOY_BUTTON_Y:

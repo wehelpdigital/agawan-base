@@ -634,6 +634,73 @@ POWER = {
         cloud(170, 110, 0.62, W), bolt(330, 110, 0.6), L("180,440 180,490", 24, DGRAY), L("332,440 332,490", 24, DGRAY)],
 }
 
+POWER.update({
+    # Funny ones
+    "poop_drop": lambda: [
+        E(256, 410, 176, 66, "#8a5a2b"), E(256, 332, 134, 60, "#9c6a35"), E(256, 258, 92, 50, "#8a5a2b"),
+        D("M262 120 C306 170 302 214 256 218 C212 214 214 172 262 120 Z", "#9c6a35"), shine(226, 306, 22, 8, -20),
+        C(214, 330, 30, W), C(298, 330, 30, W), C(222, 336, 14, INK, False), C(306, 336, 14, INK, False), K("M226 386 Q256 414 288 386", 12, INK, False),
+        C(96, 170, 12, INK, False), E(84, 158, 12, 7, W, -30, False), E(108, 158, 12, 7, W, 30, False), C(420, 120, 12, INK, False), E(408, 108, 12, 7, W, -30, False), E(432, 108, 12, 7, W, 30, False)],
+    "fart_fog": lambda: [
+        cloud(150, 330, 0.95, "#9be36a"), cloud(350, 300, 1.05, "#7ed957"), cloud(250, 190, 0.9, "#b8ef8a"),
+        K("M110 150 C140 120 90 90 120 60", 16, DGREEN, False), K("M250 90 C280 60 230 40 260 10", 16, DGREEN, False), K("M400 150 C430 120 380 90 410 60", 16, DGREEN, False)],
+    "stink_bomb": lambda: [
+        C(250, 320, 138, "#6fbf3f"), shine(204, 262, 40, 16), K("M300 200 C330 150 360 150 390 110", 22, DBROWN), spark(410, 88, 44, YELLOW),
+        C(204, 320, 22, W), C(296, 320, 22, W), C(204, 324, 10, INK, False), C(296, 324, 10, INK, False), K("M214 380 Q250 356 288 380", 12, INK, False),
+        K("M70 240 C100 210 50 180 80 150", 14, DGREEN, False)],
+    "whoopee_cushion": lambda: [
+        E(240, 310, 200, 130, PINK), shine(170, 250, 52, 16), R(380, 262, 108, 70, 26, "#e8488f"), E(240, 310, 110, 54, "#ff9bcc", 0, False),
+        K("M470 200 C500 170 450 140 480 110", 16, DGREEN, False), K("M410 170 C440 140 390 110 420 80", 16, DGREEN, False)],
+    "banana_bomb": lambda: [
+        K("M170 110 C110 220 150 370 300 420", 62, YELLOW), K("M220 100 C210 220 270 340 400 360", 62, "#ffe05c"), K("M270 100 C290 200 350 280 440 280", 62, YELLOW),
+        R(170, 62, 110, 54, 18, BROWN), K("M170 110 C110 220 150 370 300 420", 8, "#e0a92a", False), spark(84, 92, 40), spark(430, 150, 34)],
+    "giant_burp": lambda: [
+        R(150, 210, 160, 250, 26, RED), R(150, 210, 160, 44, 18, "#ffffff"), R(150, 416, 160, 44, 18, "#ffffff"), shine(186, 300, 14, 50, 0),
+        cloud(350, 140, 1.0, W), C(230, 150, 22, CYAN), C(180, 110, 16, CYAN), C(270, 90, 12, CYAN), spark(460, 280, 36, YELLOW)],
+    "big_sneeze": lambda: [
+        P("110,120 230,120 262,300 80,300", SKIN, True, 40), C(100, 310, 46, SKIN), C(240, 310, 46, SKIN), E(130, 318, 22, 16, DBROWN, 0, False), E(210, 318, 22, 16, DBROWN, 0, False),
+        E(370, 330, 110, 66, "#9be36a", -14), C(280, 400, 28, "#7ed957"), C(460, 240, 26, "#7ed957"), C(430, 440, 20, "#9be36a"), C(310, 240, 18, "#9be36a"), shine(350, 300, 30, 12)],
+    "cow_drop": lambda: [
+        E(240, 300, 170, 110, "#fffdf4"), C(390, 240, 78, "#fffdf4"), E(432, 270, 44, 34, "#ffb3b3"), C(404, 212, 12, INK, False), E(190, 250, 62, 42, INK, 10, False), E(280, 350, 46, 32, INK, -20, False),
+        L("130,380 110,456", 34, "#fffdf4"), L("210,396 202,470", 34, "#fffdf4"), L("290,396 298,470", 34, "#fffdf4"), P("370,170 356,120 396,160", YELLOW, True, 6),
+        K("M60 80 V180", 18, W, False), K("M120 40 V110", 14, W, False), K("M440 50 V120", 16, W, False)],
+    "tickle_attack": lambda: [
+        D("M140 430 C150 300 240 140 420 70 C440 220 360 380 190 420 Z", "#fff6dd"), K("M120 470 C200 340 290 220 400 100", 16, DBROWN), K("M250 240 L320 260", 8, DBROWN, False), K("M210 310 L290 330", 8, DBROWN, False), K("M300 180 L350 190", 8, DBROWN, False),
+        spark(90, 120, 40, YELLOW), spark(420, 340, 34, PINK), spark(200, 90, 26, CYAN)],
+    "rubber_chicken": lambda: [
+        K("M130 400 C150 300 200 240 340 180", 54, YELLOW), E(170, 392, 110, 66, YELLOW, -12), C(372, 150, 62, YELLOW), P("430,136 496,158 430,178", ORANGE, True, 6), C(388, 134, 14, INK, False),
+        P("340,96 362,50 380,92 406,56 410,106", RED, True, 6), L("120,450 90,496", 18, ORANGE), L("200,452 210,496", 18, ORANGE), spark(90, 200, 38, W)],
+    "wedgie": lambda: [
+        D("M86 230 H426 L400 300 C350 330 310 390 296 450 H216 C202 390 162 330 112 300 Z", W), R(86, 212, 340, 44, 14, BLUE), K("M256 212 V60", 28, W), K("M170 110 L256 40 L342 110", 24, YELLOW, False), C(140, 340, 16, BLUE, False), C(372, 340, 16, BLUE, False)],
+    "bubble_gum": lambda: [
+        C(256, 240, 170, PINK), shine(190, 160, 50, 20), C(256, 240, 110, "#ff9bcc", False), shine(190, 160, 50, 20), C(210, 424, 36, PINK), C(300, 440, 26, "#e8488f"), K("M256 410 V440", 20, PINK, False), spark(440, 110, 36)],
+    "itching_powder": lambda: [
+        R(150, 190, 212, 260, 40, CREAM), R(180, 120, 152, 80, 24, RED), C(220, 145, 8, W, False), C(256, 145, 8, W, False), C(292, 145, 8, W, False), star(256, 320, 70, RED),
+        C(90, 100, 10, YELLOW), C(140, 60, 8, YELLOW), C(256, 50, 10, YELLOW), C(370, 70, 8, YELLOW), C(430, 120, 10, YELLOW), C(60, 180, 8, YELLOW), C(450, 200, 8, YELLOW)],
+})
+
+# The two decks, and the pictures for skills. Most skills look like the card they're nearest to.
+UI.update({
+    "mode_attack": lambda: [C(256, 256, 200, W), C(256, 256, 148, RED, False), C(256, 256, 100, W, False), C(256, 256, 52, RED, False), L("256,20 256,120", 30, INK, False), L("256,392 256,492", 30, INK, False), L("20,256 120,256", 30, INK, False), L("392,256 492,256", 30, INK, False)],
+    "mode_defend": lambda: [D("M256 40 C320 80 390 92 442 92 C442 270 400 400 256 476 C112 400 70 270 70 92 C122 92 192 80 256 40 Z", BLUE), D("M256 92 C306 122 350 130 392 134 C392 262 360 362 256 420 Z", "#7ec8ff", False), shine(160, 180, 34, 60, 10)],
+    "skills": lambda: [K("M256 470 V270", 40, DBROWN), K("M256 330 C200 300 170 260 150 220", 26, DBROWN), K("M256 300 C310 270 340 230 356 190", 26, DBROWN), C(256, 150, 100, LEAF), C(136, 200, 72, GREEN), C(376, 180, 72, GREEN), star(256, 150, 56, YELLOW), star(136, 200, 34, YELLOW), star(376, 180, 34, YELLOW)],
+})
+SKILL_ART = {
+    "ice_lance": "freeze_ray", "lightning": "chain_lightning", "poison": "slime_ball", "boulder": "rolling_barrel", "meteor": "meteor_slam", "whirlwind": "mini_twister",
+    "stalk": "ghost_sprint", "charge": "cannonball", "war_cry": "scare_horn", "sunbeam": "mega_wave", "fire_line": "dragon_breath", "boomerang": "boomerang", "swarm": "angry_bees",
+    "magnet": "big_magnet", "stone_wall": "popup_wall", "barrier": "bubble_shield", "vines": "snare_ring", "second_wind": "cheer_squad", "ward": "base_lock", "thorns": "thorn_hedge",
+    "frost_nova": "giant_snowball", "sanctuary": "group_hug", "mirror": "mirror_shield", "sentry": "sentry_buddy", "stomp": "earthquake", "slick": "soap_slick", "banana": "banana_peels",
+    "teleport": "blink_step", "vanish": "invisi_cloak", "mirror_image": "ninja_clones", "swap": "switcheroo", "sleep": "lullaby", "recall": "home_run", "haste": "rocket_slippers",
+    "rally": "fiesta_rush", "jailbreak": "jailbreak", "polymorph": "chicken_curse", "leap": "super_hop", "dance": "dance_fever", "pickpocket": "pickpocket",
+}
+SKILL_OWN = {
+    "fireball": lambda: [flame(256, 200, 1.5), C(256, 320, 120, ORANGE), C(256, 330, 70, YELLOW, False), spark(80, 120, 40, YELLOW), spark(430, 150, 34, W)],
+    "hex": lambda: [C(256, 256, 190, DPURPLE), K("M256 256 C300 220 340 280 290 320 C230 360 160 310 170 240 C180 160 280 120 350 170", 26, PINK, False), star(120, 110, 40, YELLOW), star(410, 400, 34, YELLOW)],
+    "lockup": lambda: [K("M70 300 a90 90 0 1 0 180 0 a90 90 0 1 0 -180 0", 42, YELLOW), K("M262 300 a90 90 0 1 0 180 0 a90 90 0 1 0 -180 0", 42, YELLOW), R(226, 280, 60, 40, 14, GOLD), spark(90, 110, 40), spark(420, 120, 30)],
+    "arrows": lambda: [
+        L("80,440 240,110", 22, DBROWN), P("240,60 280,130 200,120", W, True, 6), L("256,456 256,120", 22, DBROWN), P("256,50 296,130 216,130", W, True, 6), L("432,440 272,110", 22, DBROWN), P("272,60 312,120 232,130", W, True, 6)],
+}
+
 CATS = {"speed": ("#5fe39c", "#1a9c58"), "attack": ("#ff7f6e", "#c9302a"), "defend": ("#6cc0ff", "#1a6fd0"),
         "trick": ("#cc93ff", "#7f38d6"), "team": ("#ffd65c", "#e48f0a")}
 RIM = {1: "#ffffff", 2: "#c8e8ff", 3: "#ffe14d"}
@@ -699,8 +766,15 @@ def main():
     for name, (cat, tier) in defs.items():
         (power_dir / f"{name}.svg").write_text(card(POWER[name](), cat, tier), encoding="utf-8")
     (power_dir / "_back.svg").write_text(card_back(), encoding="utf-8")
+    skills = {name: POWER[card_name] for name, card_name in SKILL_ART.items()} | SKILL_OWN
+    skill_db = (ROOT / "core/data/Skills.gd").read_text(encoding="utf-8")
+    skill_ids = set(re.findall(r'^\t"(\w+)": \{"name": "[^"]+", "type"', skill_db, re.M))
+    if skill_ids != set(skills):
+        raise SystemExit(f"skills don't match their pictures. No picture for {sorted(skill_ids - set(skills))}; picture for no skill: {sorted(set(skills) - skill_ids)}")
+    for name, draw in skills.items():
+        (ui_dir / f"sk_{name}.svg").write_text(svg(160, 160, "0 0 512 512", body(draw())), encoding="utf-8")
     # Anything else in there is left over from an older set of icons.
-    for folder, keep in ((ui_dir, set(UI)), (power_dir, set(defs) | {"_back"})):
+    for folder, keep in ((ui_dir, set(UI) | {f"sk_{name}" for name in skills}), (power_dir, set(defs) | {"_back"})):
         for old in folder.glob("*.svg"):
             if old.stem not in keep:
                 print("left over, not used:", old.name)

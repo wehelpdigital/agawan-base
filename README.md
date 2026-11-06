@@ -6,17 +6,21 @@ online.
 
 ## The game
 
-- **The fresher wins.** Whoever left their base most recently tags the other on contact. A green arrow over
-  an enemy means you can tag them; a red sign means they can tag you. Your own base makes you fresh, and it
-  is safe, but the pad pops you off after 5 seconds (our rule: camping is no fun on a screen).
+- **The line decides.** On your side of the line you can tag any enemy; over it they can tag you. It's the rule in
+  the Philippine Department of Education's PE module. A green arrow over an enemy means you can tag them; a red sign
+  means they can tag you. Your own base is safe, but the pad pops you off after 5 seconds (our rule: camping is no
+  fun on a screen).
 - **Jail and rescue.** Tagged players go to the jail beside the tagger's base. Tap to break out sooner, or a
   free teammate touches the jail and frees everyone. Rescuers and the freed get a "free walk" home.
 - **Capture.** Stand on the enemy base to capture it, or jail the whole enemy team at once. First to 3 points,
   or the most when time runs out, then sudden death, then whoever took the most prisoners.
 - **Ways to play:** online with whoever's around (AI takes any empty seat), Friend Rooms with a share code
   (same team or opposing, AI fills the rest), or against AI at four levels.
-- **53 power cards**, hidden in crystals that drop at random: `core/data/Powerups.gd`. **56 maps** (14 looks, 16 layouts):
-  `core/data/Maps.gd`.
+- **Two decks of power cards**, hidden in crystals that drop all the time: on your side you draw defence cards (a
+  shield on the card), over the line attack cards (a target). Cross the line and your hand spins into the other deck:
+  `core/data/Powerups.gd`. **Maps:** `core/data/Maps.gd`.
+- **Skills.** Every hero has a skill of their own and a tree of others, dealt once from their name. Each level gives a
+  point to learn or rank one up, and you take two into a match: `core/data/Skills.gd`.
 - **The shop** is sorted by accessory: masks, head gear, tops, pants, shoes, gloves, backs, run styles, dances,
   emotes, trails, auras, tag effects, frames, titles. Avatars and colours are one category among them.
   Everything is earned with coins and gems from playing: `core/data/Cosmetics.gd`.

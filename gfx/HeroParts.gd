@@ -200,6 +200,164 @@ static func mascot(a: Avatar3D, k: MeshKit, hero: Dictionary, main: Color, secon
 				k.dome(Vector3(0, 0.14, -0.02), Vector3(0.52, 0.34, 0.48), second, 8, 18)
 			a._eyes(k, -0.02, 0.395, 0.2, 0.115)
 			a._smile(k, -0.15, 0.44, 0.095)
+		"druid":
+			_person(k, tone)
+			_beard(k, second)
+			k.dome(Vector3(0, 0.14, -0.02), Vector3(0.53, 0.38, 0.49), main, 8, 20)
+			if bare:
+				k.torus(Vector3(0, 0.17, -0.01), 0.5, 0.05, accent, 24, 5)
+				for i in 9:
+					var turn := -1.3 + i * 0.325
+					k.ball(Vector3(sin(turn) * 0.5, 0.23, cos(turn) * 0.46), Vector3(0.11, 0.06, 0.06), Color("7ed957"), 4, 6)
+				for s: float in [-1.0, 1.0]:
+					k.tube(PackedVector3Array([Vector3(s * 0.26, 0.34, 0.0), Vector3(s * 0.34, 0.56, 0.0), Vector3(s * 0.5, 0.74, 0.0)]), 0.045, Color("b5763c"), false, 6, 0.016)
+					k.tube(PackedVector3Array([Vector3(s * 0.33, 0.52, 0.0), Vector3(s * 0.2, 0.68, 0.0)]), 0.032, Color("b5763c"), false, 5, 0.012)
+			a._eyes(k, -0.03, 0.395, 0.2, 0.115)
+			a._smile(k, -0.15, 0.44, 0.095)
+		"witch":
+			_person(k, tone)
+			k.dome(Vector3(0, 0.04 if bare else 0.1, -0.03), Vector3(0.54, 0.3 if bare else 0.42, 0.5), second, 8, 20)
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.44, -0.2, -0.04), Vector3(0.13, 0.3, 0.15), second, 6, 10)
+			if bare:
+				_pointy_hat(k, main, accent)
+				k.soft_box(Vector3(0, 0.27, 0.41), Vector3(0.07, 0.06, 0.02), GOLD, 0.5, 3, 6)
+			_std_face(a, k)
+		"paladin":
+			k.ball(Vector3.ZERO, HEAD, main, 16, 24)
+			_opening(k, tone, 0.36, 0.28, -0.07, second)
+			k.ball(Vector3(0, 0.24, 0.32), Vector3(0.38, 0.15, 0.16), main.lightened(0.2), 8, 14)
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.54, 0.14, -0.08), Vector3(0.05, 0.22, 0.17), Color.WHITE, 6, 10)
+				k.ball(Vector3(s * 0.58, 0.32, -0.14), Vector3(0.04, 0.16, 0.12), Color.WHITE, 5, 8)
+			if bare:
+				k.soft_box(Vector3(0, 0.47, -0.02), Vector3(0.05, 0.11, 0.22), accent, 0.6, 4, 8)
+			_std_face(a, k)
+		"ranger":
+			k.ball(Vector3.ZERO, HEAD, main, 16, 24)
+			_opening(k, tone, 0.38, 0.3, -0.06, main.darkened(0.3))
+			if bare:
+				k.tube(PackedVector3Array([Vector3(0, 0.3, -0.26), Vector3(0, 0.3, -0.5), Vector3(0, 0.2, -0.7)]), 0.2, main, false, 10, 0.02)
+				k.tube(PackedVector3Array([Vector3(0.36, 0.26, 0.1), Vector3(0.5, 0.48, 0.04), Vector3(0.58, 0.72, 0.0)]), 0.05, accent, false, 6, 0.012)
+			_std_face(a, k)
+		"barbarian":
+			_person(k, tone)
+			_beard(k, second)
+			k.dome(Vector3(0, 0.12, -0.04), Vector3(0.56, 0.42, 0.5), second, 8, 20)
+			if bare:
+				for i in 7:
+					var turn := -1.5 + i * 0.5
+					k.ball(Vector3(sin(turn) * 0.34, 0.42, cos(turn) * 0.24 - 0.06), Vector3.ONE * 0.17, second, 5, 8)
+				k.torus(Vector3(0, 0.17, 0), 0.51, 0.04, accent, 24, 5)
+			a._eyes(k, -0.03, 0.395, 0.2, 0.115)
+			a._smile(k, -0.15, 0.44, 0.095)
+		"bard":
+			_person(k, tone)
+			k.dome(Vector3(0, 0.1, -0.03), Vector3(0.53, 0.4, 0.49), Color("7a4a26"), 8, 20)
+			if bare:
+				k.ball(Vector3(-0.05, 0.28, -0.02), Vector3(0.62, 0.16, 0.56), main, 8, 18)
+				k.torus(Vector3(0, 0.2, -0.01), 0.51, 0.035, second, 24, 5)
+				k.tube(PackedVector3Array([Vector3(0.34, 0.3, 0.1), Vector3(0.56, 0.52, 0.0), Vector3(0.72, 0.84, -0.1)]), 0.06, accent, false, 7, 0.012)
+			_std_face(a, k)
+		"alchemist":
+			_person(k, tone)
+			k.dome(Vector3(0, 0.1, -0.03), Vector3(0.53, 0.42, 0.49), second, 8, 20)
+			if bare:
+				for i in 6:
+					var turn := -1.2 + i * 0.48
+					k.ball(Vector3(sin(turn) * 0.42, 0.34, cos(turn) * 0.2 - 0.1), Vector3.ONE * 0.13, second, 4, 7)
+				k.torus(Vector3(0, 0.2, 0), 0.5, 0.025, Color("3a2a1c"), 24, 4)
+				for s: float in [-1.0, 1.0]:
+					k.ball(Vector3(s * 0.16, 0.24, 0.42), Vector3(0.1, 0.1, 0.05), accent, 6, 10)
+					k.torus(Vector3(s * 0.16, 0.24, 0.42), 0.1, 0.022, GOLD, 12, 4)
+			_std_face(a, k)
+		"rogue":
+			k.ball(Vector3.ZERO, HEAD, main, 16, 24)
+			_opening(k, tone, 0.42, 0.2, -0.01, second)
+			if bare:
+				k.tube(PackedVector3Array([Vector3(0, 0.32, -0.2), Vector3(0.02, 0.42, -0.46), Vector3(0.1, 0.34, -0.72)]), 0.2, main, false, 10, 0.02)
+			k.torus(Vector3(0.5, -0.2, 0.04), 0.05, 0.015, accent, 12, 4)
+			_std_face(a, k)
+		"mage":
+			_person(k, tone)
+			k.dome(Vector3(0, 0.04 if bare else 0.1, -0.03), Vector3(0.54, 0.3 if bare else 0.42, 0.5), second, 8, 20)
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.45, -0.1, -0.02), Vector3(0.11, 0.2, 0.13), second, 6, 10)
+			if bare:
+				_pointy_hat(k, main, accent)
+				k.outline = 0.0
+				_star(k, Vector3(-0.1, 0.44, 0.31), 0.085, accent)
+				_star(k, Vector3(0.14, 0.58, 0.2), 0.06, Color("fff6c9"))
+				k.outline = 0.02
+			_std_face(a, k)
+		"elf":
+			_person(k, tone)
+			k.dome(Vector3(0, 0.1, -0.03), Vector3(0.54, 0.42, 0.5), second, 8, 20)
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.43, -0.22, -0.08), Vector3(0.12, 0.3, 0.14), second, 6, 10)
+				k.tube(PackedVector3Array([Vector3(s * 0.46, -0.02, 0.0), Vector3(s * 0.66, 0.1, -0.02), Vector3(s * 0.86, 0.28, -0.05)]), 0.08, tone, false, 7, 0.012)
+			if bare:
+				k.torus(Vector3(0, 0.2, 0), 0.5, 0.025, accent, 24, 4)
+				k.ball(Vector3(0, 0.25, 0.43), Vector3(0.06, 0.08, 0.025), main, 4, 8)
+			_std_face(a, k)
+		"dwarf":
+			_person(k, tone)
+			_beard(k, second, true)
+			if bare:
+				k.dome(Vector3(0, 0.14, -0.01), Vector3(0.54, 0.4, 0.5), main, 8, 20)
+				k.torus(Vector3(0, 0.15, 0), 0.52, 0.05, accent, 24, 5)
+				k.soft_box(Vector3(0, 0.1, 0.5), Vector3(0.035, 0.1, 0.02), main.darkened(0.2), 0.7, 4, 6)
+			else:
+				k.dome(Vector3(0, 0.14, -0.02), Vector3(0.52, 0.34, 0.48), second, 8, 18)
+			a._eyes(k, -0.03, 0.395, 0.2, 0.115)
+			a._smile(k, -0.15, 0.44, 0.095)
+		"goblin":
+			k.ball(Vector3.ZERO, HEAD, main, 16, 24)
+			for s: float in [-1.0, 1.0]:
+				k.tube(PackedVector3Array([Vector3(s * 0.42, 0.04, -0.02), Vector3(s * 0.72, 0.08, -0.04), Vector3(s * 0.96, 0.0, -0.06)]), 0.17, main, false, 8, 0.02)
+				k.tube(PackedVector3Array([Vector3(s * 0.5, 0.05, 0.03), Vector3(s * 0.74, 0.08, 0.02)]), 0.08, main.darkened(0.16), false, 6, 0.02)
+			k.ball(Vector3(0, -0.05, 0.47), Vector3(0.05, 0.06, 0.05), main.darkened(0.12), 4, 7)
+			_std_face(a, k)
+		"orc":
+			k.ball(Vector3.ZERO, Vector3(0.53, 0.46, 0.47), main, 16, 24)
+			k.ball(Vector3(0, 0.16, 0.36), Vector3(0.36, 0.07, 0.1), main.darkened(0.14), 6, 12)
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.5, 0.0, 0.0), Vector3(0.08, 0.11, 0.07), main, 6, 8)
+				k.cone(Vector3(s * 0.2, -0.3, 0.38), 0.17, 0.05, accent, 7)
+			if bare:
+				k.ball(Vector3(0, 0.42, -0.14), Vector3(0.16, 0.14, 0.16), second, 6, 10)
+				k.tube(PackedVector3Array([Vector3(0, 0.5, -0.16), Vector3(0, 0.66, -0.26), Vector3(0, 0.56, -0.44)]), 0.08, second, false, 7, 0.02)
+			_std_face(a, k)
+		"fairy":
+			_person(k, tone)
+			k.dome(Vector3(0, 0.1, -0.03), Vector3(0.53, 0.42, 0.49), Color("ffd26a"), 8, 20)
+			if bare:
+				for i in 7:
+					var turn := -1.3 + i * 0.43
+					var at := Vector3(sin(turn) * 0.46, 0.27, cos(turn) * 0.42)
+					k.ball(at, Vector3.ONE * 0.075, main if i % 2 == 0 else accent, 4, 7)
+				for s: float in [-1.0, 1.0]:
+					k.tube(PackedVector3Array([Vector3(s * 0.12, 0.42, 0.0), Vector3(s * 0.2, 0.62, 0.02), Vector3(s * 0.3, 0.72, 0.04)]), 0.018, Color("3a2a1c"), false, 4)
+					k.ball(Vector3(s * 0.3, 0.73, 0.04), Vector3.ONE * 0.05, accent, 4, 6)
+			_std_face(a, k)
+		"skeleton":
+			k.ball(Vector3(0, 0.04, 0), Vector3(0.5, 0.44, 0.46), main, 16, 24)
+			k.ball(Vector3(0, -0.28, 0.14), Vector3(0.27, 0.15, 0.24), main, 8, 14)
+			k.outline = 0.0
+			k.fan(PackedVector3Array([_on(0.0, -0.05, 0.012), _on(-0.04, -0.11, 0.012), _on(0.04, -0.11, 0.012)]), second)
+			k.spot(Vector3(0, 0.04, 0), Vector3(0.5, 0.44, 0.46), 0.22, 0.34, 0.05, Color("d8d4c0"))
+			k.outline = 0.02
+			_std_face(a, k)
+		"dragon":
+			k.ball(Vector3.ZERO, HEAD, main, 16, 24)
+			_opening(k, tone, 0.37, 0.3, -0.07, main.darkened(0.25))
+			if bare:
+				for s: float in [-1.0, 1.0]:
+					k.cone(Vector3(s * 0.26, 0.32, -0.08), 0.32, 0.09, second, 8)
+					k.ball(Vector3(s * 0.54, 0.04, -0.06), Vector3(0.05, 0.16, 0.16), accent, 5, 8)
+				for i in 4:
+					k.cone(Vector3(0, 0.42 - i * 0.05, -0.1 - i * 0.16), 0.2, 0.07, accent, 6)
+			_std_face(a, k)
 		"genie":
 			k.ball(Vector3.ZERO, HEAD, main, 16, 24)
 			for s: float in [-1.0, 1.0]:
@@ -519,6 +677,13 @@ static func mascot(a: Avatar3D, k: MeshKit, hero: Dictionary, main: Color, secon
 			_std_face(a, k)
 
 
+## A tall hat with a bend at the tip, as worn by people who know what they're doing.
+static func _pointy_hat(k: MeshKit, main: Color, band: Color) -> void:
+	k.ball(Vector3(0, 0.2, -0.01), Vector3(0.72, 0.035, 0.68), main, 4, 24)
+	k.tube(PackedVector3Array([Vector3(0, 0.14, -0.01), Vector3(0, 0.42, -0.04), Vector3(0.05, 0.72, -0.08), Vector3(0.24, 0.98, -0.14)]), 0.45, main, false, 16, 0.03)
+	k.torus(Vector3(0, 0.27, -0.02), 0.41, 0.045, band, 24, 5)
+
+
 ## Their bodies, where the plain round one won't do.
 static func body(k: MeshKit, hero: Dictionary, main: Color, second: Color) -> bool:
 	var accent := Color(hero.get("accent", "ffffff"))
@@ -551,6 +716,78 @@ static func body(k: MeshKit, hero: Dictionary, main: Color, second: Color) -> bo
 			k.outline = 0.0
 			k.band(BODY_AT, BODY_R, -0.12, -0.07, accent)
 			k.outline = 0.02
+		"witch", "ranger", "bard", "rogue", "mage", "elf":
+			k.ball(BODY_AT, BODY_R, main, 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.18, -0.13, accent if hero["shape"] == "bard" else Color("7a4a26") if hero["shape"] == "ranger" else GOLD)
+			k.spot(BODY_AT, BODY_R, 0.0, -0.15, 0.045, GOLD)
+			if hero["shape"] == "bard":
+				for f: float in [-0.3, 0.0, 0.3]:
+					k.round_patch(BODY_AT, BODY_R, f, 0.06, 0.05, 0.14, second, 0.006, 12)
+			k.outline = 0.02
+		"druid":
+			k.ball(BODY_AT, BODY_R, main, 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.17, -0.12, accent)
+			for f: Vector2 in [Vector2(-0.14, 0.1), Vector2(0.14, 0.04), Vector2(0.0, 0.16), Vector2(-0.2, -0.04), Vector2(0.2, -0.06)]:
+				k.spot(BODY_AT, BODY_R, f.x, f.y, 0.05, Color("7ed957"))
+			k.outline = 0.02
+		"paladin":
+			k.ball(BODY_AT, BODY_R, main, 12, 18)
+			k.outline = 0.0
+			k.round_patch(BODY_AT, BODY_R, 0.0, -0.02, 0.2, 0.25, accent, 0.006, 20)
+			k.band(BODY_AT, BODY_R, -0.2, -0.17, second)
+			k.spot(BODY_AT, BODY_R, 0.0, 0.02, 0.06, GOLD)
+			k.outline = 0.02
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.29, 0.66, 0), Vector3(0.16, 0.1, 0.16), main.lightened(0.15), 6, 10)
+		"barbarian":
+			k.ball(BODY_AT, BODY_R, Color(hero.get("tone", "e8ae7c")), 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.2, -0.13, main)
+			k.spot(BODY_AT, BODY_R, 0.0, -0.17, 0.05, accent)
+			k.outline = 0.02
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.27, 0.66, 0), Vector3(0.17, 0.11, 0.17), main, 6, 10)
+		"alchemist":
+			k.ball(BODY_AT, BODY_R, main, 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.17, -0.13, Color("7a4a26"))
+			for f: float in [-0.2, 0.0, 0.2]:
+				k.spot(BODY_AT, BODY_R, f, -0.15, 0.045, accent if f != 0.0 else Color("ff6fb5"))
+			k.outline = 0.02
+		"dwarf":
+			k.ball(BODY_AT, BODY_R, Color("8a5a2b"), 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.2, -0.12, Color("3a2a1c"))
+			k.spot(BODY_AT, BODY_R, 0.0, -0.16, 0.07, accent)
+			k.outline = 0.02
+		"goblin", "orc":
+			k.ball(BODY_AT, BODY_R, second, 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.2, -0.15, accent if hero["shape"] == "goblin" else Color("7a4a26"))
+			k.outline = 0.02
+		"fairy":
+			k.ball(BODY_AT, BODY_R, main, 12, 18)
+			k.outline = 0.0
+			k.band(BODY_AT, BODY_R, -0.17, -0.12, second)
+			k.outline = 0.02
+			for s: float in [-1.0, 1.0]:
+				k.ball(Vector3(s * 0.28, 0.62, -0.3), Vector3(0.3, 0.3, 0.035), Color("cdf6ff"), 6, 12)
+				k.ball(Vector3(s * 0.22, 0.34, -0.28), Vector3(0.2, 0.2, 0.03), Color("eafbff"), 6, 10)
+		"skeleton":
+			k.ball(BODY_AT, BODY_R, second, 12, 18)
+			k.outline = 0.0
+			for f: float in [-0.14, -0.04, 0.06, 0.16]:
+				k.band(BODY_AT, BODY_R, f, f + 0.045, main)
+			k.outline = 0.02
+		"dragon":
+			k.ball(BODY_AT, BODY_R, main, 12, 18)
+			k.outline = 0.0
+			k.round_patch(BODY_AT, BODY_R, 0.0, -0.02, 0.2, 0.27, second, 0.006, 20)
+			k.outline = 0.02
+			for i in 3:
+				k.cone(Vector3(0, 0.66 - i * 0.2, -0.27 + absf(i - 1.0) * 0.02), 0.18, 0.06, Color(hero.get("accent", "ff9d2e")), 6)
 		"viking", "pirate", "leprechaun", "wizard", "jester":
 			var coat := Color(hero.get("coat", String(main.to_html(false))))
 			k.ball(BODY_AT, BODY_R, coat, 12, 18)

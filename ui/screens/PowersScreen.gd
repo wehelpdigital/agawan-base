@@ -1,5 +1,5 @@
 extends Control
-## Every power card in the game, by category.
+## Every power card in the game, by deck.
 
 var root: UiRoot
 var args: Dictionary
@@ -49,17 +49,18 @@ func _refresh() -> void:
 	for child in _chips.get_children():
 		child.queue_free()
 	_chips.add_child(_chip("All", ""))
-	for cat: String in Powerups.CATS:
-		_chips.add_child(_chip(Powerups.CATS[cat]["name"], cat))
+	_chips.add_child(_chip("Attack deck", Powerups.ATTACK, "mode_attack"))
+	_chips.add_child(_chip("Defence deck", Powerups.DEFEND, "mode_defend"))
+	_chips.add_child(_chip("Funny", "funny", "star"))
 	for child in _grid.get_children():
 		child.queue_free()
 	for def: Dictionary in Powerups.ALL:
-		if _cat == "" or def["cat"] == _cat:
+		if _cat == "" or Powerups.side_of(String(def["id"])) == _cat or (_cat == "funny" and def.get("funny", false)):
 			_grid.add_child(_card(def))
 
 
-func _chip(text: String, cat: String) -> Control:
-	var b := UiKit.button(text, "yellow" if cat == _cat else "teal", 15)
+func _chip(text: String, cat: String, icon_name := "") -> Control:
+	var b := UiKit.button(text, "yellow" if cat == _cat else "teal", 15, icon_name)
 	b.custom_minimum_size.y = 44
 	b.pressed.connect(func() -> void:
 		_cat = cat
@@ -84,7 +85,8 @@ func _card(def: Dictionary) -> Control:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	text.add_child(head)
-	var tier := UiKit.label("%s %s" % [Powerups.TIER_NAMES[int(def["tier"])], Powerups.CATS[def["cat"]]["name"]], 13, UiKit.INK)
+	var deck := "Attack" if Powerups.side_of(String(def["id"])) == Powerups.ATTACK else "Defence"
+	var tier := UiKit.label("%s, %s deck" % [Powerups.TIER_NAMES[int(def["tier"])], deck], 13, UiKit.INK)
 	text.add_child(tier)
 	text.add_child(UiKit.body(String(def["desc"]), 15))
 	row.add_child(text)

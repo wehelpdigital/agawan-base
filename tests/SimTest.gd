@@ -17,6 +17,9 @@ func _init() -> void:
 	_test_world_elements()
 	_test_weather()
 	_test_new_powers()
+	_test_decks()
+	_test_funny_cards()
+	_test_skills()
 	_test_shop_items()
 	_test_maps()
 	_test_snapshot()
@@ -757,6 +760,228 @@ func _power_sim(id: String, map := "barrio_plaza") -> Array:
 	return [sim, a, e]
 
 
+## Your side gives you the defence deck, over the line the attack deck, and crossing it changes what's in your hand.
+func _test_decks() -> void:
+	var attack := 0
+	var defend := 0
+	for def: Dictionary in Powerups.ALL:
+		if Powerups.side_of(String(def["id"])) == Powerups.DEFEND:
+			defend += 1
+		else:
+			attack += 1
+	_ok(attack >= 40 and defend >= 40, "both decks are big (%d attack, %d defence)" % [attack, defend])
+	for id: String in Powerups.DEFENCE_DECK:
+		_ok(Powerups.has(id), "%s in the defence deck is a real card" % id)
+	var rng := RandomNumberGenerator.new()
+	for _i in 200:
+		_ok(Powerups.side_of(Powerups.roll(rng, Powerups.ATTACK)) == Powerups.ATTACK, "the attack deck only deals attack cards")
+		_ok(Powerups.side_of(Powerups.roll(rng, Powerups.DEFEND)) == Powerups.DEFEND, "the defence deck only deals defence cards")
+	var sim := _new_sim()
+	var a: Sim.Player = sim.players[0]
+	var mid: float = sim.arena_size().x * 0.5
+	_park_others(sim, [0])
+	# A crystal on your side.
+	sim.pickups.clear()
+	a.pos = Vector2(mid - 6.0, sim.arena_size().y * 0.5)
+	sim.step()
+	sim.pickups.append({"uid": 9001, "pos": a.pos, "born": sim.t - 2.0})
+	sim.step()
+	_ok(a.powers.size() == 1 and Powerups.side_of(a.powers[0]) == Powerups.DEFEND, "a crystal on your side gives a defence card")
+	# Running along the line, nothing happens.
+	a.spin_left = 0.0
+	var held := a.powers[0]
+	a.pos.x = mid + Sim.MODE_MARGIN * 0.5
+	sim.step()
+	_ok(a.powers[0] == held and a.swap_left <= 0.0, "being right on the line doesn't reshuffle anything")
+	# Over the line it spins into an attack card, and can't be used until it stops.
+	a.pos.x = mid + 6.0
+	sim.step()
+	_ok(a.attacking, "over the line you're attacking")
+	_ok(Powerups.side_of(a.powers[0]) == Powerups.ATTACK, "and your card turns into an attack card")
+	_ok(a.swap_left > 0.0, "with a spin of the reels")
+	_ok(not sim.can_use_power(a), "and you can't use it while it spins")
+	var copy := _new_sim()
+	copy.apply_snapshot(sim.to_snapshot())
+	_ok(is_equal_approx(copy.players[0].swap_left, a.swap_left), "the reshuffle goes over the network")
+	for _i in int(Sim.SPIN_TIME / Sim.TICK) + 2:
+		sim.step()
+	_ok(sim.can_use_power(a), "then it's ready")
+	# Crystals over there are attack cards, and going home turns them back.
+	sim.pickups.clear()
+	sim.pickups.append({"uid": 9002, "pos": a.pos, "born": sim.t - 2.0})
+	sim.step()
+	_ok(a.powers.size() == 2 and Powerups.side_of(a.powers[1]) == Powerups.ATTACK, "a crystal over the line gives an attack card")
+	a.pos.x = mid - 6.0
+	sim.step()
+	_ok(Powerups.side_of(a.powers[0]) == Powerups.DEFEND and Powerups.side_of(a.powers[1]) == Powerups.DEFEND, "go home and your whole hand goes back to defence")
+	# There's plenty to grab.
+	var fresh := _new_sim()
+	_ok(fresh.pickups.size() >= Sim.START_CRYSTALS, "the field starts with crystals on it (%d)" % fresh.pickups.size())
+	_park_others(fresh, [])
+	for _i in int(60.0 / Sim.TICK):
+		fresh.step()
+	_ok(fresh.pickups.size() >= 20, "and fills up with more (%d)" % fresh.pickups.size())
+	# Crystals aren't sent over the network unless they change.
+	var quiet := _new_sim()
+	_ok(quiet.to_snapshot().has("pk"), "the first snapshot has the crystals")
+	_ok(not quiet.to_snapshot().has("pk"), "the next doesn't, if nothing changed")
+	quiet.pickups.append({"uid": 9003, "pos": Vector2(5, 5), "born": 1.0, "trap": 1, "gone": 9.0})
+	var sent := quiet.to_snapshot()
+	_ok(sent.has("pk"), "and it does once they change")
+	var far := _new_sim()
+	far.apply_snapshot(sent)
+	var last: Dictionary = far.pickups[far.pickups.size() - 1]
+	_ok(last["uid"] == 9003 and last["trap"] == 1 and is_equal_approx(last["gone"], 9.0), "and they arrive whole")
+
+
+func _test_funny_cards() -> void:
+	var parts := _power_sim("poop_drop")
+	var sim: Sim = parts[0]
+	var a: Sim.Player = parts[1]
+	var e: Sim.Player = parts[2]
+	sim.step()
+	var poops := sim.zones.filter(func(z: Dictionary) -> bool: return z["fx"] == "poop")
+	_ok(poops.size() == 3, "Poop Drop leaves three behind you")
+	e.pos = poops[0]["pos"]
+	sim.step()
+	_ok(sim.has_status(e, "stink") and sim.has_status(e, "root"), "step in one and you're stuck, and you stink")
+	var stuck_speed := sim.speed_of(e)
+	e.status.erase("stink")
+	_ok(stuck_speed < sim.speed_of(e), "stink slows you down")
+	parts = _power_sim("fart_fog")
+	sim = parts[0]
+	a = parts[1]
+	e = parts[2]
+	e.pos = a.pos + Vector2(3.0, 0)
+	sim.step()
+	sim.step()
+	_ok(sim.has_status(e, "slow") and sim.has_status(e, "reverse") and sim.has_status(e, "stink"), "Fart Fog slows you, turns you round, and you stink")
+	parts = _power_sim("whoopee_cushion")
+	sim = parts[0]
+	e = parts[2]
+	sim.step()
+	var cushions := sim.zones.filter(func(z: Dictionary) -> bool: return z["fx"] == "whoopee")
+	_ok(cushions.size() == 2, "two whoopee cushions go down")
+	e.pos = cushions[0]["pos"]
+	sim.step()
+	_ok(sim.is_airborne(e), "and sitting on one sends you flying")
+	parts = _power_sim("banana_bomb")
+	sim = parts[0]
+	_ok(_step_until(sim, func() -> bool: return sim.zones.filter(func(z: Dictionary) -> bool: return z["fx"] == "peel").size() >= 4, 90), "Banana Bomb bursts into peels")
+	parts = _power_sim("itching_powder")
+	sim = parts[0]
+	e = parts[2]
+	sim.step()
+	_ok(sim.has_status(e, "itch"), "Itching Powder gets under their collar")
+	var stopped := 0
+	var moved := 0
+	for _i in int(Sim.ITCH_CYCLE * 2.0 / Sim.TICK):
+		sim.step()
+		if sim.is_held(e):
+			stopped += 1
+		else:
+			moved += 1
+	_ok(stopped > 0 and moved > stopped, "and they keep stopping to scratch")
+	parts = _power_sim("tickle_attack")
+	sim = parts[0]
+	e = parts[2]
+	sim.step()
+	_ok(sim.has_status(e, "tickle"), "Tickle Attack gets them")
+	parts = _power_sim("cow_drop")
+	sim = parts[0]
+	e = parts[2]
+	_ok(_step_until(sim, func() -> bool: return sim.has_status(e, "stun"), 60), "a cow lands on them")
+	parts = _power_sim("bubble_shield")
+	sim = parts[0]
+	a = parts[1]
+	sim.step()
+	sim._apply_cc(a, {"stun": 2.0}, null)
+	_ok(not sim.has_status(a, "stun") and not sim.has_status(a, "shield"), "a bubble stops one hit, and then it's gone")
+	sim._apply_cc(a, {"stun": 2.0}, null)
+	_ok(sim.has_status(a, "stun"), "but only one")
+
+
+func _test_skills() -> void:
+	# Everyone has a skill of their own, and a tree.
+	var names := {}
+	for def: Dictionary in Cosmetics.list("char"):
+		var hero := String(def["id"])
+		_ok(Skills.SIGNATURE.has(hero), "%s has a skill of their own" % hero)
+		var own := Skills.info(Skills.own_skill(hero))
+		_ok(not own.is_empty() and own.has("cell"), "%s's skill makes sense" % hero)
+		_ok(not names.has(own.get("name", "")), "%s's skill has its own name (%s)" % [hero, own.get("name", "")])
+		names[own.get("name", "")] = true
+		var nodes := Skills.tree(hero)
+		_ok(nodes == Skills.tree(hero), "%s's tree stays the same" % hero)
+		_ok(nodes.size() == Skills.TREE_LEVELS.size() + 1, "%s's tree is the right size" % hero)
+		_ok(nodes[0]["skill"] == Skills.own_skill(hero) and nodes[0]["level"] == 1, "%s starts with their own skill" % hero)
+		var seen := {}
+		for node: Dictionary in nodes:
+			_ok(not seen.has(node["skill"]), "%s's tree has %s once" % [hero, node["skill"]])
+			seen[node["skill"]] = true
+			_ok(not Skills.info(node["skill"]).is_empty(), "%s's tree has real skills" % hero)
+		var bots := Skills.bot_loadout(RandomNumberGenerator.new(), hero, 0.7)
+		_ok(bots.size() == Skills.MAX_CHOSEN, "bots take two skills")
+	_ok(Skills.tree("kiko") != Skills.tree("sir_clank"), "trees differ from hero to hero")
+	# Each one plays, and has its cooldown.
+	var every: Array = Skills.ALL.keys()
+	every.append(Skills.own_skill("sir_clank"))
+	for skill: String in every:
+		var def := Skills.info(skill)
+		for key: String in ["name", "desc", "type", "cd", "ai", "sfx", "kind", "cell", "color"]:
+			_ok(def.has(key), "%s has %s" % [skill, key])
+		_ok(Skills.TYPES.has(def.get("type", "")), "%s has a real type" % skill)
+		_ok(FileAccess.file_exists("res://assets/audio/sfx/%s.ogg" % def.get("sfx", "")), "%s has a sound" % skill)
+		_ok(skill.begins_with("hero_") or FileAccess.file_exists("res://assets/icons/ui/sk_%s.svg" % skill), "%s has a picture" % skill)
+		var parts := _power_sim("tailwind")
+		var sim: Sim = parts[0]
+		var a: Sim.Player = parts[1]
+		a.powers.clear()
+		a.want_use = false
+		a.skills = [[skill, 3]]
+		a.want_skill = 0
+		sim.step()
+		_ok(a.skills_used == 1, "%s gets used" % skill)
+		_ok(a.skill_cd[0] > 1.0, "%s then has to come back" % skill)
+		for _i in 60:
+			sim.step()
+		a.want_skill = 0
+		var used := a.skills_used
+		sim.step()
+		_ok(a.skills_used == used, "%s can't be used again straight away" % skill)
+	_ok(Skills.cooldown("fireball", 5) < Skills.cooldown("fireball", 1), "higher ranks come back sooner")
+	_ok(float(Skills.power_def("sk:ice_lance:5")["status"]["freeze"]) > float(Skills.power_def("sk:ice_lance:1")["status"]["freeze"]), "and last longer")
+	# Put to Jail does.
+	var parts := _power_sim("tailwind")
+	var sim: Sim = parts[0]
+	var a: Sim.Player = parts[1]
+	var e: Sim.Player = parts[2]
+	a.powers.clear()
+	a.want_use = false
+	a.skills = [["lockup", 1]]
+	a.aim = (e.pos - a.pos).normalized()
+	a.want_skill = 0
+	_ok(_step_until(sim, func() -> bool: return e.state == Sim.State.JAIL, 60), "Put to Jail puts them in jail")
+	_ok(a.tags == 1, "and it counts as a tag")
+	# A seat can't bring more than it should.
+	_ok(Skills.from_look({"skills": [["fireball", 99], ["hex", 2], ["boulder", 1]]}).size() == Skills.MAX_CHOSEN, "two skills, however many you say you've got")
+	_ok(Skills.from_look({"skills": [["fireball", 99]]})[0][1] == Skills.MAX_RANK, "and no rank above the top")
+	_ok(Skills.from_look({"skills": [["not_a_skill", 1], 7, "x"]}).is_empty(), "and nothing made up")
+	_ok(Skills.from_look({"skills": "nope"}).is_empty(), "whatever they send")
+	# Computer players come with theirs, and it goes over the network.
+	var with_bots := Sim.new()
+	with_bots.setup("barrio_plaza", [], 7, 0.6, "clear")
+	for p in with_bots.players:
+		_ok(p.skills.size() == Skills.MAX_CHOSEN, "bot %d has two skills" % p.id)
+	var seeded := Sim.new()
+	seeded.setup("barrio_plaza", [], 7, 0.6, "clear")
+	_ok(seeded.players[3].skills == with_bots.players[3].skills, "and the same on every device")
+	with_bots.players[2].skill_cd[1] = 7.5
+	var far := _new_sim()
+	far.apply_snapshot(with_bots.to_snapshot())
+	_ok(is_equal_approx(far.players[2].skill_cd[1], 7.5), "cooldowns go over the network")
+
+
 ## The new cards do what they say on them.
 func _test_new_powers() -> void:
 	var parts := _power_sim("mega_wave")
@@ -892,7 +1117,7 @@ func _test_new_powers() -> void:
 
 
 func _test_shop_items() -> void:
-	var regions := {"asia": true, "europe": true, "americas": true, "africa": true, "oceania": true, "fun": true}
+	var regions := {"asia": true, "europe": true, "americas": true, "africa": true, "oceania": true, "fun": true, "stories": true}
 	for slot: String in Cosmetics.SLOTS:
 		var seen := {}
 		for entry: Dictionary in Cosmetics.list(slot):
@@ -905,7 +1130,7 @@ func _test_shop_items() -> void:
 	_ok(Cosmetics.list("flag").size() > 70, "plenty of flags")
 	_ok(Cosmetics.list("pet").size() > 40, "plenty of pets")
 	for region: Dictionary in Cosmetics.REGIONS:
-		_ok(Cosmetics.from_region(region["id"]).size() > 20, "the %s shelf has plenty on it" % region["id"])
+		_ok(Cosmetics.from_region(region["id"]).size() > (15 if region["id"] == "stories" else 20), "the %s shelf has plenty on it" % region["id"])
 	for entry: Dictionary in Cosmetics.list("flag"):
 		if entry["id"] != "":
 			_ok(Flags.svg(entry["id"]).length() > 100, "%s has a flag to draw" % entry["id"])

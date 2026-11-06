@@ -62,6 +62,7 @@ func _decide(sim: Sim, p: Sim.Player, mem: Dictionary) -> void:
 	var threat_d := threat.pos.distance_to(p.pos) if threat else INF
 	var target_d := target.pos.distance_to(p.pos) if target else INF
 	_use_powers(sim, p, threat, target, threat_d, target_d, enemies_near)
+	_use_skills(sim, p, threat, target, threat_d, target_d, enemies_near)
 	var home: Vector2 = sim.base[p.team]
 	var home_d := p.pos.distance_to(home)
 	var jailed_mates := 0
@@ -397,38 +398,70 @@ func _use_powers(sim: Sim, p: Sim.Player, threat: Sim.Player, target: Sim.Player
 		return
 	var def := Powerups.by_id(p.powers[0])
 	var hint: String = def.get("ai", "any")
-	var use := false
-	var aim_at: Sim.Player = null
+	var aim_at := _worth_it(sim, p, hint, threat, target, threat_d, target_d, near)
+	var use := aim_at != null or _no_target_needed(sim, p, hint)
+	# Holding two means the first has waited long enough: there's another crystal right there.
+	if not use and p.powers.size() >= Sim.MAX_POWERS and sim.rng.randf() < 0.3:
+		use = true
+	if not use:
+		return
+	_aim(sim, p, def, aim_at)
+	p.want_use = true
+
+
+## Skills come back on their own, so bots use them whenever they'd do some good.
+func _use_skills(sim: Sim, p: Sim.Player, threat: Sim.Player, target: Sim.Player, threat_d: float, target_d: float, near: int) -> void:
+	if sim.rng.randf() > lerpf(0.15, 0.55, p.skill):
+		return
+	for i in p.skills.size():
+		if not sim.can_use_skill(p, i):
+			continue
+		var def := Powerups.by_id(Skills.power_id(p.skills[i][0], p.skills[i][1]))
+		var hint: String = def.get("ai", "any")
+		var aim_at := _worth_it(sim, p, hint, threat, target, threat_d, target_d, near)
+		if aim_at == null and not _no_target_needed(sim, p, hint):
+			continue
+		_aim(sim, p, def, aim_at)
+		p.want_skill = i
+		return
+
+
+## Who it's for, if this is the moment for something that needs someone to use it on.
+func _worth_it(sim: Sim, p: Sim.Player, hint: String, threat: Sim.Player, target: Sim.Player, threat_d: float, target_d: float, near: int) -> Sim.Player:
+	if near == 0:
+		return null
 	match hint:
 		"chase":
-			use = target != null and target_d < 11.0
-			aim_at = target
+			return target if target != null and target_d < 11.0 else null
 		"flee":
-			use = threat != null and threat_d < 7.0
-			aim_at = threat
+			if threat != null and threat_d < 7.0:
+				return threat
+			# On your own side nobody's after you, so the moment for a shield or a stink is when they come in.
+			return target if sim.on_home_side(p) and target != null and target_d < 9.0 else null
+	return null
+
+
+func _no_target_needed(sim: Sim, p: Sim.Player, hint: String) -> bool:
+	match hint:
 		"attack":
 			var to_base: float = p.pos.distance_to(sim.base[1 - p.team])
-			use = to_base < 14.0 or String(p.brain.get("mode", "")) == "attack"
+			return to_base < 14.0 or String(p.brain.get("mode", "")) == "attack"
 		"guard":
-			use = _intruders(sim, p.team) > 0
+			return _intruders(sim, p.team) > 0
 		"jail":
 			var jailed := 0
 			for mate: Sim.Player in sim.team_of(p.team):
 				if mate.state == Sim.State.JAIL:
 					jailed += 1
-			use = jailed >= 2
-		_:
-			use = true
-	# Holding two means the first has waited long enough.
-	if not use and p.powers.size() >= Sim.MAX_POWERS and sim.rng.randf() < 0.15:
-		use = true
-	if near == 0 and hint in ["chase", "flee"]:
-		use = false
-	if not use:
-		return
+			return jailed >= 2
+		"chase", "flee":
+			return false
+	return true
+
+
+func _aim(sim: Sim, p: Sim.Player, def: Dictionary, aim_at: Sim.Player) -> void:
 	if aim_at:
 		p.aim = (aim_at.pos - p.pos).normalized()
 	elif String(def.get("kind", "")) in ["hop", "blink", "grapple", "portal", "slam"]:
 		var goal: Vector2 = p.brain.get("goal", sim.base[1 - p.team])
 		p.aim = (goal - p.pos).normalized()
-	p.want_use = true
