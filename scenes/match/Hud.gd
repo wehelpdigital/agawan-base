@@ -12,6 +12,7 @@ signal pause_pressed
 
 const STICK_R := 62.0
 const AIM_DEADZONE := 30.0
+const ROSTER_GAP := 10.0
 
 var runner: MatchRunner
 var sim: Sim
@@ -197,7 +198,7 @@ func _build_scoreboard() -> void:
 	_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(_time_label)
 	row.add_child(_score_side(1))
-	_roster_box = UiKit.hbox(4)
+	_roster_box = UiKit.hbox(3)
 	_roster_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_roster_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_top.add_child(_roster_box)
@@ -212,7 +213,7 @@ func _build_scoreboard() -> void:
 			_roster.append(chip)
 		if team == mine:
 			var gap := Control.new()
-			gap.custom_minimum_size = Vector2(16, 1)
+			gap.custom_minimum_size = Vector2(ROSTER_GAP, 1)
 			_roster_box.add_child(gap)
 
 
@@ -356,15 +357,22 @@ func _relayout() -> void:
 	board.position = Vector2((view_size.x - board_size.x) * 0.5, top)
 	board.size = board_size
 	var roster_y := top + board_size.y + 2.0
+	# Everybody's face and how many they've tagged, in as much room as there is. On an upright phone it goes under the buttons
+	# in the corner; on a wide screen, between the minimap and those.
+	var mini_w := clampf(short * (0.6 if _portrait else 0.5), 150.0, 320.0)
+	if not _portrait:  # Never under the scoreboard.
+		mini_w = minf(mini_w, board.position.x - left - Minimap.FRAME * 2.0 - 8.0)
+	var roster_room := view_size.x - 20.0 if _portrait else view_size.x - 2.0 * (left + Minimap.FRAME * 2.0 + mini_w) - 8.0
+	if _portrait:
+		roster_y = maxf(roster_y, top + 110.0)
+	for chip: Control in _roster:
+		(chip as RosterChip).set_width(clampf((roster_room - ROSTER_GAP - 27.0) / 10.0, 32.0, 56.0))
 	_roster_box.reset_size()
 	var roster_size := _roster_box.get_combined_minimum_size()
 	_roster_box.position = Vector2((view_size.x - roster_size.x) * 0.5, roster_y)
 	_roster_box.size = roster_size
 	var below := roster_y + roster_size.y + 4.0
 	# Minimap: in the corner on wide screens; below the roster on upright ones.
-	var mini_w := clampf(short * (0.6 if _portrait else 0.5), 150.0, 320.0)
-	if not _portrait:  # Never under the scoreboard.
-		mini_w = minf(mini_w, board.position.x - left - Minimap.FRAME * 2.0 - 8.0)
 	var aspect := sim.arena_size().y / sim.arena_size().x
 	_mini.custom_minimum_size = Vector2.ZERO
 	_mini.size = Vector2(mini_w, mini_w * aspect)
@@ -484,8 +492,11 @@ func _refresh_top() -> void:
 		for i in pips.size():
 			var on: bool = i < int(sim.score[team])
 			(pips[i] as Panel).add_theme_stylebox_override("panel", UiKit.style(color if on else UiKit.INK, 12, 3, UiKit.RIM))
+	var best := 0
+	for p: Sim.Player in sim.players:
+		best = maxi(best, p.tags)
 	for chip: Control in _roster:
-		(chip as RosterChip).refresh(sim)
+		(chip as RosterChip).refresh(best, get_process_delta_time())
 
 
 func _refresh_buttons(me: Sim.Player) -> void:

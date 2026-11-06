@@ -90,7 +90,7 @@ const SHAKEN_OFF := ["stun", "freeze", "root", "dance", "sleep", "bubble", "slow
 ## Short names of statuses in snapshots (index -> name).
 const STATUS_NAMES: Array[String] = ["speed", "speed2", "slow", "stun", "freeze", "root", "slip", "reverse", "fear",
 	"blind", "shield", "ghost", "invis", "giant", "tiny", "overcharge", "stale", "chain", "mirror", "fastcap",
-	"dashboost", "firetrail", "charging", "slam", "roll", "chicken", "dance", "sleep", "carpet", "mini", "bubble", "angel", "orbit", "moon", "turbo", "potato", "stink", "tickle", "itch"]
+	"dashboost", "firetrail", "charging", "slam", "roll", "chicken", "dance", "sleep", "carpet", "mini", "bubble", "angel", "orbit", "moon", "turbo", "potato", "stink", "tickle", "itch", "farttrail"]
 
 
 class Player:
@@ -267,6 +267,24 @@ func setup(p_map_id: String, seats: Array, seed_value := 0, p_difficulty := 0.6,
 	_crystals_wanted = clampi(int(arena_size().x * arena_size().y / AREA_PER_CRYSTAL), 20, 44)
 	_rebuild_teams()
 	_reset_round(true)
+
+
+## Clears everything off the field but the bases and jails: somewhere plain to show a skill off. Call it before anything's drawn.
+func clear_field() -> void:
+	for y in h:
+		for x in w:
+			if x > 0 and y > 0 and x < w - 1 and y < h - 1:
+				tiles[y * w + x] = Maps.FLOOR
+	fountains = {}
+	altars = {}
+	arms = []
+	lanes = []
+	jumps = {}
+	tele = {}
+	_bumpers = PackedInt32Array()
+	_pickup_tiles = PackedInt32Array()
+	_flow = {}
+	pickups.clear()
 
 
 func _rebuild_teams() -> void:
@@ -826,6 +844,11 @@ func _tick_player(p: Player, dt: float) -> void:
 			_pop_off_base(p)
 	else:
 		p.camp = 0.0
+	if has_status(p, "farttrail"):
+		p.trail_cd -= dt
+		if p.trail_cd <= 0.0:
+			p.trail_cd = 0.3
+			zones.append({"uid": _next_uid(), "fx": "fart", "team": p.team, "pos": p.pos, "r": 1.7, "until": t + 2.4, "drift": Vector2.ZERO, "pw": "bean_burrito", "armed": true})
 	if has_status(p, "firetrail"):
 		p.trail_cd -= dt
 		if p.trail_cd <= 0.0:
@@ -1671,6 +1694,7 @@ func _play_power(p: Player, id: String) -> void:
 			var target := _nearest_enemy(p, float(def["range"]))
 			if target:
 				_give_statuses(target, def["status"])
+				target.fear_from = p.pos
 				_event("cc", target.id, p.id, target.pos.x, target.pos.y, "stale")
 				if def.has("word"):
 					_event("word", target.id, p.id, target.pos.x, target.pos.y, def["word"])
@@ -1768,6 +1792,14 @@ func _play_power(p: Player, id: String) -> void:
 			for i in int(def["count"]):
 				var spot := _spot_behind(p, 1.5 + i * 1.3, 0.6 if i % 2 == 0 else -0.6)
 				zones.append({"uid": _next_uid(), "fx": def["fx"], "team": p.team, "pos": spot, "r": float(def["r"]), "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true})
+		"peel_rain":
+			var half := arena_size().x * 0.5
+			for _i in int(def["count"]):
+				var x: float = rng.randf_range(half + 1.0, half * 2.0 - 1.0) if p.team == 0 else rng.randf_range(1.0, half - 1.0)
+				var spot := Vector2(x, rng.randf_range(1.0, arena_size().y - 1.0))
+				var tile := tile_index(spot)
+				if tile >= 0 and not _blocks_feet(tile):
+					zones.append({"uid": _next_uid(), "fx": "peel", "team": p.team, "pos": spot, "r": 0.8, "until": t + float(def["dur"]), "drift": Vector2.ZERO, "pw": id, "armed": true})
 		"volley":
 			var spread := float(def["spread"])
 			var count := int(def["count"])
@@ -1937,6 +1969,9 @@ func _use_aoe(p: Player, def: Dictionary) -> void:
 	_event("burst", p.id, -1, p.pos.x, p.pos.y, def["id"])
 	if def.has("word"):
 		_event("word", p.id, -1, p.pos.x, p.pos.y, def["word"])
+	if def.has("jokes"):
+		var jokes: Array = def["jokes"]
+		_event("word", p.id, -1, p.pos.x, p.pos.y, jokes[rng.randi_range(0, jokes.size() - 1)])
 	for e: Player in team_of(1 - p.team):
 		if e.state != State.PLAY or is_airborne(e) or has_status(e, "ghost"):
 			continue
@@ -2317,6 +2352,12 @@ func _zone_acts(z: Dictionary, dt: float) -> bool:
 				e.kb += (e.vel.normalized() if e.vel.length() > 0.5 else Vector2.RIGHT) * 26.0
 				_event("slipped", e.id, -1, e.pos.x, e.pos.y)
 				return true
+			"spring":
+				var home_way: Vector2 = ((base[e.team] as Vector2) - e.pos).normalized()
+				var to: Vector2 = (e.pos + home_way * 16.0).clamp(Vector2.ONE, arena_size() - Vector2.ONE)
+				_launch(e, move_circle(to, Vector2.ZERO, radius_of(e)), 0.8)
+				_event("sprung", e.id, -1, e.pos.x, e.pos.y)
+				return true
 			"poop":
 				_apply_cc(e, {"root": 1.3, "stink": 7.0}, null)
 				_event("splat", e.id, -1, e.pos.x, e.pos.y)
@@ -2522,6 +2563,11 @@ func _tick_walls() -> void:
 # --- Results --------------------------------------------------------------------------------------
 
 ## A rough performance score: what the results screen ranks players by.
+## How long the match has run, in seconds.
+func played_seconds() -> float:
+	return MATCH_TIME - time_left + (OVERTIME if overtime else 0.0)
+
+
 func stats_score(p: Player) -> int:
 	return p.tags * 30 + p.rescues * 25 + p.captures * 100 + p.powers_used * 3 - p.times_jailed * 5
 
@@ -2582,7 +2628,7 @@ func to_snapshot() -> Dictionary:
 		for id: String in p.powers:
 			held.append(Powerups.index_of(id))
 		powers.append(held)
-		stats.append(PackedInt32Array([p.tags, p.rescues, p.captures, p.times_jailed, p.powers_used]))
+		stats.append(PackedInt32Array([p.tags, p.rescues, p.captures, p.times_jailed, p.powers_used, p.skills_used]))
 	var snap := {"t": t, "ph": phase, "pl": phase_left, "tl": time_left, "ot": overtime, "fi": fiesta, "sc": score, "cap": cap, "cg": capturing,
 		"lk": base_lock, "ra": radar, "w": winner, "er": end_reason, "p": floats, "st": statuses, "pw": powers, "ss": stats,
 		"fo": fountains, "zn": zones, "sh": shots, "en": ents, "wl": walls, "ev": take_events(), "uid": _uid,
@@ -2672,6 +2718,7 @@ func apply_snapshot(snap: Dictionary) -> void:
 		p.captures = st[2]
 		p.times_jailed = st[3]
 		p.powers_used = st[4]
+		p.skills_used = st[5]
 	if snap.has("pk"):
 		_unpack_pickups(snap["pk"])
 	fountains = snap["fo"]

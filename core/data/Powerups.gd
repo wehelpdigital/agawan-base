@@ -19,6 +19,7 @@ const CATS := {
 }
 const TIER_NAMES := ["", "Common", "Rare", "Epic"]
 const TIER_WEIGHT := [0, 60, 30, 12]
+const FUNNY_WEIGHT := 3  ## Funny cards come up this many times as often: about half of what you draw.
 const ATTACK := "attack"
 const DEFEND := "defend"
 ## Everything else is in the attack deck: anything that goes fast, gets you in, or hits someone.
@@ -26,7 +27,7 @@ const DEFENCE_DECK := ["bubble_shield", "popup_wall", "base_lock", "sentry_buddy
 	"fresh_start", "instant_igloo", "guardian_angel", "orbit_shields", "robo_buddy", "stop_clock", "smoke_bomb", "fishing_net", "slime_ball", "big_magnet",
 	"black_hole", "freeze_ray", "sky_zap", "bubble_trap", "shrink_ray", "tidal_wave", "soap_slick", "scare_horn", "banana_peels", "fake_crystal", "lullaby",
 	"group_hug", "radar_ping", "cheer_squad", "crystal_vacuum", "power_rain", "jailbreak",
-	"poop_drop", "stink_bomb", "whoopee_cushion", "bubble_gum", "itching_powder"]
+	"poop_drop", "stink_bomb", "whoopee_cushion", "bubble_gum", "itching_powder", "mouse_traps", "hot_sauce", "spring_trap", "plunger", "dad_joke"]
 
 const ALL: Array[Dictionary] = [
 	# --- Speed -----------------------------------------------------------------------------------
@@ -228,6 +229,35 @@ const ALL: Array[Dictionary] = [
 		"desc": "Spit a big pink wad. Whoever it hits is stuck for 2.5 seconds, and it leaves a sticky mess behind.", "kind": "shot", "speed": 15.0, "range": 16.0, "r": 0.6, "status": {"root": 2.5}, "burst": {"fx": "slow", "r": 2.6, "dur": 5.0}},
 	{"id": "itching_powder", "name": "Itching Powder", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "giggle", "funny": true,
 		"desc": "Throw some down the nearest enemy's neck. For 6 seconds they keep stopping to scratch.", "kind": "curse", "range": 20.0, "status": {"itch": 6.0}, "word": "SO ITCHY!"},
+	{"id": "bean_burrito", "name": "Bean Burrito", "cat": "speed", "tier": 1, "ai": "flee", "sfx": "fart_long", "funny": true, "cell": Cosmetics.Fx.PUFF, "color": "9be36a",
+		"desc": "Eat it. For 5 seconds you run faster, and everything behind you regrets it.", "kind": "self", "status": {"speed2": 5.0, "farttrail": 5.0}},
+	{"id": "clown_car", "name": "Clown Car", "cat": "trick", "tier": 2, "ai": "attack", "sfx": "honk", "funny": true, "cell": Cosmetics.Fx.CONFETTI,
+		"desc": "Honk honk! Five of you pile out of nowhere and run alongside you for 7 seconds. Touch the wrong one and it's a nasty surprise.", "kind": "clones", "count": 5, "dur": 7.0},
+	{"id": "pie_barrage", "name": "Pie Barrage", "cat": "attack", "tier": 2, "ai": "chase", "sfx": "squelch", "funny": true, "model": "cream_pie",
+		"desc": "Five cream pies at once, in a fan. Every one that lands, somebody can't see for 3 seconds.", "kind": "volley", "count": 5, "spread": 0.2, "speed": 20.0, "range": 18.0, "r": 0.5, "status": {"blind": 3.0, "slow": 1.0}},
+	{"id": "wet_fish", "name": "Wet Fish", "cat": "attack", "tier": 1, "ai": "chase", "sfx": "squelch", "funny": true, "cell": Cosmetics.Fx.FISH, "color": "7ee8ff",
+		"desc": "Slap everyone close to you with a large wet fish. It doesn't hurt. It's just very, very surprising.", "kind": "aoe", "r": 4.0, "push": 26.0, "status": {"stun": 0.6}, "word": "SLAP!"},
+	{"id": "banana_rain", "name": "Banana Rain", "cat": "trick", "tier": 2, "ai": "any", "sfx": "slide_whistle", "funny": true, "cell": Cosmetics.Fx.BANANA, "color": "ffe05c",
+		"desc": "Ten peels fall out of the sky all over the enemy's half. Nobody knows who ordered them.", "kind": "peel_rain", "count": 10, "dur": 12.0},
+	{"id": "stinky_socks", "name": "Stinky Socks", "cat": "trick", "tier": 1, "ai": "flee", "sfx": "fart_short", "funny": true, "cell": Cosmetics.Fx.PUFF, "color": "9be36a",
+		"desc": "Take your shoes off. Everyone nearby runs away holding their nose, and the smell stays on them.", "kind": "aoe", "r": 8.0, "status": {"fear": 2.2, "stink": 5.0}, "word": "PEE-YEW!"},
+	{"id": "piano_drop", "name": "Piano Drop", "cat": "attack", "tier": 2, "ai": "chase", "sfx": "slide_whistle", "funny": true,
+		"desc": "A grand piano falls on the nearest enemy. Its shadow follows them. They should've taken lessons.", "kind": "drop", "range": 24.0, "fall": 1.2, "r": 2.2, "status": {"stun": 2.2}},
+	{"id": "giant_foot", "name": "Giant Foot", "cat": "attack", "tier": 3, "ai": "chase", "sfx": "slide_whistle", "funny": true,
+		"desc": "An enormous bare foot comes down from the sky on the nearest enemy, and anyone standing near them. Nobody knows whose.", "kind": "drop", "range": 26.0, "fall": 1.3, "r": 3.4, "status": {"stun": 2.6}},
+	{"id": "snot_rocket", "name": "Snot Rocket", "cat": "attack", "tier": 1, "ai": "chase", "sfx": "sneeze", "funny": true, "model": "big_sneeze", "cell": Cosmetics.Fx.DROP, "color": "9be36a",
+		"desc": "It finds its target, and you don't want to know how. Whoever it hits goes sliding.", "kind": "shot", "speed": 14.0, "range": 28.0, "r": 0.6, "homing": true, "status": {"slip": 2.5, "slow": 2.0}},
+	{"id": "mouse_traps", "name": "Mouse Traps", "cat": "defend", "tier": 1, "ai": "guard", "sfx": "piece_place", "funny": true,
+		"desc": "Hide four big mouse traps behind you. Snap. They'll be hopping for a while.", "kind": "traps", "fx": "snare", "count": 4, "dur": 16.0, "r": 1.1},
+	{"id": "hot_sauce", "name": "Hot Sauce", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "trail_fire", "funny": true, "cell": Cosmetics.Fx.FLAME, "color": "ff5a1f",
+		"desc": "A squirt in the nearest enemy's mouth. They run in circles for 3 seconds, breathing fire on their own team's way.", "kind": "curse", "range": 18.0, "status": {"fear": 3.0, "firetrail": 3.0}, "word": "HOT HOT HOT!"},
+	{"id": "spring_trap", "name": "Spring Trap", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "move_bounce", "funny": true,
+		"desc": "Hide two big springs on the ground. Step on one and you're thrown all the way back where you came from.", "kind": "traps", "fx": "spring", "count": 2, "dur": 18.0, "r": 1.1},
+	{"id": "plunger", "name": "Plunger", "cat": "defend", "tier": 1, "ai": "guard", "sfx": "squelch", "funny": true, "model": "plunger",
+		"desc": "Fire a toilet plunger. It sticks to the first enemy it hits and hauls them back to you. It's clean. Probably.", "kind": "shot", "speed": 22.0, "range": 18.0, "r": 0.5, "push": -24.0, "status": {"root": 0.8}},
+	{"id": "dad_joke", "name": "Dad Joke", "cat": "trick", "tier": 1, "ai": "guard", "sfx": "giggle", "funny": true, "cell": Cosmetics.Fx.ZZZ,
+		"desc": "Tell a dad joke. Everyone nearby stops dead and groans. It's not even a good one.", "kind": "aoe", "r": 10.0, "status": {"stun": 1.2},
+		"jokes": ["Hi Hungry, I'm Dad!", "Knock knock.", "I'm on a seafood diet.", "Time flies like a banana.", "Two tags walk into a bar...", "Why so stale?"]},
 	# --- Team ------------------------------------------------------------------------------------
 	{"id": "jailbreak", "name": "Jailbreak", "cat": "team", "tier": 3, "ai": "jail", "sfx": "finale_fireworks",
 		"desc": "Every teammate in jail walks free, from anywhere on the map.", "kind": "jailbreak"},
@@ -281,7 +311,7 @@ static func roll(rng: RandomNumberGenerator, side := "") -> String:
 	if _pools.is_empty():
 		_pools = {"": [], ATTACK: [], DEFEND: []}
 		for def: Dictionary in ALL:
-			for _i in int(TIER_WEIGHT[int(def["tier"])]):
+			for _i in int(TIER_WEIGHT[int(def["tier"])]) * (FUNNY_WEIGHT if def.get("funny", false) else 1):
 				_pools[""].append(String(def["id"]))
 				_pools[side_of(String(def["id"]))].append(String(def["id"]))
 	var pool: Array = _pools[side]

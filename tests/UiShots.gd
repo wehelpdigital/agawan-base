@@ -67,7 +67,7 @@ func _skill_extras(ui: UiRoot) -> void:
 	var nodes := Skills.tree(hero)
 	Profile.heroes[hero] = {"xp": 120, "level": 7, "chosen": [Skills.own_skill(hero), String(nodes[1]["skill"])], "ranks": {Skills.own_skill(hero): 3, String(nodes[1]["skill"]): 2}}
 	ui.show_screen("skills", {"hero": hero})
-	await _wait(0.5)
+	await _wait(3.0)
 	await _shot("skills_along")
 	_audit(ui, "skills_along")
 	Profile.heroes["kiko"] = {"xp": 0, "level": 2, "chosen": [Skills.own_skill("kiko")], "ranks": {Skills.own_skill("kiko"): 1}}
@@ -127,6 +127,11 @@ func _audit(ui: UiRoot, screen_name: String) -> void:
 	var visible_rect := Rect2(Vector2.ZERO, view).grow(1.0)
 	for node: Node in ui.find_children("*", "Control", true, false):
 		var c := node as Control
+		if c is GameButton and c.is_visible_in_tree() and c._row != null:
+			var words: Vector2 = c._row.get_combined_minimum_size()
+			var off: float = absf(c._row.position.x + c._row.size.x * 0.5 - c.size.x * 0.5)
+			if words.x > c.size.x - 2.0 * GameButton.OUTLINE or words.y > c.size.y or off > 1.0:
+				print("BUTTON ", screen_name, ": ", c.get_text(), " needs ", words, " and has ", c.size)
 		if not c.is_visible_in_tree() or c.get_parent() is ScrollContainer or c.get_parent().name == "Backdrop":
 			continue
 		var inside_scroll := false
@@ -151,4 +156,4 @@ func _sample_result() -> Dictionary:
 	rng.seed = 3
 	for i in 10:
 		rows.append({"id": i, "name": Profile.player_name if i == 0 else Names.bot_name(rng), "team": i % 2, "bot": i != 0, "look": {}, "tags": rng.randi_range(0, 9), "rescues": rng.randi_range(0, 4), "captures": rng.randi_range(0, 2), "jailed": 2, "powers": 4, "score": rng.randi_range(0, 400)})
-	return {"result": {"winner": 0, "my_team": 0, "score": [3, 1], "mine": {"won": true, "tags": 6, "rescues": 2, "captures": 1}, "players": rows, "mvp": 0, "reason": "capture", "online": false, "map": "barrio_plaza"}, "rewards": {"coins": 58, "xp": 90}}
+	return {"result": {"seconds": 142.0, "winner": 0, "my_team": 0, "score": [3, 1], "mine": {"won": true, "tags": 6, "rescues": 2, "captures": 1, "jailed": 3, "powers": 9, "skills": 5}, "players": rows, "mvp": 0, "reason": "capture", "online": false, "map": "barrio_plaza"}, "rewards": {"coins": 58, "xp": 90}}

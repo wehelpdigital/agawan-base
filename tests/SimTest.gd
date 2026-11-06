@@ -899,6 +899,64 @@ func _test_funny_cards() -> void:
 	_ok(not sim.has_status(a, "stun") and not sim.has_status(a, "shield"), "a bubble stops one hit, and then it's gone")
 	sim._apply_cc(a, {"stun": 2.0}, null)
 	_ok(sim.has_status(a, "stun"), "but only one")
+	var funny := 0
+	for def: Dictionary in Powerups.ALL:
+		if def.get("funny", false):
+			funny += 1
+	_ok(funny >= 25, "there are plenty of funny cards (%d)" % funny)
+	var rolls := RandomNumberGenerator.new()
+	var funny_draws := 0
+	for _i in 2000:
+		if Powerups.by_id(Powerups.roll(rolls, Powerups.ATTACK)).get("funny", false):
+			funny_draws += 1
+	_ok(funny_draws > 700, "and they come up a lot (%d in 2000)" % funny_draws)
+	parts = _power_sim("spring_trap")
+	sim = parts[0]
+	e = parts[2]
+	sim.step()
+	var springs := sim.zones.filter(func(z: Dictionary) -> bool: return z["fx"] == "spring")
+	_ok(springs.size() == 2, "two springs go down")
+	e.pos = springs[0]["pos"]
+	sim.step()
+	_ok(sim.is_airborne(e), "and one throws you back")
+	_ok((e.leap_to as Vector2).distance_to(sim.base[e.team]) < (e.leap_from as Vector2).distance_to(sim.base[e.team]), "towards your own base")
+	parts = _power_sim("banana_rain")
+	sim = parts[0]
+	a = parts[1]
+	sim.step()
+	var peels := sim.zones.filter(func(z: Dictionary) -> bool: return z["fx"] == "peel")
+	_ok(peels.size() >= 5, "Banana Rain covers the place (%d)" % peels.size())
+	var over := true
+	for z: Dictionary in peels:
+		if (z["pos"] as Vector2).x < sim.arena_size().x * 0.5:
+			over = false
+	_ok(over, "on the enemy's half")
+	parts = _power_sim("bean_burrito")
+	sim = parts[0]
+	a = parts[1]
+	a.mv = Vector2.LEFT
+	for _i in 30:
+		sim.step()
+	_ok(sim.zones.filter(func(z: Dictionary) -> bool: return z["fx"] == "fart").size() >= 2, "a Bean Burrito leaves a trail")
+	parts = _power_sim("hot_sauce")
+	sim = parts[0]
+	e = parts[2]
+	sim.step()
+	_ok(sim.has_status(e, "fear") and sim.has_status(e, "firetrail"), "Hot Sauce sends them running, breathing fire")
+	parts = _power_sim("plunger")
+	sim = parts[0]
+	a = parts[1]
+	e = parts[2]
+	var gap: float = a.pos.distance_to(e.pos)
+	_ok(_step_until(sim, func() -> bool: return sim.has_status(e, "root"), 60), "the Plunger sticks")
+	for _i in 8:
+		sim.step()
+	_ok(a.pos.distance_to(e.pos) < gap, "and hauls them in")
+	parts = _power_sim("dad_joke")
+	sim = parts[0]
+	e = parts[2]
+	sim.step()
+	_ok(sim.has_status(e, "stun"), "Dad Joke stops them dead")
 
 
 func _test_skills() -> void:

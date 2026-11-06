@@ -17,6 +17,8 @@ var _bounce := 1.0
 var _tween: Tween
 var _text := ""
 var _shown_off := false
+var _row_y := 0.0
+var _fitted_size := -1
 var _box_lip := StyleBoxFlat.new()
 var _box_body := StyleBoxFlat.new()
 var _box_gloss := StyleBoxFlat.new()
@@ -95,6 +97,7 @@ func set_text(text: String) -> void:
 		_make_label(text)
 		set_kind(kind)
 	_refresh_min()
+	_layout_row()
 
 
 func get_text() -> String:
@@ -116,11 +119,30 @@ func _notification(what: int) -> void:
 		_layout_row()
 
 
+## Whatever's on the button sits in the middle of its face, and is made smaller if that's what it takes to fit.
 func _layout_row() -> void:
-	if _row:
-		var sink := LIP if button_pressed_look() else 0.0
-		_row.position = Vector2(0, sink)
-		_row.size = Vector2(size.x, size.y - LIP)
+	if _row == null:
+		return
+	_fit_text()
+	var need := _row.get_combined_minimum_size()
+	var face_h := size.y - LIP - 2.0 * OUTLINE + 2.0
+	_row_y = OUTLINE + (face_h - need.y) * 0.5
+	_row.size = need
+	_row.position = Vector2((size.x - need.x) * 0.5, _row_y + (LIP - 2.0 if button_pressed_look() else 0.0))
+
+
+func _fit_text() -> void:
+	if _label == null:
+		return
+	var room := size.x - 2.0 * OUTLINE - 8.0 - (_font_size * 1.25 + 8.0 if _icon else 0.0)
+	var font := UiKit.font_title()
+	var font_size := _font_size
+	var wide := font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	if wide > room and room > 0.0:
+		font_size = maxi(int(font_size * room / wide), 9)
+	if font_size != _fitted_size:  # Only if it's changed: changing it asks for another layout.
+		_fitted_size = font_size
+		_label.add_theme_font_size_override("font_size", font_size)
 
 
 func button_pressed_look() -> bool:
@@ -176,7 +198,7 @@ func _paint() -> void:
 		_box_focus.set_corner_radius_all(r + 3)
 		draw_style_box(_box_focus, Rect2(-3, body_top - 3, w + 6, h - body_top + 6))
 	if _row:
-		_row.position.y = sink
+		_row.position.y = _row_y + sink
 		_row.modulate = Color.WHITE
 
 

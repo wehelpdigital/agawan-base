@@ -363,6 +363,7 @@ func seat_look() -> Dictionary:
 	for skill: String in state["chosen"]:
 		skills.append([skill, int(state["ranks"].get(skill, 1))])
 	out["skills"] = skills
+	out["tags_ever"] = int(stats["tags"])
 	return out
 
 

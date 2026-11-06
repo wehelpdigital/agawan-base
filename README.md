@@ -20,7 +20,10 @@ online.
   shield on the card), over the line attack cards (a target). Cross the line and your hand spins into the other deck:
   `core/data/Powerups.gd`. **Maps:** `core/data/Maps.gd`.
 - **Skills.** Every hero has a skill of their own and a tree of others, dealt once from their name. Each level gives a
-  point to learn or rank one up, and you take two into a match: `core/data/Skills.gd`.
+  point to learn or rank one up, and you take two into a match: `core/data/Skills.gd`. The Skills screen draws the tree,
+  and plays each skill in a little window using the real game (`ui/SkillPreview.gd`).
+- **Bragging rights.** Everyone's avatar and tag count sit under the score all match, and the top tagger wears the crown.
+  The results show your numbers, the awards and all-time tags.
 - **The shop** is sorted by accessory: masks, head gear, tops, pants, shoes, gloves, backs, run styles, dances,
   emotes, trails, auras, tag effects, frames, titles. Avatars and colours are one category among them.
   Everything is earned with coins and gems from playing: `core/data/Cosmetics.gd`.

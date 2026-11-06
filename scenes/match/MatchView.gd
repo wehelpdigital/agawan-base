@@ -13,8 +13,9 @@ const SCORED_FACE_SECONDS := 3.0
 const GATE_HEIGHT := 1.5
 const GATE_WARNING := 1.0
 const MAX_CRYSTALS := 72
+const FUNNY_FACES := ["laugh", "giggle", "shock", "derp", "grin", "tongue"]
 const STATUS_ICONS := {
-	"stink": [Cosmetics.Fx.PUFF, "9be36a"], "tickle": [Cosmetics.Fx.FEATHER, "fff6dd"], "itch": [Cosmetics.Fx.SPARK, "ffb21f"],
+	"farttrail": [Cosmetics.Fx.PUFF, "9be36a"], "stink": [Cosmetics.Fx.PUFF, "9be36a"], "tickle": [Cosmetics.Fx.FEATHER, "fff6dd"], "itch": [Cosmetics.Fx.SPARK, "ffb21f"],
 	"stun": [Cosmetics.Fx.STAR, "ffd23f"], "freeze": [Cosmetics.Fx.SNOW, "bff3ff"], "root": [Cosmetics.Fx.RING, "c9b95c"],
 	"slow": [Cosmetics.Fx.DROP, "62e0a0"], "slip": [Cosmetics.Fx.RING, "bff3ff"], "reverse": [Cosmetics.Fx.SPARK, "b768ff"],
 	"fear": [Cosmetics.Fx.DROP, "9fe6ff"], "blind": [Cosmetics.Fx.DROP, "0a1426"], "stale": [Cosmetics.Fx.PUFF, "8a8a6a"],
@@ -824,7 +825,7 @@ func _update_zones() -> void:
 	var seen := {}
 	for z: Dictionary in sim.zones:
 		var uid: int = z["uid"]
-		var hidden_trap: bool = z["fx"] in ["mine", "snare", "whoopee"] and int(z["team"]) != my_team and float(sim.radar[my_team]) <= sim.t
+		var hidden_trap: bool = z["fx"] in ["mine", "snare", "whoopee", "spring"] and int(z["team"]) != my_team and float(sim.radar[my_team]) <= sim.t
 		seen[uid] = true
 		if not _zones.has(uid):
 			_zones[uid] = _make_zone(z)
@@ -911,11 +912,14 @@ func _make_zone(z: Dictionary) -> Node3D:
 		"whoopee":
 			color = Color("ff6fb5")
 			inner = 0.1
+		"spring":
+			color = Color("35d07f")
+			inner = 0.1
 		"beam", "tide":
 			color = Color(0, 0, 0, 0.0)
 	var node := Node3D.new()
 	add_child(node)
-	var plain_on_a_phone: bool = low_detail and String(z["fx"]) in ["peel", "poop", "whoopee", "mine", "snare"]  # They're easy to see, and there can be a lot of them.
+	var plain_on_a_phone: bool = low_detail and String(z["fx"]) in ["peel", "poop", "whoopee", "spring", "mine", "snare"]  # They're easy to see, and there can be a lot of them.
 	if String(z["fx"]) not in ["beam", "tide", "cloud", "bees"] and not plain_on_a_phone:
 		node.add_child(_flat_quad(_disc_material(color, style, inner, spin), float(z["r"]) * 2.0, 0.0))
 	_dress_zone(z, node)
@@ -1007,6 +1011,8 @@ func _dress_zone(z: Dictionary, node: Node3D) -> void:
 			node.add_child(_zone_mesh("poop", _draw_poop))
 		"whoopee":
 			node.add_child(_zone_mesh("whoopee", _draw_whoopee))
+		"spring":
+			node.add_child(_zone_mesh("spring", _draw_spring))
 		"fart":
 			var ghost := ShaderMaterial.new()
 			ghost.shader = preload("res://gfx/shaders/ghost.gdshader")
@@ -1040,7 +1046,16 @@ func _dress_zone(z: Dictionary, node: Node3D) -> void:
 			k.soft_box(Vector3(0, 0.46, 0), Vector3(0.62, 0.14, 0.36), Color("3a4258"), 0.6, 4, 10)
 			k.soft_box(Vector3(0, 0.22, 0), Vector3(0.26, 0.16, 0.3), Color("3a4258"), 0.6, 4, 10)
 			k.soft_box(Vector3(0, 0.05, 0), Vector3(0.5, 0.08, 0.36), Color("2b3a5a"), 0.6, 4, 10)
-			var iron := _zone_mesh("cow", _draw_cow) if z["pw"] == "cow_drop" else _toon_mesh(k)
+			var iron: MeshInstance3D
+			match String(z["pw"]):
+				"cow_drop":
+					iron = _zone_mesh("cow", _draw_cow)
+				"piano_drop":
+					iron = _zone_mesh("piano", _draw_piano)
+				"giant_foot":
+					iron = _zone_mesh("foot", _draw_foot)
+				_:
+					iron = _toon_mesh(k)
 			iron.name = "Falling"
 			node.add_child(iron)
 		"strike":
@@ -1081,6 +1096,34 @@ func _draw_poop(k: MeshKit) -> void:
 	for s: float in [-1.0, 1.0]:
 		k.ball(Vector3(s * 0.1, 0.36, 0.26), Vector3(0.075, 0.09, 0.03), Color.WHITE, 4, 8)
 		k.ball(Vector3(s * 0.1, 0.35, 0.285), Vector3(0.036, 0.045, 0.02), Color("1a1030"), 3, 6)
+
+
+func _draw_spring(k: MeshKit) -> void:
+	for i in 4:
+		k.torus(Vector3(0, 0.1 + i * 0.12, 0), 0.34, 0.05, Color("c9d0e6"), 12, 4)
+	k.ball(Vector3(0, 0.56, 0), Vector3(0.44, 0.06, 0.44), Color("35d07f"), 4, 12)
+
+
+func _draw_piano(k: MeshKit) -> void:
+	k.soft_box(Vector3(0, 0.9, 0), Vector3(1.3, 0.34, 1.0), Color("1a1030"), 0.5, 4, 10)
+	k.soft_box(Vector3(0, 0.74, 1.04), Vector3(1.2, 0.08, 0.2), Color("fffdf4"), 0.4, 3, 8)
+	k.outline = 0.0
+	for i in 9:
+		k.soft_box(Vector3(-1.02 + i * 0.255, 0.8, 1.08), Vector3(0.05, 0.04, 0.14), Color("1a1030"), 0.3, 2, 6)
+	k.outline = 0.02
+	k.soft_box(Vector3(0.3, 1.45, -0.3), Vector3(0.9, 0.05, 0.6), Color("1a1030"), 0.3, 3, 8)
+	for at: Vector3 in [Vector3(-1.1, 0.0, 0.8), Vector3(1.1, 0.0, 0.8), Vector3(0.0, 0.0, -0.8)]:
+		k.cyl(at, 0.6, 0.08, 0.12, Color("3a2a1c"), 8)
+
+
+func _draw_foot(k: MeshKit) -> void:
+	var skin := Color("f0c090")
+	k.ball(Vector3(0, 0.5, -0.3), Vector3(1.5, 0.55, 2.1), skin, 8, 16)
+	k.cyl(Vector3(0, 0.7, -1.1), 2.4, 1.05, 1.2, skin, 14)
+	for i in 5:
+		var x := -1.15 + i * 0.58
+		var big := 0.42 if i == 0 else 0.3
+		k.ball(Vector3(x, 0.36, 1.9 - absf(i - 0.0) * 0.1), Vector3(big, big, big * 1.1), skin, 6, 10)
 
 
 func _draw_whoopee(k: MeshKit) -> void:
@@ -1228,6 +1271,9 @@ func _make_shot(s: Dictionary) -> Node3D:
 	var r: float = s["r"]
 	var color := Powerups.color(pw)
 	match String(Powerups.by_id(pw).get("model", pw)):
+		"plunger":
+			kit.cyl(Vector3(0, -0.05, 0), 0.5, 0.05, 0.05, Color("b5763c"), 6)
+			kit.ball(Vector3(0, -0.1, 0), Vector3(0.28, 0.16, 0.28), Color("e8282f"), 5, 10)
 		"fireball":
 			kit.outline = 0.0
 			kit.ball(Vector3.ZERO, Vector3.ONE * r, Color("ff7a1f"), 5, 10)
@@ -1839,7 +1885,16 @@ func _event(ev: Array) -> void:
 			if a >= 0:
 				_avatars[a].react("queasy", 1.4)
 		"word":
-			_float_text(_world(x, y, 2.4), String(extra), Color("ffd23f"), 0.85)
+			_float_text(_world(x, y, 2.4), String(extra), Color("ffd23f"), 0.85 if String(extra).length() < 14 else 0.5)
+		"sprung":
+			fx.burst(_world(x, y, 0.4), 12, 5.0, 0.4, 0.36, Cosmetics.Fx.STAR, ["35d07f", "ffffff"], 2.0)
+			_float_text(_world(x, y, 2.2), "BOING!", Color("8fffb4"))
+			Audio.sfx("move_bounce", _audible(at2), 0.8)
+			Audio.sfx("slide_whistle", _audible(at2) * 0.8)
+			if a >= 0:
+				_avatars[a].react("shock", 1.6)
+			if a == local_id:
+				shake(0.2)
 		"pick":
 			fx.burst(_world(x, y, 1.0), 16, 4.5, 0.5, 0.32, Cosmetics.Fx.STAR, Crystal.COLOURS, 2.0)
 			if a >= 0:
@@ -1971,11 +2026,17 @@ func _event(ev: Array) -> void:
 			_weather_strike_lands(x, y, at2)
 		"anvil":
 			fx.burst(_world(x, y, 0.2), 20, 6.0, 0.4, 0.45, Cosmetics.Fx.PUFF, ["ffffff", "c9d0e6"], 3.0)
-			if extra == "cow_drop":
-				_float_text(_world(x, y, 2.2), "MOOO!", Color("ffffff"))
-				Audio.sfx("moo", _audible(at2))
-			else:
-				_float_text(_world(x, y, 2.2), "CLANG!", Color("ffffff"))
+			match extra:
+				"cow_drop":
+					_float_text(_world(x, y, 2.2), "MOOO!", Color("ffffff"))
+					Audio.sfx("moo", _audible(at2))
+				"piano_drop":
+					_float_text(_world(x, y, 2.2), "PLONK!", Color("ffffff"))
+				"giant_foot":
+					_float_text(_world(x, y, 2.2), "SQUISH!", Color("ffb3b3"))
+					Audio.sfx("squelch", _audible(at2))
+				_:
+					_float_text(_world(x, y, 2.2), "CLANG!", Color("ffffff"))
 			Audio.sfx("kill_giant_stomp", _audible(at2))
 			shake(0.4 * _audible(at2))
 		"beam":
@@ -2093,7 +2154,14 @@ func _on_use(p: Sim.Player, id: String, at2: Vector2) -> void:
 		if def.has("skill"):  # Everybody gets to see whose skill that was.
 			_float_text(_avatars[p.id].position + Vector3(0, 2.6, 0), String(def["name"]), c.lightened(0.3), 0.55)
 	Audio.sfx(String(def["sfx"]), _audible(at2))
-	if p and p.id != local_id and p.team != my_team and int(def["tier"]) >= 2:
+	if p and def.get("funny", false):
+		# Everybody needs to know what just happened, and everybody close finds it hilarious. Except the ones it's about.
+		_float_text(_avatars[p.id].position + Vector3(0, 2.8, 0), String(def["name"]).to_upper() + "!", Color("ffe05c"), 0.72)
+		feed.emit("%s used %s!" % [p.name, def["name"]], Color("ffe05c"))
+		for other: Sim.Player in sim.players:
+			if other.state == Sim.State.PLAY and other.pos.distance_squared_to(at2) < 144.0:
+				_avatars[other.id].react_any(FUNNY_FACES, 1.4)
+	elif p and p.id != local_id and p.team != my_team and int(def["tier"]) >= 2:
 		feed.emit("%s used %s" % [p.name, def["name"]], Color("ffc4bd"))
 	elif p and p.id != local_id and p.team == my_team and def["cat"] == "team":
 		feed.emit("%s used %s" % [p.name, def["name"]], Color("c9f1ff"))

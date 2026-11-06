@@ -279,11 +279,11 @@ func build_result() -> Dictionary:
 	var mvp_id := sim.mvp()
 	var mine := {}
 	if me:
-		mine = {"tags": me.tags, "rescues": me.rescues, "captures": me.captures, "powers": me.powers_used,
+		mine = {"tags": me.tags, "rescues": me.rescues, "captures": me.captures, "powers": me.powers_used, "skills": me.skills_used, "jailed": me.times_jailed,
 			"won": sim.winner == me.team, "draw": sim.winner == 2, "mvp": mvp_id == me.id}
 	var rows: Array = []
 	for p in sim.players:
 		rows.append({"id": p.id, "name": p.name, "team": p.team, "bot": p.bot, "look": p.look, "tags": p.tags, "rescues": p.rescues,
-			"captures": p.captures, "jailed": p.times_jailed, "powers": p.powers_used, "score": sim.stats_score(p)})
+			"captures": p.captures, "jailed": p.times_jailed, "powers": p.powers_used, "skills": p.skills_used, "score": sim.stats_score(p)})
 	return {"winner": sim.winner, "my_team": me.team if me else 0, "score": sim.score, "mine": mine, "players": rows, "mvp": mvp_id,
-		"reason": sim.end_reason, "online": online, "ranked": ranked, "map": sim.map_id, "match_id": match_id}
+		"reason": sim.end_reason, "online": online, "ranked": ranked, "map": sim.map_id, "match_id": match_id, "seconds": sim.played_seconds(), "weather": sim.weather_home, "me": me.id if me else -1}
