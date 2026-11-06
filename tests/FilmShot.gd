@@ -31,9 +31,16 @@ func _run() -> void:
 	await get_tree().process_frame
 	var started := Time.get_ticks_msec()
 	film.play(_map)
-	while film._view == null:
+	var loading_frames := 0
+	var worst := 0.0
+	while film._covered:
 		await get_tree().process_frame
-	print("film built in %d ms" % (Time.get_ticks_msec() - started))
+		loading_frames += 1
+		worst = maxf(worst, get_process_delta_time())
+		if loading_frames == 12:
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("%s/%s_loader.png" % [_out, _map])
+	print("film showing after %d ms, %d frames, longest frame %d ms" % [Time.get_ticks_msec() - started, loading_frames, worst * 1000.0])
 	var frames := 0
 	var clock := Time.get_ticks_msec()
 	for shot in MapPreview.SHOTS:
@@ -48,4 +55,22 @@ func _run() -> void:
 			image.save_png(path)
 			print("saved ", path)
 	print("about %.0f fps" % (frames * 1000.0 / maxf(Time.get_ticks_msec() - clock, 1.0)))
+	# When a match in the film ends, it goes round again with the loader up.
+	film._sim.phase = Sim.Phase.END
+	while not film._covered:
+		await get_tree().process_frame
+	while film._covered:
+		await get_tree().process_frame
+	print("played again: ", "ok" if film._view != null and film._loader.modulate.a > 0.0 else "FAILED")
+	# Changing your mind while it's still loading.
+	film.play("cairo_oasis")
+	for i in 6:
+		await get_tree().process_frame
+	film.play("holland_twin_ponds")
+	for i in 3:
+		await get_tree().process_frame
+	film.play("holland_twin_ponds")
+	while film._covered:
+		await get_tree().process_frame
+	print("changed map mid-load: ", "ok" if film._view.sim.map_id == "holland_twin_ponds" else "FAILED")
 	get_tree().quit()

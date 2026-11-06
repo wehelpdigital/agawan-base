@@ -3,7 +3,8 @@ extends Control
 ## powerup list and how-to are one tap away.
 
 const NEWS := [
-	"NEW: Knights, ninjas, pharaohs, bamboo and a slice of pizza. Over 100 heroes to play.",
+	"NEW: Your friends are out playing. Tap your hero and they all cheer.",
+	"NEW: Knights, ninjas, pharaohs and a slice of pizza. 105 heroes!",
 	"NEW: Watch any map being played before you pick it. Tap Maps.",
 	"Eighty silly faces. Your hero pulls them all as the game goes on.",
 	"Pets! They follow you everywhere and do nothing useful.",

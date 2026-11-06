@@ -88,31 +88,46 @@ var _web_nodes := {}
 var _tide_water: MeshInstance3D
 var _spikes_were_up := false
 var weather_view: WeatherView
+var _env: Environment
 
 
 func setup(p_sim: Sim, p_local_id: int) -> void:
+	for step: Callable in setup_steps(p_sim, p_local_id):
+		step.call()
+
+
+## The work of setup() in pieces, for a caller that keeps something moving on screen in between. Run them in order.
+func setup_steps(p_sim: Sim, p_local_id: int) -> Array[Callable]:
 	sim = p_sim
 	local_id = p_local_id
 	var me := sim.player_by_id(local_id)
 	my_team = me.team if me else 0
 	low_detail = Quality.is_low()
-	var map := Maps.by_id(sim.map_id)
-	_theme_id = map["theme"]
-	var theme: Dictionary = Maps.THEMES[_theme_id]
+	_theme_id = Maps.by_id(sim.map_id)["theme"]
+	_status_cd.resize(sim.players.size())
+	var steps: Array[Callable] = [_build_arena, _build_gates, _build_fountains, _build_hazards.bind(Maps.THEMES[_theme_id]), _build_sky_and_camera, _build_shared_meshes]
+	for p: Sim.Player in sim.players:
+		steps.append(_build_player.bind(p))
+	steps.append(_build_base_markers)
+	steps.append(_build_weather)
+	return steps
+
+
+func _build_arena() -> void:
 	var arena_node := ArenaBuilder.build(sim, low_detail)
 	add_child(arena_node)
 	var grass_node := arena_node.get_node_or_null("Grass") as MeshInstance3D
 	if grass_node:
 		_grass_mat = grass_node.material_override
-	_build_gates()
-	_build_fountains()
-	_build_hazards(theme)
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(theme["sky"])
-	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+
+
+func _build_sky_and_camera() -> void:
+	_env = Environment.new()
+	_env.background_mode = Environment.BG_COLOR
+	_env.background_color = Color(Maps.THEMES[_theme_id]["sky"])
+	_env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var world_env := WorldEnvironment.new()
-	world_env.environment = env
+	world_env.environment = _env
 	add_child(world_env)
 	camera = Camera3D.new()
 	camera.fov = 30.0
@@ -124,12 +139,12 @@ func setup(p_sim: Sim, p_local_id: int) -> void:
 	fx.density = 0.5 if low_detail else 1.0
 	add_child(fx)
 	_wall_mesh = ArenaBuilder.wall_mesh(_theme_id)
-	_build_shared_meshes()
-	_build_players()
-	_build_base_markers()
+
+
+func _build_weather() -> void:
 	weather_view = WeatherView.new()
 	add_child(weather_view)
-	weather_view.setup(self, env, low_detail)
+	weather_view.setup(self, _env, low_detail)
 	_portrait = get_viewport().get_visible_rect().size.y > get_viewport().get_visible_rect().size.x
 	_reset_camera()
 
@@ -189,66 +204,64 @@ func _flat_quad(mat: Material, size: float, y := 0.03) -> MeshInstance3D:
 	return inst
 
 
-func _build_players() -> void:
-	_status_cd.resize(sim.players.size())
-	for p: Sim.Player in sim.players:
-		var color := ArenaBuilder.team_color(p.team)
-		var av := Avatar3D.new()
-		add_child(av)
-		av.setup(p.look, color)
-		av.position = Vector3(p.pos.x, 0, p.pos.y)
-		_avatars.append(av)
-		_shown_pos.append(av.position)
-		var blob := _flat_quad(_blob_mat, 2.4, 0.02)
-		add_child(blob)
-		_shadows.append(blob)
-		var is_me := p.id == local_id
-		var ring := _flat_quad(_disc_material(color, 1.0 if not is_me else 3.0, 0.2 if is_me else 0.12, 1.6), 2.4 if not is_me else 2.7, 0.04)
-		add_child(ring)
-		_rings.append(ring)
-		var mark := Sprite3D.new()
-		mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		mark.no_depth_test = true
-		mark.pixel_size = 0.009
-		mark.render_priority = 2
-		mark.visible = false
-		add_child(mark)
-		_markers.append(mark)
-		var label := Label3D.new()
-		label.text = p.name + (" [AI]" if p.bot and tag_bots else "")
-		label.font = UiKit.font_body()
-		label.font_size = 40
-		label.outline_size = 10
-		label.pixel_size = 0.0098
-		label.modulate = Color("ffe9a8") if is_me else (Color("c9f1ff") if p.team == my_team else Color("ffc4bd"))
-		label.outline_modulate = Color("0a1426")
-		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		label.no_depth_test = true
-		label.render_priority = 1
-		label.fixed_size = false
-		add_child(label)
-		_labels.append(label)
-		_add_pet_and_flag(p, av)
-		var dome := MeshInstance3D.new()
-		dome.mesh = _shield_mesh
-		var ghost_mat := ShaderMaterial.new()
-		ghost_mat.shader = preload("res://gfx/shaders/ghost.gdshader")
-		ghost_mat.set_shader_parameter("alpha", 0.4)
-		dome.material_override = ghost_mat
-		dome.visible = false
-		dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(dome)
-		_shields.append(dome)
-		var ice := MeshInstance3D.new()
-		ice.mesh = _ice_mesh
-		var ice_mat := ShaderMaterial.new()
-		ice_mat.shader = preload("res://gfx/shaders/ghost.gdshader")
-		ice_mat.set_shader_parameter("alpha", 0.55)
-		ice.material_override = ice_mat
-		ice.visible = false
-		ice.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(ice)
-		_ices.append(ice)
+func _build_player(p: Sim.Player) -> void:
+	var color := ArenaBuilder.team_color(p.team)
+	var av := Avatar3D.new()
+	add_child(av)
+	av.setup(p.look, color)
+	av.position = Vector3(p.pos.x, 0, p.pos.y)
+	_avatars.append(av)
+	_shown_pos.append(av.position)
+	var blob := _flat_quad(_blob_mat, 2.4, 0.02)
+	add_child(blob)
+	_shadows.append(blob)
+	var is_me := p.id == local_id
+	var ring := _flat_quad(_disc_material(color, 1.0 if not is_me else 3.0, 0.2 if is_me else 0.12, 1.6), 2.4 if not is_me else 2.7, 0.04)
+	add_child(ring)
+	_rings.append(ring)
+	var mark := Sprite3D.new()
+	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mark.no_depth_test = true
+	mark.pixel_size = 0.009
+	mark.render_priority = 2
+	mark.visible = false
+	add_child(mark)
+	_markers.append(mark)
+	var label := Label3D.new()
+	label.text = p.name + (" [AI]" if p.bot and tag_bots else "")
+	label.font = UiKit.font_body()
+	label.font_size = 40
+	label.outline_size = 10
+	label.pixel_size = 0.0098
+	label.modulate = Color("ffe9a8") if is_me else (Color("c9f1ff") if p.team == my_team else Color("ffc4bd"))
+	label.outline_modulate = Color("0a1426")
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.render_priority = 1
+	label.fixed_size = false
+	add_child(label)
+	_labels.append(label)
+	_add_pet_and_flag(p, av)
+	var dome := MeshInstance3D.new()
+	dome.mesh = _shield_mesh
+	var ghost_mat := ShaderMaterial.new()
+	ghost_mat.shader = preload("res://gfx/shaders/ghost.gdshader")
+	ghost_mat.set_shader_parameter("alpha", 0.4)
+	dome.material_override = ghost_mat
+	dome.visible = false
+	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(dome)
+	_shields.append(dome)
+	var ice := MeshInstance3D.new()
+	ice.mesh = _ice_mesh
+	var ice_mat := ShaderMaterial.new()
+	ice_mat.shader = preload("res://gfx/shaders/ghost.gdshader")
+	ice_mat.set_shader_parameter("alpha", 0.55)
+	ice.material_override = ice_mat
+	ice.visible = false
+	ice.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ice)
+	_ices.append(ice)
 
 
 func _add_pet_and_flag(p: Sim.Player, av: Avatar3D) -> void:

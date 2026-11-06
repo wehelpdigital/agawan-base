@@ -29,7 +29,7 @@ static var _mat_flash: ShaderMaterial
 var look: Dictionary = {}
 var team_color := Color("ffffff")
 var moving := 0.0  ## 0..1, how fast the legs go.
-var state := "idle"  ## idle, run, dash, stun, freeze, root, jail, dance, sad, air
+var state := "idle"  ## idle, run, dash, stun, freeze, root, jail, dance, sad, air, turning
 var dance_id := ""
 var run_id := ""
 var calm := false  ## Holds still and keeps a straight face, so you can see the one you're trying on.
@@ -2139,6 +2139,10 @@ func animate(delta: float) -> void:
 			arm_r = Vector3(0, 0, -2.3)
 			foot_l = Vector3(0, 0.12, 0.1)
 			foot_r = Vector3(0, 0.12, -0.1)
+		"turning":  # Both hands out, turning a skipping rope.
+			y = sin(_t * 2.6) * 0.018
+			arm_l = Vector3(sin(_t * TAU) * 0.3, 0, 1.2)
+			arm_r = Vector3(sin(_t * TAU) * 0.3, 0, -1.2)
 		"stun":
 			turn = sin(_t * 6.0) * 0.25
 			tilt = sin(_t * 9.0) * 0.14

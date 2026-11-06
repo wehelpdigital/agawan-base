@@ -13,8 +13,12 @@ const FOCUS := {
 	"shoes": [2.7, 0.14], "back": [5.4, 0.8], "flag": [6.6, 1.1], "pet": [6.4, 0.8],
 }
 const MAX_SIDE := 1400.0
+const PLANET_RADIUS := 3.4
+const FACE_WIDTH := 0.7  ## How far an avatar's head goes out to each side.
+const FOV := 26.0
 
 var avatar: Avatar3D
+var friends: PlayFriends  ## Only on the little world.
 var pet: Pet3D
 var fx: FxField
 var preview_slot := ""
@@ -75,7 +79,7 @@ func _ready() -> void:
 	var world := Node3D.new()
 	_viewport.add_child(world)
 	_camera = Camera3D.new()
-	_camera.fov = 26.0
+	_camera.fov = FOV
 	_camera.position = Vector3(0, 1.75, _distance + 0.5)
 	world.add_child(_camera)
 	_camera.look_at(Vector3(0, _height, 0))
@@ -88,7 +92,7 @@ func _ready() -> void:
 	if planet:
 		var stage := WorldStage.new()
 		world.add_child(stage)
-		stage.setup(3.4)
+		stage.setup(PLANET_RADIUS)
 		stage.spin_speed = 0.11
 	else:
 		_pad = MeshInstance3D.new()
@@ -106,6 +110,12 @@ func _ready() -> void:
 	fx = FxField.new(120)
 	fx.density = 0.6 if Quality.is_low() else 1.0
 	world.add_child(fx)
+	if planet:
+		friends = PlayFriends.new()
+		world.add_child(friends)
+		friends.setup(PLANET_RADIUS, fx, avatar)
+		friends.said.connect(_say_at)
+		avatar.gag_started.connect(func(_line: String) -> void: friends.cheer())
 	if not _look.is_empty():
 		avatar.setup(_look, ArenaBuilder.team_color(0))
 		pet.setup(str(_look.get("pet", "")))
@@ -187,8 +197,15 @@ func _apply_preview() -> void:
 		_emote = null
 
 
-## A little speech bubble at the top of the picture, for a moment.
-func _say(line: String) -> void:
+## A speech bubble for someone out on the world, over their head.
+func _say_at(line: String, at: Vector3) -> void:
+	if _viewport.size.x > 0 and not _camera.is_position_behind(at):
+		var seen := _camera.unproject_position(at) / Vector2(_viewport.size)
+		_say(line, seen * _drawn.size - Vector2((_drawn.size.x - size.x) * 0.5, 0))
+
+
+## A little speech bubble for a moment: at the top of the picture, or with its bottom middle on this spot.
+func _say(line: String, spot := Vector2(-1, -1)) -> void:
 	if line == "" or not is_inside_tree() or size.x < 80.0:
 		return
 	if is_instance_valid(_bubble):
@@ -212,6 +229,12 @@ func _say(line: String) -> void:
 	var wide := _bubble.get_combined_minimum_size()
 	_bubble.size = wide
 	_bubble.position = Vector2((size.x - wide.x) * 0.5, 6.0)
+	if spot.y >= 0.0:  # Over their head if that keeps it off your avatar's face; if not, up at the top after all.
+		var face := FACE_WIDTH * size.y / (2.0 * (_want_distance + 0.5) * tan(deg_to_rad(FOV * 0.5)))
+		if size.x * 0.5 - face >= wide.x:
+			var left := spot.x - wide.x * 0.5
+			var x := maxf(left, size.x * 0.5 + face) if spot.x > size.x * 0.5 else minf(left, size.x * 0.5 - face - wide.x)
+			_bubble.position = Vector2(clampf(x, 0.0, size.x - wide.x), maxf(spot.y - wide.y, 0.0))
 	_bubble.pivot_offset = wide * 0.5
 	_bubble.scale = Vector2.ONE * 0.6
 	var shown := _bubble
@@ -290,6 +313,9 @@ func _apply_zoom() -> void:
 	else:
 		_want_distance = whole * (1.0 - t)
 		_want_height = WHOLE[1]
+	# How much of the world shows to each side of the avatar. The picture may go wider, but that part's under the buttons.
+	if friends and size.y > 0.0:
+		friends.set_room(size.x / size.y * (_want_distance + 0.5) * tan(deg_to_rad(FOV * 0.5)))
 
 
 func _add_zoom_buttons() -> void:
