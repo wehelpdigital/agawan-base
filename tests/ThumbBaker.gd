@@ -31,7 +31,8 @@ func _run() -> void:
 
 func _bake_shop() -> void:
 	for old in DirAccess.get_files_at("res://assets/shop"):
-		DirAccess.remove_absolute("res://assets/shop/" + old)
+		if old.ends_with(".webp"):  # Their .import files say how to pack them small; those stay.
+			DirAccess.remove_absolute("res://assets/shop/" + old)
 	_viewport = SubViewport.new()
 	_viewport.size = Vector2i(SHOP_SIZE, SHOP_SIZE)
 	_viewport.own_world_3d = true
@@ -119,7 +120,8 @@ func _frame(camera: Camera3D, box: AABB) -> void:
 
 func _bake_maps() -> void:
 	for old in DirAccess.get_files_at("res://assets/maps"):
-		DirAccess.remove_absolute("res://assets/maps/" + old)
+		if old.ends_with(".webp"):
+			DirAccess.remove_absolute("res://assets/maps/" + old)
 	_viewport = SubViewport.new()
 	_viewport.size = MAP_SIZE
 	_viewport.own_world_3d = true

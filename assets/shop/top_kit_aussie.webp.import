@@ -15,9 +15,9 @@ dest_files=["res://.godot/imported/top_kit_aussie.webp-d61640e89eeeb4e1fede8c69b
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.8
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

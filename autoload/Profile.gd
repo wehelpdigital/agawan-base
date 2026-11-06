@@ -81,9 +81,11 @@ func load_profile() -> void:
 	_ensure_quests()
 
 
-## Everyone starts flying the flag of the country their device says it's in. It's free, and easy to change.
+## Everyone starts flying the flag of the country their device says it's in, with a puppy at their heels. Both are free,
+## and easy to change.
 func _guess_flag() -> void:
 	look["flag"] = Flags.from_locale(OS.get_locale())
+	look["pet"] = "puppy"
 
 
 func to_data() -> Dictionary:
