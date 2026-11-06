@@ -81,7 +81,7 @@ func load_profile() -> void:
 
 func to_data() -> Dictionary:
 	return {"version": VERSION, "name": player_name, "coins": coins, "gems": gems, "trophies": trophies, "best_trophies": best_trophies,
-		"xp": xp, "level": level, "owned": owned, "look": look, "emotes": emotes, "stats": stats, "favorite_map": favorite_map,
+		"xp": xp, "level": level, "owned": owned, "look": look, "look_version": 1, "emotes": emotes, "stats": stats, "favorite_map": favorite_map,
 		"difficulty": difficulty, "tutorial_done": tutorial_done, "matches_played": matches_played, "daily_day": daily_day,
 		"daily_streak": daily_streak, "quest_day": quest_day, "quest_ids": quest_ids, "quest_progress": quest_progress,
 		"quest_claimed": quest_claimed, "claimed_leagues": claimed_leagues, "saved_at": saved_at}
@@ -106,6 +106,9 @@ func apply_data(data: Dictionary) -> void:
 		for slot: String in look:
 			if saved_look.has(slot) and not Cosmetics.item(slot, str(saved_look[slot])).is_empty():
 				look[slot] = str(saved_look[slot])
+		# Everyone used to start in shades, whether they chose them or not. They can always put them back on.
+		if int(data.get("look_version", 0)) < 1 and look["mask"] == "shades":
+			look["mask"] = ""
 	emotes.clear()
 	if data.get("emotes") is Array:
 		for id: Variant in data["emotes"]:

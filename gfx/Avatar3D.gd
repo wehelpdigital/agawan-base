@@ -17,6 +17,8 @@ const HAT_DEPTH := 0.9
 const HAT_RISE := 0.34
 ## These sit above the head or round it, so the hair and ears can stay. Everything else is pulled down over them.
 const HATS_OVER_HAIR := ["headband", "flowers", "halo_ring", "ufo"]
+signal gag_started(line: String)  ## With something to say about it, for whoever's listening.
+
 static var _meshes := {}  # key -> ArrayMesh
 static var _eye_info := {}  # Avatar key -> where its eyes are, for blinking.
 static var _mat_normal: ShaderMaterial
@@ -30,6 +32,7 @@ var moving := 0.0  ## 0..1, how fast the legs go.
 var state := "idle"  ## idle, run, dash, stun, freeze, root, jail, dance, sad, air
 var dance_id := ""
 var run_id := ""
+var calm := false  ## Holds still and keeps a straight face, so you can see the one you're trying on.
 
 var _hips: Node3D
 var _head: Node3D
@@ -60,6 +63,18 @@ var _blink_left := 0.0
 var _eye_seen := {}
 var _face_hide := ""  ## What a mask hides of the face: "eyes" or "mouth".
 var _rest_face := "normal"  ## The face this player chose to wear.
+var _hero_id := ""
+var _own_run := ""  ## The walk this character falls back on, with no run style of its own.
+var _floaty := false
+var _wiggles: Array[Dictionary] = []
+var _kick := 0.0  ## Set everything flapping, after a jolt.
+var _gag := ""
+var _gag_left := 0.0
+var _gag_total := 1.0
+var _gag_wait := randf_range(3.0, 12.0)
+var _glance_wait := randf_range(1.5, 5.0)
+var _glance_left := 0.0
+var _glance := "look_l"
 var _state_seen := ""
 var _state_face := ""
 var _funny_wait := randf_range(4.0, 14.0)
@@ -104,8 +119,12 @@ func setup(p_look: Dictionary, p_team_color := Color("ffffff")) -> void:
 	var dressed_top: bool = str(look.get("top", "")) != ""
 	var dressed_low: bool = str(look.get("pants", "")) != ""
 	var has_back: bool = str(look.get("back", "")) != ""
-	var body_key := "body|%s|%s|%s|%s" % [skin_key, dressed_top, dressed_low, has_back]
-	_add_part(_hips, _shared(body_key, _build_body.bind(hero, skin, dressed_top, dressed_low, has_back)), Vector3.ZERO)
+	var body_key := "body|%s|%s|%s" % [skin_key, dressed_top, dressed_low]
+	_add_part(_hips, _shared(body_key, _build_body.bind(hero, skin, dressed_top, dressed_low)), Vector3.ZERO)
+	_hero_id = hero["id"]
+	_own_run = String(Faces.person(_hero_id).get("run", ""))
+	_gag = ""
+	_floaty = hero.get("shape") == "ghost"
 	_head = Node3D.new()
 	_head.position = Vector3(0, HEAD_Y, 0)
 	_head.scale = HEAD_SHAPE
@@ -129,7 +148,8 @@ func setup(p_look: Dictionary, p_team_color := Color("ffffff")) -> void:
 		_eye_seen = {}
 		_add_part(_head, _shared(head_key, _build_head.bind(hero, skin, hat_level, cover)), Vector3.ZERO)
 		if not _eye_seen.is_empty():
-			_eye_seen["shape"] = _head_shape(hero, plain)
+			_eye_seen["shape"] = _face_surface(hero, plain)
+			_eye_seen["hero"] = hero["id"]
 			_eye_info[head_key] = _eye_seen
 		if cover != "plate" and _eye_info.has(head_key):
 			_face = MeshInstance3D.new()
@@ -149,6 +169,12 @@ func setup(p_look: Dictionary, p_team_color := Color("ffffff")) -> void:
 		var worn := _add_part(_head, _shared("mask|%s|%s" % [mask_id, hatted], AvatarParts.mask.bind(mask_id, hatted)), Vector3.ZERO)
 		if cover != "whole":
 			_fit_mask(worn, hero, cover, plain)
+	_wiggles.clear()
+	for row: Array in _wiggle_list(hero, hat_level, cover, plain, has_back):
+		var wiggle := _add_part(_head if row[1] else _hips, _shared("wiggle|%s|%s" % [row[0], skin_key], _build_wiggle.bind(row[0], hero, skin)), row[2])
+		if row[1] and hat_level > 0 and String(hero.get("animal", "")) == "tarsier":
+			wiggle.scale = Vector3.ONE * 0.8
+		_wiggles.append({"node": wiggle, "axis": row[3], "amp": row[4], "run": row[5], "slow": row[6], "fast": row[7], "phase": randf() * TAU, "flicker": row[0] == "flames"})
 	var arm_x := _arm_x(hero, dressed_top)
 	_arm_l = Node3D.new()
 	_arm_l.position = Vector3(-arm_x, ARM_Y, 0)
@@ -242,6 +268,7 @@ func flash() -> void:
 
 func squash(amount := 0.35) -> void:
 	_squash = amount
+	_kick = maxf(_kick, amount)
 
 
 # --- Fitting what's worn to each head and body ------------------------------------------------------
@@ -261,6 +288,17 @@ static func _hat_level(hero: Dictionary, hat_id: String) -> int:
 	if hat_id in ["headband", "flowers"]:
 		return 0
 	return 1 if hero.get("kind") == "mascot" or hat_id not in HATS_OVER_HAIR else 0
+
+
+## The surface a face is drawn on, as an ellipsoid: its middle and its size. A flat screen has none.
+static func _face_surface(hero: Dictionary, plain: bool) -> Array:
+	if not plain:
+		match String(hero.get("shape", "")):
+			"cup": return [Vector3(0, -0.1, 0), Vector3(0.43, 0.9, 0.4)]
+			"flame": return [Vector3(0, -0.12, 0.2), Vector3(0.36, 0.33, 0.28)]
+			"crystal": return [Vector3(0, 0.12, 0), Vector3(0.46, 0.5, 0.46)]
+			"robot": return []
+	return _head_shape(hero, plain)
 
 
 ## This head as an ellipsoid: its middle, its size, and the height of its eyes.
@@ -395,7 +433,7 @@ static func _second(hero: Dictionary, skin: Dictionary, key: String) -> Color:
 # --- Body parts -----------------------------------------------------------------------------------
 
 ## Clothes replace what's under them, so no avatar's body can poke through what it wears.
-func _build_body(k: MeshKit, hero: Dictionary, skin: Dictionary, no_top := false, no_low := false, no_tail := false) -> void:
+func _build_body(k: MeshKit, hero: Dictionary, skin: Dictionary, no_top := false, no_low := false) -> void:
 	var w := _clothes_width(hero)
 	var low_at := Vector3(0, 0.28, 0)
 	var low_r := Vector3(0.3 * w, 0.15, 0.24 * w)
@@ -420,8 +458,6 @@ func _build_body(k: MeshKit, hero: Dictionary, skin: Dictionary, no_top := false
 			else:
 				k.ball(Vector3(0, 0.46, 0), Vector3(0.34, 0.33, 0.3), fur, 12, 18)
 				k.round_patch(Vector3(0, 0.46, 0), Vector3(0.34, 0.33, 0.3), 0.0, -0.05, 0.215, 0.22, belly)
-			if not no_tail:
-				_tail(k, hero, fur)
 		_:
 			var main := _main(hero, skin, "main")
 			var shape: String = hero.get("shape", "")
@@ -461,22 +497,6 @@ func _ghost_hem(k: MeshKit, main: Color) -> void:
 	for i in 8:
 		var a := TAU * i / 8.0
 		k.ball(Vector3(cos(a) * 0.36, 0.14, sin(a) * 0.36), Vector3(0.125, 0.125, 0.125), main, 8, 10)
-
-
-func _tail(k: MeshKit, hero: Dictionary, fur: Color) -> void:
-	match hero.get("animal"):
-		"dog", "cat", "monkey":
-			k.push(Transform3D(Basis(Vector3.RIGHT, -0.7), Vector3(0, 0.45, -0.3)))
-			k.cyl(Vector3.ZERO, 0.42, 0.08, 0.05, fur, 5)
-			k.pop()
-		"pig":
-			k.torus(Vector3(0, 0.5, -0.38), 0.07, 0.03, fur, 8, 4)
-		"rooster":
-			for i in 3:
-				var angle := -0.4 + i * 0.4
-				k.push(Transform3D(Basis(Vector3.BACK, angle), Vector3(0, 0.6, -0.32)))
-				k.ball(Vector3(0, 0.26, -0.05), Vector3(0.1, 0.26, 0.07), Color(hero["accent"]).lerp(Color("3a6aff"), i * 0.5), 3, 6)
-				k.pop()
 
 
 ## A short round arm ending in an oblong mitten of a hand. No fingers: it's cuter.
@@ -525,10 +545,10 @@ func _build_foot(k: MeshKit, hero: Dictionary, skin: Dictionary) -> void:
 ## and ghost's solid black eyes.
 func _eyes(_k: MeshKit, y: float, z: float, gap: float, size: float, _iris := Color("6a3a7a"), white := Color("ffffff")) -> void:
 	var plain := white == Color("ffffff")
-	if plain:
-		gap *= 1.18
+	if plain:  # Close enough together to look at you, and big enough to see from across the field.
+		gap *= 1.05
 		y -= 0.02
-		z -= 0.012
+		size *= 1.2
 	_eye_seen.merge({"y": y, "z": z, "gap": gap, "size": size, "white": white, "plain": plain, "solid": white.get_luminance() < 0.2}, true)
 
 
@@ -543,13 +563,23 @@ func _show_face(expression: String) -> void:
 
 func _build_face(k: MeshKit, info: Dictionary, expression: String, hide := "") -> void:
 	var blinking := expression.ends_with("|b")
-	var parts: Array = Faces.PARTS.get(expression.trim_suffix("|b"), Faces.PARTS["normal"])
+	var face_name := expression.trim_suffix("|b")
+	var parts: Array = Faces.PARTS.get(face_name, Faces.PARTS["normal"])
+	var who := Faces.person(String(info.get("hero", "")))
 	k.outline = 0.0
+	if hide != "mouth":
+		_cheeks(k, info)
+		if info.has("whiskers"):
+			_whiskers(k, info)
 	if hide != "eyes":
 		for i in 2:
 			var s := -1.0 if i == 0 else 1.0
-			var at := Vector3(s * float(info["gap"]), float(info["y"]), float(info["z"]))
-			_eye(k, info, "shut" if blinking else String(parts[i]), at, s)
+			var kind := "shut" if blinking else String(parts[i])
+			if kind == "dot" and face_name == "normal":
+				kind = String(who.get("eyes", "dot"))
+			k.push(_face_frame(info, _on_head(info, s * float(info["gap"]), float(info["y"]), 0.0)))
+			_eye(k, info, kind, Vector3.ZERO, s)
+			k.pop()
 	if info.has("mouth_y") and hide != "mouth":
 		_draw_mouth(k, info, String(parts[2]))
 	for i in range(3, parts.size()):
@@ -557,20 +587,41 @@ func _build_face(k: MeshKit, info: Dictionary, expression: String, hide := "") -
 	k.outline = 0.02
 
 
+## An eye's own frame: facing the way the head does at that spot, so it hugs the head however far round it is.
+static func _face_frame(info: Dictionary, at: Vector3) -> Transform3D:
+	var shape: Array = info["shape"]
+	if shape.is_empty():
+		return Transform3D(Basis.IDENTITY, at)
+	var r: Vector3 = shape[1]
+	var n := ((at - (shape[0] as Vector3)) / (r * r)).normalized()
+	return Transform3D(Basis(Vector3.UP, atan2(n.x, n.z)) * Basis(Vector3.RIGHT, -asin(clampf(n.y, -1.0, 1.0))), at)
+
+
+## An eye with its white showing, and a dark ring so it reads on any colour of head.
+func _white_eye(k: MeshKit, at: Vector3, rx: float, ry: float, rz: float, ink: Color) -> void:
+	k.ball(at, Vector3(rx * 1.13, ry * 1.1, rz * 0.9), ink, 8, 12)
+	k.ball(at + Vector3(0, 0, rz * 0.12), Vector3(rx, ry, rz), Color.WHITE, 8, 12)
+
+
 func _eye(k: MeshKit, info: Dictionary, kind: String, at: Vector3, s: float) -> void:
 	var size: float = info["size"]
-	var ink: Color = info.get("ink", Color("241338"))
-	var flat := at.z + size * 0.38
+	var ink: Color = info.get("ink", Color("1a1030"))
+	var flat := at.z + size * 0.22 + 0.006
 	match kind:
-		"dot":
+		"dot", "dot_l", "dot_r":
+			var look := -1.0 if kind == "dot_l" else (1.0 if kind == "dot_r" else 0.0)
+			var moved := at + Vector3(look * size * 0.24, 0, 0)
 			if info.has("ink"):  # A robot's lit-up eyes.
-				k.ball(at, Vector3(size * 0.92, size * 0.92, size * 0.36), ink, 10, 14)
+				k.ball(moved, Vector3(size * 0.92, size * 0.92, size * 0.36), ink, 10, 14)
 			elif bool(info["plain"]) or bool(info["solid"]):
-				k.ball(at, Vector3(size * 0.66, size * 0.98, size * 0.42), ink, 10, 14)
-			else:  # The tarsier's huge ringed eyes.
+				k.ball(moved, Vector3(size * 0.76, size * 1.04, size * 0.42), ink, 10, 14)
+			else:  # The tarsier's huge ringed eyes: only the pupil moves.
 				k.ball(at, Vector3(size, size * 1.1, size * 0.42), info["white"], 10, 14)
-				k.ball(at + Vector3(0, -size * 0.05, size * 0.26), Vector3(size * 0.62, size * 0.74, size * 0.22), ink, 8, 12)
-			k.ball(at + Vector3(-size * 0.2, size * 0.38, size * 0.36), Vector3(size * 0.2, size * 0.22, size * 0.07), Color.WHITE, 5, 8)
+				moved = at + Vector3(look * size * 0.34, -size * 0.05, size * 0.26)
+				k.ball(moved, Vector3(size * 0.62, size * 0.74, size * 0.22), ink, 8, 12)
+			# Big shiny glints: nothing looks friendlier.
+			k.ball(moved + Vector3(-size * 0.22, size * 0.42, size * 0.36), Vector3(size * 0.27, size * 0.29, size * 0.07), Color.WHITE, 5, 8)
+			k.ball(moved + Vector3(size * 0.26, -size * 0.36, size * 0.36), Vector3(size * 0.12, size * 0.12, size * 0.05), Color.WHITE, 4, 7)
 		"shut":
 			_arc(k, at, size, -0.22, ink)
 		"up":
@@ -584,24 +635,24 @@ func _eye(k: MeshKit, info: Dictionary, kind: String, at: Vector3, s: float) -> 
 			_line(k, at + Vector3(-size * 0.6, size * 0.6, size * 0.36), at + Vector3(size * 0.6, -size * 0.6, size * 0.36), size * 0.17, ink)
 			_line(k, at + Vector3(-size * 0.6, -size * 0.6, size * 0.37), at + Vector3(size * 0.6, size * 0.6, size * 0.37), size * 0.17, ink)
 		"wide":
-			k.ball(at, Vector3(size * 0.82, size * 1.05, size * 0.36), Color.WHITE, 8, 12)
-			k.ball(at + Vector3(0, 0, size * 0.3), Vector3(size * 0.3, size * 0.36, size * 0.1), ink, 6, 9)
+			_white_eye(k, at, size * 0.82, size * 1.05, size * 0.36, ink)
+			k.ball(at + Vector3(0, 0, size * 0.34), Vector3(size * 0.3, size * 0.36, size * 0.1), ink, 6, 9)
 		"sad":
-			k.ball(at + Vector3(0, -size * 0.1, 0), Vector3(size * 0.58, size * 0.8, size * 0.38), ink, 8, 12)
-			k.ball(at + Vector3(-size * 0.16, size * 0.16, size * 0.3), Vector3(size * 0.16, size * 0.16, size * 0.06), Color.WHITE, 4, 6)
+			k.ball(at + Vector3(0, -size * 0.1, 0), Vector3(size * 0.62, size * 0.84, size * 0.38), ink, 8, 12)
+			k.ball(at + Vector3(-size * 0.16, size * 0.16, size * 0.3), Vector3(size * 0.2, size * 0.2, size * 0.06), Color.WHITE, 4, 6)
 			_line(k, at + Vector3(s * size * 0.75, size * 0.8, size * 0.3), at + Vector3(-s * size * 0.5, size * 1.15, size * 0.3), size * 0.1, ink)
 			k.ball(at + Vector3(s * size * 0.32, -size * 1.05, size * 0.3), Vector3(size * 0.2, size * 0.3, size * 0.1), Color("7fdcff"), 5, 8)
-		"half":  # Half shut, looking down on you.
+		"half":  # Half shut: unbothered, or half asleep.
 			var lid := PackedVector3Array()
 			for i in 13:
 				var a := PI + PI * i / 12.0
-				lid.append(Vector3(at.x + cos(a) * size * 0.72, at.y + sin(a) * size * 0.72, flat))
+				lid.append(Vector3(at.x + cos(a) * size * 0.76, at.y + sin(a) * size * 0.8, flat))
 			k.fan(lid, ink)
-			_line(k, Vector3(at.x - size * 0.9, at.y + size * 0.02, flat + 0.002), Vector3(at.x + size * 0.9, at.y + size * 0.02, flat + 0.002), size * 0.13, ink)
-			k.ball(Vector3(at.x - size * 0.2, at.y - size * 0.24, flat + 0.002), Vector3(size * 0.14, size * 0.14, size * 0.05), Color.WHITE, 4, 6)
+			_line(k, Vector3(at.x - size * 0.95, at.y + size * 0.02, flat + 0.002), Vector3(at.x + size * 0.95, at.y + size * 0.02, flat + 0.002), size * 0.14, ink)
+			k.ball(Vector3(at.x - size * 0.2, at.y - size * 0.26, flat + 0.002), Vector3(size * 0.16, size * 0.16, size * 0.05), Color.WHITE, 4, 6)
 		"side":  # Both eyes off to one side.
-			k.ball(at, Vector3(size * 0.82, size * 0.98, size * 0.36), Color.WHITE, 8, 12)
-			k.ball(at + Vector3(size * 0.34, -size * 0.04, size * 0.3), Vector3(size * 0.34, size * 0.46, size * 0.1), ink, 6, 9)
+			_white_eye(k, at, size * 0.82, size * 0.98, size * 0.36, ink)
+			k.ball(at + Vector3(size * 0.36, -size * 0.04, size * 0.34), Vector3(size * 0.36, size * 0.48, size * 0.1), ink, 6, 9)
 		"heart":
 			var heart := PackedVector3Array()
 			for i in range(23, -1, -1):
@@ -622,15 +673,15 @@ func _eye(k: MeshKit, info: Dictionary, kind: String, at: Vector3, s: float) -> 
 		"coin":
 			k.ball(at, Vector3(size * 0.92, size * 0.92, size * 0.36), Color("e89a10"), 8, 12)
 			k.ball(at + Vector3(0, 0, size * 0.14), Vector3(size * 0.68, size * 0.68, size * 0.26), Color("ffd23f"), 8, 12)
-			_line(k, Vector3(at.x, at.y + size * 0.42, flat + 0.01), Vector3(at.x, at.y - size * 0.42, flat + 0.01), size * 0.12, Color("e89a10"))
+			_line(k, Vector3(at.x, at.y + size * 0.42, at.z + size * 0.4), Vector3(at.x, at.y - size * 0.42, at.z + size * 0.4), size * 0.12, Color("e89a10"))
 		"tiny":  # . .
-			k.ball(at, Vector3(size * 0.24, size * 0.28, size * 0.16), ink, 5, 8)
+			k.ball(at, Vector3(size * 0.28, size * 0.32, size * 0.16), ink, 5, 8)
 		"big":
-			k.ball(at, Vector3(size * 1.1, size * 1.25, size * 0.36), Color.WHITE, 8, 12)
-			k.ball(at + Vector3(-size * 0.3, size * 0.28, size * 0.3), Vector3(size * 0.34, size * 0.4, size * 0.1), ink, 6, 9)
+			_white_eye(k, at, size * 1.1, size * 1.25, size * 0.36, ink)
+			k.ball(at + Vector3(-size * 0.3, size * 0.28, size * 0.34), Vector3(size * 0.34, size * 0.4, size * 0.1), ink, 6, 9)
 		"small":
-			k.ball(at, Vector3(size * 0.6, size * 0.66, size * 0.3), Color.WHITE, 6, 10)
-			k.ball(at + Vector3(size * 0.18, -size * 0.22, size * 0.24), Vector3(size * 0.2, size * 0.22, size * 0.07), ink, 5, 8)
+			_white_eye(k, at, size * 0.6, size * 0.66, size * 0.3, ink)
+			k.ball(at + Vector3(size * 0.18, -size * 0.22, size * 0.28), Vector3(size * 0.2, size * 0.22, size * 0.07), ink, 5, 8)
 		"line":  # - -
 			_line(k, Vector3(at.x - size * 0.72, at.y, flat), Vector3(at.x + size * 0.72, at.y, flat), size * 0.14, ink)
 		"mad":
@@ -652,104 +703,230 @@ func _eye(k: MeshKit, info: Dictionary, kind: String, at: Vector3, s: float) -> 
 			k.ribbon(turns, size * 0.13, ink)
 
 
+# --- Painted on the face, following its curve ---------------------------------------------------------
+
+## A point on the surface of this head, for what's drawn on it.
+static func _on_head(info: Dictionary, x: float, y: float, lift := 0.012) -> Vector3:
+	var shape: Array = info["shape"]
+	if shape.is_empty():  # A flat screen.
+		return Vector3(x, y, float(info["z"]) + lift)
+	var c: Vector3 = shape[0]
+	var r: Vector3 = shape[1]
+	var q := 1.0 - pow((x - c.x) / r.x, 2.0) - pow((y - c.y) / r.y, 2.0)
+	return Vector3(x, y, c.z + r.z * sqrt(maxf(q, 0.0)) + lift)
+
+
+## A shape of paint, its points going counter-clockwise from the front, lying right on the surface of the face.
+func _paint(k: MeshKit, info: Dictionary, points: PackedVector2Array, color: Color, lift := 0.006) -> void:
+	color.a = 0.0
+	var center := Vector2.ZERO
+	for point in points:
+		center += point
+	center /= float(points.size())
+	var rings := 3
+	var n := Vector3.BACK
+	for i in points.size():
+		var a := points[i]
+		var b := points[(i + 1) % points.size()]
+		for ring in rings:
+			var f0 := float(ring) / rings
+			var f1 := float(ring + 1) / rings
+			var p0 := _on_head(info, lerpf(center.x, a.x, f0), lerpf(center.y, a.y, f0), lift)
+			var p1 := _on_head(info, lerpf(center.x, a.x, f1), lerpf(center.y, a.y, f1), lift)
+			var p2 := _on_head(info, lerpf(center.x, b.x, f1), lerpf(center.y, b.y, f1), lift)
+			var p3 := _on_head(info, lerpf(center.x, b.x, f0), lerpf(center.y, b.y, f0), lift)
+			k._tri(p0, p1, p2, n, n, n, color, color, color, false)
+			if ring > 0:
+				k._tri(p0, p2, p3, n, n, n, color, color, color, false)
+
+
+## A line of paint along a path, tapering at both ends.
+func _stroke(k: MeshKit, info: Dictionary, path: PackedVector2Array, half: float, color: Color, lift := 0.012) -> void:
+	color.a = 0.0
+	var count := path.size()
+	var upper := PackedVector3Array()
+	var lower := PackedVector3Array()
+	for i in count:
+		var along := (path[mini(i + 1, count - 1)] - path[maxi(i - 1, 0)]).normalized()
+		var side := Vector2(-along.y, along.x) * half * (0.3 + 0.7 * sin(PI * float(i) / (count - 1)))
+		var a := path[i] + side
+		var b := path[i] - side
+		upper.append(_on_head(info, a.x, a.y, lift))
+		lower.append(_on_head(info, b.x, b.y, lift))
+	var n := Vector3.BACK
+	for i in count - 1:
+		k._quad(lower[i], lower[i + 1], upper[i + 1], upper[i], n, color, color, color, color, false)
+
+
+static func _oval(at: Vector2, rx: float, ry: float, count := 18) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in count:
+		var a := TAU * i / count
+		out.append(at + Vector2(cos(a) * rx, sin(a) * ry))
+	return out
+
+
+func _cheeks(k: MeshKit, info: Dictionary, color: Variant = null) -> void:
+	if not info.has("cheek") and color == null:
+		return
+	var size := minf(float(info["size"]), 0.15)
+	var y: float = float(info["y"]) - size * 1.05
+	var x: float = float(info["gap"]) + size * 0.72
+	for s: float in [-1.0, 1.0]:
+		_paint(k, info, _oval(Vector2(s * x, y), size * 0.66, size * 0.38), color if color != null else info["cheek"], 0.004)
+
+
+func _whiskers(k: MeshKit, info: Dictionary) -> void:
+	var ink := Color("3a2a1c")
+	for s: float in [-1.0, 1.0]:
+		for i in 2:
+			var y := -0.1 - i * 0.055
+			_stroke(k, info, PackedVector2Array([Vector2(s * 0.3, y), Vector2(s * 0.37, y + 0.008 - i * 0.012), Vector2(s * 0.44, y + 0.022 - i * 0.03)]), 0.012, ink)
+
+
+## A D of an open smile.
+static func _mouth_shape(y: float, width: float, turn := 1.0) -> PackedVector2Array:
+	var steps := 14
+	var out := PackedVector2Array()
+	for i in steps + 1:  # The lower lip, left to right...
+		var f := lerpf(-1.0, 1.0, i / float(steps))
+		out.append(Vector2(f * width, y + turn * (0.012 * f * f - width * (1.0 - f * f))))
+	for i in range(steps - 1, 0, -1):  # ...and the upper lip back.
+		var f := lerpf(-1.0, 1.0, i / float(steps))
+		out.append(Vector2(f * width, y + turn * (0.012 * f * f - width * 0.1 * (1.0 - f * f))))
+	if turn < 0.0:
+		out.reverse()
+	return out
+
+
+func _open_mouth(k: MeshKit, info: Dictionary, y: float, width: float, upside := false) -> void:
+	var turn := -1.0 if upside else 1.0
+	var base_y := y - width * 0.7 if upside else y
+	_paint(k, info, _mouth_shape(base_y, width, turn), Color("8a1f3c"))
+	_paint(k, info, _oval(Vector2(0, base_y - turn * width * 0.66), width * 0.52, width * 0.27), Color("ff8fa6"), 0.009)
+
+
+## A row of top teeth along the inside of an open mouth, with a tooth missing if you like.
+func _top_teeth(k: MeshKit, info: Dictionary, y: float, width: float, gap := false) -> void:
+	var points := PackedVector2Array()
+	for i in 13:
+		var f := lerpf(-0.86, 0.86, i / 12.0)
+		points.append(Vector2(f * width, y - width * 0.42 * (1.0 - f * f * 0.75)))
+	for i in range(12, -1, -1):
+		var f := lerpf(-0.86, 0.86, i / 12.0)
+		points.append(Vector2(f * width, y + 0.012 * f * f - width * 0.1 * (1.0 - f * f)))
+	_paint(k, info, points, Color.WHITE, 0.012)
+	if gap:
+		_paint(k, info, _oval(Vector2(width * 0.24, y - width * 0.27), width * 0.13, width * 0.18, 10), Color("8a1f3c"), 0.015)
+
+
+## A wide grin of a shape: a stadium, with its corners turned up.
+static func _grin_shape(y: float, width: float, height: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		var x := cos(a) * width
+		out.append(Vector2(x, y + sin(a) * height + pow(x / width, 2.0) * height * 0.55))
+	return out
+
+
 func _draw_mouth(k: MeshKit, info: Dictionary, kind: String) -> void:
 	var y: float = info["mouth_y"]
-	var z: float = info["mouth_z"]
 	var w: float = info["mouth_w"]
 	var dark := Color("6a2038")
 	if kind == "smile":
-		kind = String(info.get("rest_mouth", "smile"))
+		kind = String(Faces.person(String(info.get("hero", ""))).get("mouth", "smile"))
 	match kind:
 		"none":
 			pass
-		"boo":
-			k.ball(Vector3(0, y - w * 0.4, z - 0.01), Vector3(w * 0.9, w * 1.2, 0.018), Color("0a1426"), 5, 8)
 		"smile":
-			_open_mouth(k, y, z, w)
+			_open_mouth(k, info, y, w)
 		"big":
-			_open_mouth(k, y, z, w * 1.45)
+			_open_mouth(k, info, y, w * 1.3)
 		"laugh":
-			_open_mouth(k, y, z, w * 1.9)
-			_band(k, y - w * 0.14, z + 0.003, w * 1.5, w * 0.04, w * 0.3, Color.WHITE)
+			_open_mouth(k, info, y, w * 1.75)
+			_top_teeth(k, info, y, w * 1.75)
+		"gap":  # A big grin, with a tooth missing.
+			_open_mouth(k, info, y, w * 1.35)
+			_top_teeth(k, info, y, w * 1.35, true)
+		"buck":  # A goofy smile and two big front teeth.
+			var line := PackedVector2Array()
+			for i in 13:
+				var f := lerpf(-1.0, 1.0, i / 12.0)
+				line.append(Vector2(f * w * 1.2, y - w * 0.3 * (1.0 - f * f)))
+			var top := y - w * 0.27
+			for s: float in [-1.0, 1.0]:
+				var tooth := Vector2(s * w * 0.33, top - w * 0.36)
+				_paint(k, info, _grin_shape(tooth.y, w * 0.36, w * 0.46), dark, 0.008)
+				_paint(k, info, _grin_shape(tooth.y, w * 0.29, w * 0.38), Color.WHITE, 0.012)
+			_stroke(k, info, line, w * 0.14, dark, 0.016)
 		"sad":
-			var pts := PackedVector3Array()
+			var pts := PackedVector2Array()
 			for i in 9:
 				var f := lerpf(-1.0, 1.0, i / 8.0)
-				pts.append(Vector3(f * w * 0.85, y - w * 0.42 + w * 0.3 * (1.0 - f * f), _curve(z, f, w) + 0.006))
-			k.ribbon(pts, w * 0.13, dark)
+				pts.append(Vector2(f * w * 0.85, y - w * 0.42 + w * 0.3 * (1.0 - f * f)))
+			_stroke(k, info, pts, w * 0.14, dark)
 		"shock":
-			k.ball(Vector3(0, y - w * 0.42, z - 0.004), Vector3(w * 0.42, w * 0.56, 0.016), Color("7a1f3a"), 6, 10)
+			_paint(k, info, _oval(Vector2(0, y - w * 0.42), w * 0.46, w * 0.6), Color("7a1f3a"))
 		"flat":
-			_line(k, Vector3(-w * 0.6, y - w * 0.3, z + 0.004), Vector3(w * 0.6, y - w * 0.3, z + 0.004), w * 0.12, dark)
+			_stroke(k, info, PackedVector2Array([Vector2(-w * 0.6, y - w * 0.3), Vector2(0, y - w * 0.3), Vector2(w * 0.6, y - w * 0.3)]), w * 0.14, dark)
 		"tiny":
-			_line(k, Vector3(-w * 0.3, y - w * 0.3, z + 0.004), Vector3(w * 0.3, y - w * 0.3, z + 0.004), w * 0.1, dark)
+			_stroke(k, info, PackedVector2Array([Vector2(-w * 0.34, y - w * 0.3), Vector2(0, y - w * 0.3), Vector2(w * 0.34, y - w * 0.3)]), w * 0.15, dark)
 		"o":
-			k.ball(Vector3(0, y - w * 0.3, z - 0.004), Vector3(w * 0.3, w * 0.38, 0.014), dark, 5, 8)
+			_paint(k, info, _oval(Vector2(0, y - w * 0.3), w * 0.32, w * 0.4, 12), dark)
+		"boo":
+			_paint(k, info, _oval(Vector2(0, y - w * 0.4), w * 0.9, w * 1.2), UiKit.INK)
 		"wavy":
-			var pts := PackedVector3Array()
+			var pts := PackedVector2Array()
 			for i in 11:
 				var f := lerpf(-1.0, 1.0, i / 10.0)
-				pts.append(Vector3(f * w, y - w * 0.35 + sin(f * 7.0) * w * 0.16, _curve(z, f, w) + 0.006))
-			k.ribbon(pts, w * 0.11, dark)
+				pts.append(Vector2(f * w, y - w * 0.35 + sin(f * 7.0) * w * 0.16))
+			_stroke(k, info, pts, w * 0.13, dark)
 		"smirk":  # Up at one side.
-			var pts := PackedVector3Array()
+			var pts := PackedVector2Array()
 			for i in 11:
 				var f := lerpf(-0.6, 1.15, i / 10.0)
-				pts.append(Vector3(f * w, y - w * 0.3 + pow(maxf(f, 0.0), 2.0) * w * 0.42, _curve(z, f, w) + 0.006))
-			k.ribbon(pts, w * 0.14, dark)
+				pts.append(Vector2(f * w, y - w * 0.3 + pow(maxf(f, 0.0), 2.0) * w * 0.42))
+			_stroke(k, info, pts, w * 0.16, dark)
 		"cat":  # w
-			var pts := PackedVector3Array()
+			var pts := PackedVector2Array()
 			for i in 17:
 				var f := lerpf(-1.0, 1.0, i / 16.0)
-				pts.append(Vector3(f * w * 0.95, y - w * 0.12 - absf(sin(f * PI)) * w * 0.42, _curve(z, f, w) + 0.006))
-			k.ribbon(pts, w * 0.15, dark)
+				pts.append(Vector2(f * w * 0.95, y - w * 0.12 - absf(sin(f * PI)) * w * 0.42))
+			_stroke(k, info, pts, w * 0.17, dark)
 		"pout":
-			var pts := PackedVector3Array()
+			var pts := PackedVector2Array()
 			for i in 9:
 				var f := lerpf(-1.0, 1.0, i / 8.0)
-				pts.append(Vector3(f * w * 0.42, y - w * 0.46 + (1.0 - f * f) * w * 0.3, z + 0.006))
-			k.ribbon(pts, w * 0.15, dark)
+				pts.append(Vector2(f * w * 0.42, y - w * 0.46 + (1.0 - f * f) * w * 0.3))
+			_stroke(k, info, pts, w * 0.18, dark)
 		"tongue":  # Blep.
-			k.ball(Vector3(w * 0.22, y - w * 0.56, z + 0.002), Vector3(w * 0.42, w * 0.58, 0.012), Color("ff8fa6"), 6, 10)
-			_line(k, Vector3(w * 0.22, y - w * 0.32, z + 0.016), Vector3(w * 0.22, y - w * 0.78, z + 0.016), w * 0.05, Color("d65c78"))
-			var pts := PackedVector3Array()
-			for i in 9:
-				var f := lerpf(-1.0, 1.0, i / 8.0)
-				pts.append(Vector3(f * w * 0.9, y - w * 0.22 - w * 0.08 * (1.0 - f * f), _curve(z, f, w) + 0.018))
-			k.ribbon(pts, w * 0.12, dark)
-		"teeth":
-			_band(k, y - w * 0.1, z + 0.002, w * 1.35, w * 0.18, w * 0.8, Color.WHITE)
-			for f: float in [-0.5, 0.0, 0.5]:
-				_line(k, Vector3(f * w * 1.35, y - w * 0.14, _curve(z, f, w * 1.35) + 0.008), Vector3(f * w * 1.35, y - w * 0.76, _curve(z, f, w * 1.35) + 0.008), w * 0.05, Color("c9b8d8"))
-		"gritted":
-			_band(k, y - w * 0.14, z + 0.002, w * 1.15, 0.0, w * 0.56, Color.WHITE)
-			var pts := PackedVector3Array()
+			_paint(k, info, _grin_shape(y - w * 0.75, w * 0.45, w * 0.62), dark, 0.006)
+			_paint(k, info, _grin_shape(y - w * 0.75, w * 0.36, w * 0.54), Color("ff8fa6"), 0.01)
+			_stroke(k, info, PackedVector2Array([Vector2(0, y - w * 0.36), Vector2(0, y - w * 0.72), Vector2(0, y - w * 1.08)]), w * 0.06, Color("d65c78"), 0.014)
+			var smile := PackedVector2Array()
 			for i in 13:
-				var f := lerpf(-0.95, 0.95, i / 12.0)
-				pts.append(Vector3(f * w * 1.15, y - w * 0.42 + (w * 0.1 if i % 2 == 0 else -w * 0.1), _curve(z, f, w * 1.15) + 0.008))
-			k.ribbon(pts, w * 0.06, Color("6a2038"))
+				var f := lerpf(-1.0, 1.0, i / 12.0)
+				smile.append(Vector2(f * w * 1.1, y - w * 0.32 * (1.0 - f * f)))
+			_stroke(k, info, smile, w * 0.14, dark, 0.016)
+		"teeth":
+			_paint(k, info, _grin_shape(y - w * 0.4, w * 1.42, w * 0.56), dark, 0.006)
+			_paint(k, info, _grin_shape(y - w * 0.4, w * 1.28, w * 0.44), Color.WHITE, 0.01)
+			for f: float in [-0.5, 0.0, 0.5]:
+				_stroke(k, info, PackedVector2Array([Vector2(f * w * 1.28, y - w * 0.06), Vector2(f * w * 1.28, y - w * 0.4), Vector2(f * w * 1.28, y - w * 0.8)]), w * 0.05, Color("c9b8d8"), 0.014)
+		"gritted":
+			_paint(k, info, _grin_shape(y - w * 0.42, w * 1.25, w * 0.5), dark, 0.006)
+			_paint(k, info, _grin_shape(y - w * 0.42, w * 1.12, w * 0.39), Color.WHITE, 0.01)
+			var pts := PackedVector2Array()
+			for i in 13:
+				var f := lerpf(-0.92, 0.92, i / 12.0)
+				pts.append(Vector2(f * w * 1.12, y - w * 0.42 + f * f * w * 0.2 + (w * 0.1 if i % 2 == 0 else -w * 0.1)))
+			_stroke(k, info, pts, w * 0.06, dark, 0.014)
 		"wail":
-			_open_mouth(k, y - w * 0.2, z, w * 1.4, true)
+			_open_mouth(k, info, y - w * 0.2, w * 1.4, true)
 		"scream":
-			k.ball(Vector3(0, y - w * 0.8, z - 0.006), Vector3(w * 0.66, w * 1.1, 0.018), Color("5a1730"), 8, 12)
-			k.ball(Vector3(0, y - w * 1.3, z + 0.004), Vector3(w * 0.4, w * 0.4, 0.012), Color("ff8fa6"), 5, 8)
-
-
-## How far back the face curves at this point of the mouth.
-static func _curve(z: float, f: float, w: float) -> float:
-	return z - f * f * w * 0.28
-
-
-## A strip of mouth, wider in the middle, following the curve of the face: teeth.
-func _band(k: MeshKit, y: float, z: float, w: float, sag: float, height: float, color: Color) -> void:
-	var pts := PackedVector3Array()
-	for i in 13:
-		var f := lerpf(-1.0, 1.0, i / 12.0)
-		pts.append(Vector3(f * w, y - height * (1.0 - f * f * 0.45) - sag * (1.0 - f * f), _curve(z, f, w)))
-	for i in range(11, 0, -1):
-		var f := lerpf(-1.0, 1.0, i / 12.0)
-		pts.append(Vector3(f * w, y - sag * (1.0 - f * f), _curve(z, f, w)))
-	k.fan(pts, color)
+			_paint(k, info, _oval(Vector2(0, y - w * 0.85), w * 0.72, w * 1.15), Color("5a1730"))
+			_paint(k, info, _oval(Vector2(0, y - w * 1.42), w * 0.42, w * 0.42), Color("ff8fa6"), 0.01)
 
 
 ## Things drawn on the head round the eyes and mouth: blushes, tears, and comic marks.
@@ -759,8 +936,8 @@ func _face_extra(k: MeshKit, info: Dictionary, kind: String, hide: String) -> vo
 	var size: float = info["size"]
 	match kind:
 		"blush":
-			for s: float in [-1.0, 1.0]:
-				k.ball(_on_head(info, s * (gap + size * 0.62), y - size * 1.12), Vector3(size * 0.72, size * 0.36, 0.012), Color("ff7f9a"), 5, 9)
+			if hide != "mouth":
+				_cheeks(k, info, Color("ff5f86"))
 		"tears":
 			if hide == "eyes":
 				return
@@ -773,19 +950,19 @@ func _face_extra(k: MeshKit, info: Dictionary, kind: String, hide: String) -> vo
 			if hide != "eyes":
 				k.ball(_on_head(info, gap + size * 0.7, y - size * 0.7, 0.016), Vector3(size * 0.22, size * 0.36, 0.012), Color("7fdcff"), 5, 8)
 		"sweat":
-			k.ball(_on_head(info, gap + size * 1.1, y + size * 0.9, 0.016), Vector3(size * 0.3, size * 0.46, 0.014), Color("8fe3ff"), 5, 9)
-			k.ball(_on_head(info, gap + size * 1.02, y + size * 1.02, 0.03), Vector3(size * 0.08, size * 0.12, 0.004), Color.WHITE, 3, 5)
+			k.ball(_on_head(info, gap + size * 0.9, y + size * 0.8, 0.016), Vector3(size * 0.3, size * 0.46, 0.014), Color("8fe3ff"), 5, 9)
+			k.ball(_on_head(info, gap + size * 0.82, y + size * 0.92, 0.03), Vector3(size * 0.08, size * 0.12, 0.004), Color.WHITE, 3, 5)
 		"vein":  # The little cross of comic-book anger.
-			var at := _on_head(info, gap + size * 0.82, y + size * 1.3, 0.016)
+			var at := Vector2(gap + size * 0.7, y + size * 1.25)
 			var r := size * 0.42
-			_line(k, at + Vector3(-r, r * 0.3, 0), at + Vector3(r, r * 0.3, 0), size * 0.08, Color("e8282f"))
-			_line(k, at + Vector3(-r, -r * 0.3, 0), at + Vector3(r, -r * 0.3, 0), size * 0.08, Color("e8282f"))
-			_line(k, at + Vector3(-r * 0.3, r, 0), at + Vector3(-r * 0.3, -r, 0), size * 0.08, Color("e8282f"))
-			_line(k, at + Vector3(r * 0.3, r, 0), at + Vector3(r * 0.3, -r, 0), size * 0.08, Color("e8282f"))
+			_stroke(k, info, PackedVector2Array([at + Vector2(-r, r * 0.3), at + Vector2(0, r * 0.3), at + Vector2(r, r * 0.3)]), size * 0.09, Color("e8282f"), 0.016)
+			_stroke(k, info, PackedVector2Array([at + Vector2(-r, -r * 0.3), at + Vector2(0, -r * 0.3), at + Vector2(r, -r * 0.3)]), size * 0.09, Color("e8282f"), 0.016)
+			_stroke(k, info, PackedVector2Array([at + Vector2(-r * 0.3, r), at + Vector2(-r * 0.3, 0), at + Vector2(-r * 0.3, -r)]), size * 0.09, Color("e8282f"), 0.016)
+			_stroke(k, info, PackedVector2Array([at + Vector2(r * 0.3, r), at + Vector2(r * 0.3, 0), at + Vector2(r * 0.3, -r)]), size * 0.09, Color("e8282f"), 0.016)
 		"sparkle":
 			if hide == "eyes":
 				return
-			for offset: Vector2 in [Vector2(gap + size * 1.05, y + size * 0.86), Vector2(-gap - size * 1.05, y - size * 0.3)]:
+			for offset: Vector2 in [Vector2(gap + size * 0.9, y + size * 0.86), Vector2(-gap - size * 0.9, y - size * 0.3)]:
 				var at := _on_head(info, offset.x, offset.y, 0.016)
 				var points := PackedVector3Array()
 				for i in 8:
@@ -795,11 +972,11 @@ func _face_extra(k: MeshKit, info: Dictionary, kind: String, hide: String) -> vo
 				k.fan(points, Color.WHITE)
 		"zzz":
 			for i in 2:
-				var at := _on_head(info, gap + size * (0.7 + i * 0.72), y + size * (1.1 + i * 0.9), 0.02)
+				var at := _on_head(info, gap + size * (0.5 + i * 0.5), y + size * (1.0 + i * 0.8), 0.02)
 				var r := size * (0.26 + i * 0.1)
-				_line(k, at + Vector3(-r, r, 0), at + Vector3(r, r, 0), size * 0.07, Color("8fb4ff"))
-				_line(k, at + Vector3(r, r, 0), at + Vector3(-r, -r, 0), size * 0.07, Color("8fb4ff"))
-				_line(k, at + Vector3(-r, -r, 0), at + Vector3(r, -r, 0), size * 0.07, Color("8fb4ff"))
+				_line(k, at + Vector3(-r, r, 0), at + Vector3(r, r, 0), size * 0.07, Color("3a6aff"))
+				_line(k, at + Vector3(r, r, 0), at + Vector3(-r, -r, 0), size * 0.07, Color("3a6aff"))
+				_line(k, at + Vector3(-r, -r, 0), at + Vector3(r, -r, 0), size * 0.07, Color("3a6aff"))
 		"bubble":  # Asleep, with a bubble at the nose.
 			if hide == "mouth":
 				return
@@ -808,22 +985,13 @@ func _face_extra(k: MeshKit, info: Dictionary, kind: String, hide: String) -> vo
 			k.ball(at + Vector3(-size * 0.14, size * 0.16, size * 0.14), Vector3(size * 0.1, size * 0.1, size * 0.03), Color.WHITE, 3, 5)
 
 
-## A point on the surface of this head, for what's drawn on it.
-static func _on_head(info: Dictionary, x: float, y: float, lift := 0.012) -> Vector3:
-	var shape: Array = info["shape"]
-	var c: Vector3 = shape[0]
-	var r: Vector3 = shape[1]
-	var q := 1.0 - pow((x - c.x) / r.x, 2.0) - pow((y - c.y) / r.y, 2.0)
-	return Vector3(x, y, c.z + r.z * sqrt(maxf(q, 0.0)) + lift)
-
-
 ## One eye drawn as a curve: bent up for a happy ^, or down for a blink.
 func _arc(k: MeshKit, at: Vector3, size: float, bend: float, color: Color) -> void:
 	var pts := PackedVector3Array()
 	for i in 11:
 		var f := lerpf(-1.0, 1.0, i / 10.0)
 		pts.append(at + Vector3(f * size * 0.8, size * bend * (1.0 - f * f) - size * 0.05, size * 0.38 * sqrt(maxf(1.0 - f * f * 0.72, 0.0)) + 0.012))
-	k.ribbon(pts, size * 0.15, color)
+	k.ribbon(pts, size * 0.17, color)
 
 
 func _line(k: MeshKit, a: Vector3, b: Vector3, half_width: float, color: Color) -> void:
@@ -831,29 +999,6 @@ func _line(k: MeshKit, a: Vector3, b: Vector3, half_width: float, color: Color) 
 	for i in 7:
 		pts.append(a.lerp(b, i / 6.0))
 	k.ribbon(pts, half_width, color)
-
-
-## A little open D of a mouth with a tongue, following the curve of the face. `upside` turns it over, for a wail.
-func _open_mouth(k: MeshKit, y: float, z: float, width: float, upside := false) -> void:
-	var steps := 14
-	var mouth := PackedVector3Array()
-	var depth := width
-	var turn := -1.0 if upside else 1.0
-	var base_y := y - depth * 0.6 if upside else y
-	for i in steps + 1:  # The lower lip, left to right...
-		var f := lerpf(-1.0, 1.0, i / float(steps))
-		mouth.append(Vector3(f * width, base_y + turn * (0.012 * f * f - depth * (1.0 - f * f)), z - f * f * width * 0.28 + 0.004))
-	for i in range(steps - 1, 0, -1):  # ...and the upper lip back.
-		var f := lerpf(-1.0, 1.0, i / float(steps))
-		mouth.append(Vector3(f * width, base_y + turn * (0.012 * f * f - width * 0.1 * (1.0 - f * f)), z - f * f * width * 0.28 + 0.004))
-	if upside:
-		mouth.reverse()
-	k.fan(mouth, Color("b23a55"))
-	var tongue := PackedVector3Array()
-	for i in steps + 1:
-		var a := PI + PI * i / float(steps)
-		tongue.append(Vector3(cos(a) * width * 0.5, base_y - turn * depth * 0.56 + sin(a) * width * 0.28 + (depth * 0.36 if upside else 0.0), z + 0.008))
-	k.fan(tongue, Color("ff8fa6"))
 
 
 ## A passing expression, for moments like a tag.
@@ -882,9 +1027,9 @@ func _tick_blink(delta: float) -> void:
 	_react_left = maxf(_react_left - delta, 0.0)
 	if _react_left <= 0.0 and state in ["idle", "run"]:  # Now and then, for no reason, a silly face.
 		_funny_wait -= delta
-		if _funny_wait <= 0.0:
+		if _funny_wait <= 0.0 and not calm:
 			_funny_wait = randf_range(7.0, 16.0)
-			react(Faces.funny(), 1.5)
+			react(Faces.funny_for(_hero_id), 1.5)
 	if _blink_left > 0.0:
 		_blink_left -= delta
 		if _blink_left <= 0.0:
@@ -894,6 +1039,15 @@ func _tick_blink(delta: float) -> void:
 		if _blink_wait <= 0.0:
 			_blink_left = 0.11
 	var face := _face_for_state()
+	# Now and then, a glance to the side.
+	_glance_left = maxf(_glance_left - delta, 0.0)
+	_glance_wait -= delta
+	if _glance_wait <= 0.0:
+		_glance_wait = randf_range(2.5, 6.5)
+		_glance_left = randf_range(0.4, 0.9)
+		_glance = "look_l" if randf() < 0.5 else "look_r"
+	if face == "normal" and _glance_left > 0.0 and not calm and String(Faces.person(_hero_id).get("eyes", "dot")) == "dot":
+		face = _glance
 	if _blink_left > 0.0 and face in Faces.BLINKING:
 		face += "|b"
 	_show_face(face)
@@ -906,59 +1060,67 @@ func _smile(_k: MeshKit, y: float, z: float, width: float, _c := Color("b23a55")
 
 ## `hat`: how much has to come down for what's on the head (see _hat_level). `cover`: how much a mask hides.
 func _build_head(k: MeshKit, hero: Dictionary, skin: Dictionary, hat := 0, cover := "") -> void:
+	var base := Color.WHITE
 	if _plain_head(hero, cover):
-		k.ball(Vector3.ZERO, AvatarParts.HEAD, _main(hero, skin, "main"), 16, 24)
+		base = _main(hero, skin, "main")
+		k.ball(Vector3.ZERO, AvatarParts.HEAD, base, 16, 24)
 		_eyes(k, -0.01, 0.395, 0.2, 0.115)
-		_smile(k, -0.145, 0.44, 0.08)
-		return
-	match hero["kind"]:
-		"kid": _head_kid(k, hero, skin, hat, cover)
-		"animal": _head_animal(k, hero, skin, hat, cover)
-		_: _head_mascot(k, hero, skin, hat, cover)
+		_smile(k, -0.15, 0.44, 0.095)
+	else:
+		match hero["kind"]:
+			"kid":
+				base = Color(hero["skin"])
+				_head_kid(k, hero, skin, hat, cover)
+			"animal":
+				base = _main(hero, skin, "fur")
+				_head_animal(k, hero, skin, hat, cover)
+			_:
+				base = _second(hero, skin, "second") if hero["shape"] == "flame" else _main(hero, skin, "main")
+				_head_mascot(k, hero, skin, hat, cover)
+	if not _eye_seen.is_empty() and not _eye_seen.has("ink"):
+		_eye_seen["cheek"] = base.lerp(Color("ff5f86"), 0.5)
 
 
 func _head_kid(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cover: String) -> void:
 	var tone := Color(hero["skin"])
 	var hair := Color(hero["hair"])
-	k.ball(Vector3.ZERO, Vector3(0.5, 0.46, 0.46), tone, 20, 32)
+	var head := Vector3(0.5, 0.46, 0.46)
+	k.ball(Vector3.ZERO, head, tone, 20, 32)
 	for s: float in [-1.0, 1.0]:
 		k.ball(Vector3(s * 0.49, -0.04, 0), Vector3(0.08, 0.1, 0.075), tone, 8, 10)
 	_eyes(k, -0.01, 0.395, 0.2, 0.115)
-	if cover != "plate":
+	_smile(k, -0.15, 0.44, 0.095)
+	var id: String = hero["id"]
+	if cover != "plate":  # Everyone has one little thing of their own.
 		k.outline = 0.0
-		for s: float in [-1.0, 1.0]:
-			k.ball(Vector3(s * 0.335, -0.135, 0.305), Vector3(0.085, 0.05, 0.03), tone.lerp(Color("ff7f9a"), 0.55), 6, 10)
+		match id:
+			"lani":  # Freckles.
+				for s: float in [-1.0, 1.0]:
+					for spot: Vector2 in [Vector2(0.1, -0.075), Vector2(0.14, -0.105), Vector2(0.07, -0.11)]:
+						k.spot(Vector3.ZERO, head, s * spot.x, spot.y, 0.012, tone.darkened(0.28))
+			"rafael":  # A plaster across the nose. It's from yesterday. There's a new one tomorrow.
+				k.round_patch(Vector3.ZERO, head, 0.0, -0.06, 0.085, 0.026, Color("ffe6c2"), 0.008, 16)
+				k.round_patch(Vector3.ZERO, head, 0.0, -0.06, 0.025, 0.02, Color("e8b98a"), 0.011, 12)
 		k.outline = 0.02
-	_smile(k, -0.145, 0.44, 0.08)
 	_hair(k, hair, String(hero.get("style")), cover)
 	match String(hero.get("style")):
-		"spiky":  # Soft little tufts.
+		"spiky":  # Soft little tufts; the big cowlick flops about on its own.
 			if hat == 0:
 				for i in 5:
 					var a := TAU * i / 5.0 + 0.3
-					k.ball(Vector3(cos(a) * 0.22, 0.47, sin(a) * 0.2 - 0.05), Vector3(0.1, 0.13, 0.1), hair, 8, 12)
-				k.ball(Vector3(0, 0.55, -0.04), Vector3(0.11, 0.13, 0.11), hair, 8, 12)
-		"ponytail":
-			if hat == 2:
-				return
-			var tie_y := 0.08 if hat > 0 else 0.22
-			k.ball(Vector3(0, tie_y, -0.48), Vector3(0.09, 0.09, 0.09), _main(hero, skin, "top"), 8, 10)
-			k.ball(Vector3(0, tie_y - 0.26, -0.6), Vector3(0.15, 0.29, 0.15), hair, 10, 14)
-		"buns":
-			if hat == 0:
-				for s: float in [-1.0, 1.0]:
-					k.ball(Vector3(s * 0.33, 0.44, -0.06), Vector3(0.17, 0.17, 0.17), hair, 10, 14)
-					k.torus(Vector3(s * 0.3, 0.32, -0.05), 0.09, 0.024, _main(hero, skin, "top"), 16, 6)
-		"mohawk":
-			if hat == 0:
-				for i in 5:
-					k.ball(Vector3(0, 0.5 - absf(i - 2.0) * 0.045, -0.26 + i * 0.13), Vector3(0.06, 0.13, 0.07), _second(hero, skin, "top"), 8, 10)
+					k.ball(Vector3(cos(a) * 0.22, 0.47, sin(a) * 0.2 - 0.05), Vector3(0.1, 0.11, 0.1), hair, 8, 12)
 		"long":
 			if hat == 2:
 				return
-			k.ball(Vector3(0, -0.15, -0.26), Vector3(0.48, 0.55, 0.26), hair, 12, 16)
 			for s: float in [-1.0, 1.0]:
 				k.ball(Vector3(s * 0.45, -0.18, 0.08), Vector3(0.1, 0.32, 0.13), hair, 8, 12)
+			if id == "tala" and cover != "plate":  # A star, to go with the hair.
+				k.ball(Vector3(0.36, 0.22, 0.28), Vector3(0.06, 0.06, 0.03), Color("ffd23f"), 6, 10)
+				k.outline = 0.0
+				for i in 5:
+					var a := TAU * i / 5.0 + PI * 0.5
+					k.ball(Vector3(0.36 + cos(a) * 0.07, 0.22 + sin(a) * 0.07, 0.29), Vector3(0.035, 0.035, 0.018), Color("ffd23f"), 4, 7)
+				k.outline = 0.02
 
 
 ## The hair: a shell that hugs the head, so its edge is one clean soft line, with a rounder shape over the top for volume.
@@ -997,64 +1159,68 @@ func _head_animal(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cove
 	var accent := Color(hero["accent"])
 	var animal: String = hero["animal"]
 	var muzzle := cover not in ["low", "plate"]  # Under a mask there's no snout to stick out of it.
+	var head := Vector3(0.5, 0.46, 0.46)
 	match animal:
 		"tarsier":
 			k.ball(Vector3.ZERO, Vector3(0.48, 0.44, 0.44), fur, 16, 24)
-			if hat < 2:
-				var ear_at := Vector3(0.56, 0.05, -0.02) if hat == 1 else Vector3(0.48, 0.28, -0.02)
-				var ear_r := Vector3(0.24, 0.25, 0.09) if hat == 1 else Vector3(0.28, 0.32, 0.1)
-				for s: float in [-1.0, 1.0]:
-					k.ball(Vector3(s * ear_at.x, ear_at.y, ear_at.z), ear_r, fur.darkened(0.1), 8, 14)
-					k.outline = 0.0
-					k.ball(Vector3(s * ear_at.x, ear_at.y, 0.05), ear_r * Vector3(0.64, 0.68, 0.5), Color("ffb3a8"), 6, 10)
-					k.outline = 0.02
 			_eyes(k, 0.06, 0.32, 0.22, 0.24, Color("5a2b0e"), Color("ffcf56"))
 			if muzzle:
-				_smile(k, -0.15, 0.43, 0.05)
-				_eye_seen["rest_mouth"] = "boo"
+				_smile(k, -0.19, 0.43, 0.06)
 		"rooster":
 			k.ball(Vector3.ZERO, Vector3(0.46, 0.46, 0.44), fur, 16, 24)
-			if hat == 0:
-				for i in 3:
-					k.ball(Vector3(0, 0.46 + (1 - absf(i - 1)) * 0.06, -0.12 + i * 0.13), Vector3(0.07, 0.16, 0.09), accent, 8, 10)
-			_eyes(k, 0.08, 0.36, 0.2, 0.11)
+			_eyes(k, 0.1, 0.36, 0.2, 0.11)
+			if muzzle:  # A stubby round beak.
+				var beak_y := -0.1 if cover == "eyes" else -0.06
+				k.ball(Vector3(0, beak_y - 0.05, 0.41), Vector3(0.09, 0.05, 0.09), Color("e8942a"), 8, 12)
+				k.ball(Vector3(0, beak_y, 0.43), Vector3(0.13, 0.08, 0.12), Color("ffb52e"), 10, 14)
+		"pig":
+			k.ball(Vector3.ZERO, head, fur, 16, 24)
+			_animal_features(k, animal, fur, belly, accent, hat, muzzle)
+			_eyes(k, 0.1, 0.37, 0.22, 0.125)
 			if muzzle:
-				var beak_y := -0.1 if cover == "eyes" else -0.05
-				k.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, beak_y, 0.38)))
-				k.cone(Vector3.ZERO, 0.28, 0.13, Color("ffb52e"), 12)
-				k.pop()
-				k.ball(Vector3(0, beak_y - 0.19, 0.32), Vector3(0.07, 0.12, 0.05), accent, 6, 10)
+				k.ball(Vector3(0, -0.08, 0.42), Vector3(0.17, 0.125, 0.1), belly, 10, 14)
+				k.outline = 0.0
+				for s: float in [-0.055, 0.055]:
+					k.ball(Vector3(s, -0.08, 0.515), Vector3(0.028, 0.044, 0.015), Color("6a2038"), 4, 7)
+				k.outline = 0.02
+				_smile(k, -0.24, 0.4, 0.085)
+		"buffalo":
+			k.ball(Vector3.ZERO, head, fur, 16, 24)
+			_animal_features(k, animal, fur, belly, accent, hat, muzzle)
+			_eyes(k, 0.12, 0.37, 0.21, 0.115)
+			if muzzle:  # A big soft nose, with room for the ring.
+				k.round_patch(Vector3.ZERO, head, 0.0, -0.16, 0.27, 0.2, belly)
+				k.outline = 0.0
+				for s: float in [-0.095, 0.095]:
+					k.round_patch(Vector3.ZERO, head, s, -0.07, 0.032, 0.024, Color("3a2438"), 0.012, 12)
+				k.outline = 0.02
+				_smile(k, -0.25, 0.42, 0.09)
 		_:
-			k.ball(Vector3.ZERO, Vector3(0.5, 0.46, 0.46), fur, 16, 24)
+			k.ball(Vector3.ZERO, head, fur, 16, 24)
 			_animal_features(k, animal, fur, belly, accent, hat, muzzle)
 			_eyes(k, 0.08, 0.37, 0.2, 0.125)
 			if not muzzle:
 				return
-			if animal == "pig":
-				k.ball(Vector3(0, -0.1, 0.42), Vector3(0.16, 0.12, 0.1), belly, 8, 12)
-				k.outline = 0.0
-				for s: float in [-0.05, 0.05]:
-					k.ball(Vector3(s, -0.1, 0.5), Vector3(0.025, 0.04, 0.02), Color("6a2038"), 2, 5)
-				k.outline = 0.02
-				_smile(k, -0.25, 0.4, 0.07)
-				_eye_seen["rest_mouth"] = "none"
-			else:
-				k.round_patch(Vector3.ZERO, Vector3(0.5, 0.46, 0.46), 0.0, -0.17, 0.16, 0.115, belly)
-				k.outline = 0.0
-				k.ball(Vector3(0, -0.11, 0.436), Vector3(0.038, 0.028, 0.02), Color("0a1426"), 2, 6)
-				k.outline = 0.02
-				_smile(k, -0.15, 0.445, 0.07)
+			k.round_patch(Vector3.ZERO, head, 0.0, -0.17, 0.17, 0.125, belly)
+			k.outline = 0.0
+			var nose := Color("ff8fa6") if animal == "cat" else Color("1a1030")
+			var nose_size := Vector3(0.052, 0.036, 0.022) if animal == "dog" else Vector3(0.04, 0.028, 0.02)
+			k.ball(Vector3(0, -0.105, 0.437), nose_size, nose, 6, 9)
+			k.ball(Vector3(-nose_size.x * 0.3, -0.095, 0.452), Vector3(0.012, 0.008, 0.006), Color.WHITE, 3, 5)
+			k.outline = 0.02
+			_smile(k, -0.15, 0.445, 0.085)
+			if animal == "cat":
+				_eye_seen["whiskers"] = true
 
 
-func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, accent: Color, hat: int, muzzle: bool) -> void:
+func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, _accent: Color, hat: int, muzzle: bool) -> void:
+	var head := Vector3(0.5, 0.46, 0.46)
 	match animal:
 		"dog":
-			if hat < 2:  # Floppy ears hang lower under a hat.
-				var ear_y := 0.0 if hat == 1 else 0.08
-				var ear_r := Vector3(0.13, 0.24, 0.16) if hat == 1 else Vector3(0.14, 0.32, 0.17)
-				for s: float in [-1.0, 1.0]:
-					k.ball(Vector3(s * 0.5, ear_y, -0.02), ear_r, fur.darkened(0.25), 8, 12)
-			k.torus(Vector3(0, -0.34, 0), 0.26, 0.04, accent, 16, 6)
+			k.outline = 0.0  # A big patch round one eye.
+			k.round_patch(Vector3.ZERO, head, -0.21, 0.06, 0.19, 0.22, fur.darkened(0.25))
+			k.outline = 0.02
+			k.torus(Vector3(0, -0.38, 0), 0.25, 0.045, _accent, 16, 6)
 		"cat":
 			if hat == 0:
 				for s: float in [-1.0, 1.0]:
@@ -1064,17 +1230,16 @@ func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, acce
 					k.ball(Vector3(0, -0.02, 0.05), Vector3(0.08, 0.125, 0.04), Color("ffb3a8"), 6, 10)
 					k.outline = 0.02
 					k.pop()
-			if muzzle:
-				k.outline = 0.0
-				for s: float in [-1.0, 1.0]:
-					k.box(Vector3(s * 0.34, -0.1, 0.34), Vector3(0.22, 0.015, 0.015), Color("0a1426"))
-				k.outline = 0.02
+			k.outline = 0.0  # Tabby stripes.
+			for s: float in [-0.1, 0.0, 0.1]:
+				k.round_patch(Vector3.ZERO, head, s, 0.31 - absf(s) * 0.35, 0.024, 0.075, fur.darkened(0.2), 0.006, 12)
+			k.outline = 0.02
 		"buffalo":
 			if hat < 2:  # Horns come down and out from under a hat's brim.
 				for s: float in [-1.0, 1.0]:
 					var horn_y := 0.08 if hat == 1 else 0.22
 					k.push(Transform3D(Basis(Vector3.BACK, s * (-1.25 if hat == 1 else -1.1)), Vector3(s * 0.4, horn_y, 0)))
-					k.cone(Vector3.ZERO, 0.62, 0.11, Color("e9e0c6"), 12)
+					k.cone(Vector3.ZERO, 0.4, 0.105, Color("f4ecd2"), 12)
 					k.pop()
 					k.ball(Vector3(s * 0.5, -0.04, 0), Vector3(0.14, 0.08, 0.1), fur.darkened(0.15), 8, 10)
 		"pig":
@@ -1086,98 +1251,92 @@ func _animal_features(k: MeshKit, animal: String, fur: Color, belly: Color, acce
 		"monkey":
 			if hat < 2:
 				for s: float in [-1.0, 1.0]:
-					k.ball(Vector3(s * 0.54, 0.02, 0), Vector3(0.14, 0.18, 0.08), belly, 8, 10)
+					k.ball(Vector3(s * 0.56, 0.02, 0), Vector3(0.16, 0.2, 0.08), belly, 8, 12)
+					k.outline = 0.0
+					k.ball(Vector3(s * 0.56, 0.02, 0.05), Vector3(0.09, 0.12, 0.04), Color("ffb3a8"), 6, 10)
+					k.outline = 0.02
+			if hat == 0:  # A few hairs that have never once lain flat.
+				for a: float in [-0.35, 0.0, 0.35]:
+					k.push(Transform3D(Basis(Vector3.BACK, a), Vector3(a * 0.3, 0.42, 0)))
+					k.ball(Vector3(0, 0.08, 0), Vector3(0.04, 0.12, 0.04), fur, 8, 10)
+					k.pop()
 			if muzzle:
-				k.round_patch(Vector3.ZERO, Vector3(0.5, 0.46, 0.46), 0.0, -0.05, 0.36, 0.33, belly)
+				k.round_patch(Vector3.ZERO, head, 0.0, -0.05, 0.36, 0.33, belly)
 
 
 func _head_mascot(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cover: String) -> void:
 	var main := _main(hero, skin, "main")
 	var second := _second(hero, skin, "second")
-	var accent := Color(hero["accent"])
-	var bare := hat == 0  # Straws, stems and antennae come off under a hat.
+	var bare := hat == 0  # What stands up off the head comes off under a hat.
 	match String(hero["shape"]):
 		"coconut":
 			k.ball(Vector3.ZERO, Vector3(0.52, 0.5, 0.5), main, 16, 24)
 			k.outline = 0.0
 			k.ball(Vector3(0, 0.42, 0), Vector3(0.34, 0.1, 0.32), second, 6, 12)
 			k.outline = 0.02
-			if bare:
-				k.cyl(Vector3(0.16, 0.42, 0.05), 0.42, 0.03, 0.03, accent, 8)
-			_eyes(k, 0.02, 0.38, 0.2, 0.14)
-			_smile(k, -0.22, 0.45, 0.12)
+			_eyes(k, 0.04, 0.38, 0.2, 0.135)
+			if cover == "":
+				k.outline = 0.0
+				k.round_patch(Vector3.ZERO, Vector3(0.52, 0.5, 0.5), 0.0, -0.22, 0.24, 0.16, second, 0.005, 24)
+				k.outline = 0.02
+			_smile(k, -0.2, 0.45, 0.115)
 		"mango":
 			k.ball(Vector3.ZERO, Vector3(0.48, 0.54, 0.44), main, 16, 24)
 			k.outline = 0.0
 			k.ball(Vector3(0.25, 0.18, 0.1), Vector3(0.28, 0.32, 0.36), second, 6, 12)
 			k.outline = 0.02
-			if bare:
-				k.cyl(Vector3(0, 0.5, 0), 0.16, 0.04, 0.03, Color("7a5230"), 8)
-				k.ball(Vector3(0.16, 0.62, 0), Vector3(0.2, 0.05, 0.1), accent, 6, 10)
-			_eyes(k, 0.02, 0.36, 0.18, 0.13)
-			_smile(k, -0.2, 0.42, 0.12)
+			_eyes(k, 0.04, 0.36, 0.18, 0.13)
+			_smile(k, -0.2, 0.42, 0.11)
 		"cup":
 			k.cyl(Vector3(0, -0.42, 0), 0.72, 0.36, 0.5, main, 16)
 			k.outline = 0.0
 			k.torus(Vector3(0, -0.38, 0), 0.37, 0.05, second, 16, 6)
-			k.torus(Vector3(0, 0.04, 0), 0.47, 0.055, accent, 16, 6)
+			k.torus(Vector3(0, 0.04, 0), 0.47, 0.055, Color(hero["accent"]), 16, 6)
 			k.outline = 0.02
 			k.ball(Vector3(0, 0.3, 0), Vector3(0.48, 0.28, 0.48), Color("f6fcff"), 8, 14)
 			if bare:
 				k.ball(Vector3(0.1, 0.5, 0.06), Vector3(0.14, 0.1, 0.14), second, 6, 10)
-				k.ball(Vector3(-0.2, 0.42, 0.14), Vector3(0.09, 0.07, 0.09), accent, 6, 10)
+				k.ball(Vector3(-0.2, 0.42, 0.14), Vector3(0.09, 0.07, 0.09), Color(hero["accent"]), 6, 10)
 			_eyes(k, -0.1, 0.42, 0.18, 0.115)
-			_smile(k, -0.26, 0.4, 0.075)
+			_smile(k, -0.25, 0.4, 0.085)
 		"robot":
 			k.box(Vector3.ZERO, Vector3(0.92, 0.76, 0.76), main, 0.1)
 			if cover != "eyes":  # Its screen and eyes would only show round the edge of anything worn over them.
 				k.outline = 0.0
-				k.box(Vector3(0, 0.06, 0.385), Vector3(0.72, 0.34, 0.02), Color("1c174a"))
+				k.box(Vector3(0, 0.06, 0.385), Vector3(0.72, 0.34, 0.02), Color("0a1426"))
 				k.outline = 0.02
 				# Its eyes are lit up on the screen, so its faces are too.
-				_eyes(k, 0.06, 0.392, 0.19, 0.115, accent, accent)
-				_eye_seen["ink"] = accent
+				_eyes(k, 0.06, 0.392, 0.19, 0.115, Color(hero["accent"]), Color(hero["accent"]))
+				_eye_seen["ink"] = Color(hero["accent"])
 			for s: float in [-1.0, 1.0]:
 				k.cyl(Vector3(s * 0.48, -0.08, 0), 0.2, 0.08, 0.08, second, 8)
-			if bare:
-				k.cyl(Vector3(0, 0.38, 0), 0.26, 0.03, 0.03, Color("6a6a7a"), 8)
-				k.ball(Vector3(0, 0.66, 0), Vector3(0.07, 0.07, 0.07), second, 6, 10)
 			k.outline = 0.0
 			for i in 4:
 				k.box(Vector3(-0.21 + i * 0.14, -0.22, 0.385), Vector3(0.09, 0.08, 0.02), second)
 			k.outline = 0.02
 		"ghost":
 			k.ball(Vector3(0, -0.02, 0), Vector3(0.5, 0.5, 0.46), main, 16, 24)
-			_eyes(k, 0.05, 0.36, 0.18, 0.13, Color("0a1426"), Color("0a1426"))
-			_smile(k, -0.17, 0.43, 0.075)
-			_eye_seen["rest_mouth"] = "boo"
-			k.outline = 0.0
-			for s: float in [-1.0, 1.0]:
-				k.ball(Vector3(s * 0.3, -0.11, 0.35), Vector3(0.08, 0.05, 0.03), second, 2, 6)
-			k.outline = 0.02
+			_eyes(k, 0.05, 0.36, 0.18, 0.13, Color("1a1030"), Color("1a1030"))
+			_smile(k, -0.17, 0.43, 0.085)
 		"alien":
 			k.ball(Vector3(0, 0.08, 0), Vector3(0.56, 0.5, 0.48), main, 16, 24)
 			_eyes(k, 0.03, 0.34, 0.25, 0.22, Color("0c0626"), Color("0c0626"))
-			_smile(k, -0.24, 0.42, 0.06)
-			if bare:
-				for s: float in [-1.0, 1.0]:
-					k.push(Transform3D(Basis(Vector3.BACK, s * -0.4), Vector3(s * 0.2, 0.46, 0)))
-					k.cyl(Vector3.ZERO, 0.3, 0.025, 0.025, main.darkened(0.2), 8)
-					k.ball(Vector3(0, 0.34, 0), Vector3(0.07, 0.07, 0.07), accent, 6, 10)
-					k.pop()
+			_smile(k, -0.24, 0.42, 0.075)
+			if bare:  # A third eye, for the buffet.
+				k.ball(Vector3(0, 0.36, 0.4), Vector3(0.075, 0.08, 0.03), Color.WHITE, 8, 12)
+				k.outline = 0.0
+				k.ball(Vector3(0, 0.355, 0.43), Vector3(0.04, 0.045, 0.012), Color("0c0626"), 5, 8)
+				k.ball(Vector3(-0.012, 0.37, 0.442), Vector3(0.012, 0.012, 0.004), Color.WHITE, 3, 5)
+				k.outline = 0.02
 		"flame":
 			k.ball(Vector3(0, -0.12, 0), Vector3(0.5, 0.42, 0.46), main, 10, 16)
-			if bare:
-				k.cone(Vector3(0, 0.05, 0), 0.68, 0.44, main, 12)
-				k.cone(Vector3(0.28, -0.05, 0), 0.5, 0.2, main.lightened(0.1), 10)
-				k.cone(Vector3(-0.28, -0.05, 0), 0.42, 0.18, main.darkened(0.05), 10)
-			else:
+			if not bare:
 				k.cone(Vector3(0, 0.05, 0), 0.32, 0.38, main, 12)
 			k.outline = 0.0
-			k.ball(Vector3(0, -0.14, 0.2), Vector3(0.32, 0.3, 0.28), second, 6, 12)
+			k.ball(Vector3(0, -0.12, 0.2), Vector3(0.36, 0.33, 0.28), second, 8, 14)
 			k.outline = 0.02
-			_eyes(k, -0.03, 0.43, 0.16, 0.12)
-			_smile(k, -0.22, 0.48, 0.09)
+			_eyes(k, -0.03, 0.43, 0.17, 0.12)
+			_smile(k, -0.19, 0.48, 0.085)
 		"crystal":
 			k.cyl(Vector3(0, -0.35, 0), 0.42, 0.25, 0.48, main, 6, false)
 			if bare:
@@ -1186,7 +1345,292 @@ func _head_mascot(k: MeshKit, hero: Dictionary, skin: Dictionary, hat: int, cove
 				k.cyl(Vector3(0, 0.07, 0), 0.3, 0.48, 0.2, second, 6, false)
 				k.ball(Vector3(0, 0.37, 0), Vector3(0.2, 0.07, 0.2), second, 6, 12)
 			_eyes(k, -0.02, 0.33, 0.18, 0.12)
-			_smile(k, -0.22, 0.34, 0.08)
+			_smile(k, -0.2, 0.34, 0.08)
+			if cover == "":  # A runny nose, frozen solid.
+				k.ball(Vector3(0.015, -0.135, 0.355), Vector3(0.02, 0.055, 0.02), Color("e8fbff"), 6, 8)
+
+
+# --- What flops about ----------------------------------------------------------------------------
+
+## The bits of each character that flop about as it moves. Each row: the part, whether it hangs off the head (or else the
+## body), where it hangs from, the way it swings, how far standing and running, how fast standing and running.
+func _wiggle_list(hero: Dictionary, hat: int, cover: String, plain: bool, has_back: bool) -> Array:
+	var out: Array = []
+	var head := cover != "whole" and not plain
+	var bare := head and hat == 0
+	var some := head and hat < 2
+	var muzzle := head and cover not in ["low", "plate"]
+	var side := Vector3.BACK
+	var nod := Vector3.RIGHT
+	var turn := Vector3.UP
+	match String(hero["kind"]):
+		"kid":
+			match String(hero.get("style")):
+				"spiky":
+					if bare: out.append(["cowlick", true, Vector3(0, 0.5, -0.03), side, 0.1, 0.42, 3.2, 15.0])
+				"ponytail":
+					if some: out.append(["ponytail", true, Vector3(0, 0.08 if hat > 0 else 0.22, -0.48), nod, 0.07, 0.5, 2.4, 13.0])
+				"bowl":
+					if bare: out.append(["sprout", true, Vector3(0, 0.49, -0.03), side, 0.12, 0.5, 3.0, 15.0])
+				"buns":
+					if bare: out.append(["buns", true, Vector3(0, 0.4, -0.06), side, 0.04, 0.2, 2.5, 13.0])
+				"mohawk":
+					if bare: out.append(["mohawk", true, Vector3(0, 0.42, 0), side, 0.05, 0.34, 2.6, 14.0])
+				"long":
+					if some: out.append(["long_hair", true, Vector3(0, 0.2, -0.26), nod, 0.03, 0.17, 2.0, 12.0])
+		"animal":
+			var tail_ok := not has_back
+			match String(hero["animal"]):
+				"dog":
+					if some:
+						for part: String in ["ear_l", "ear_r"]:
+							out.append([part, true, Vector3(-0.44 if part == "ear_l" else 0.44, 0.2 if hat > 0 else 0.3, -0.02), side, 0.05, 0.55, 2.6, 15.0])
+					if tail_ok: out.append(["dog_tail", false, Vector3(0, 0.42, -0.28), turn, 0.55, 0.8, 10.0, 17.0])
+				"cat":
+					if tail_ok: out.append(["cat_tail", false, Vector3(0, 0.3, -0.28), side, 0.22, 0.5, 2.4, 11.0])
+				"buffalo":
+					if muzzle: out.append(["ring", true, Vector3(0, -0.085, 0.455), side, 0.12, 0.6, 3.0, 14.0])
+					if tail_ok: out.append(["cow_tail", false, Vector3(0, 0.42, -0.3), side, 0.2, 0.6, 2.2, 12.0])
+				"tarsier":
+					if some:
+						for part: String in ["big_ear_l", "big_ear_r"]:
+							out.append([part, true, Vector3(-0.3 if part == "big_ear_l" else 0.3, 0.02 if hat > 0 else 0.2, -0.02), side, 0.05, 0.25, 4.0, 14.0])
+				"rooster":
+					if bare: out.append(["comb", true, Vector3(0, 0.42, 0), side, 0.08, 0.42, 3.0, 15.0])
+					if muzzle: out.append(["wattle", true, Vector3(0, -0.13, 0.42), side, 0.1, 0.55, 3.0, 16.0])
+					if tail_ok: out.append(["feathers", false, Vector3(0, 0.6, -0.32), nod, 0.05, 0.28, 2.4, 13.0])
+				"pig":
+					if tail_ok: out.append(["pig_tail", false, Vector3(0, 0.46, -0.33), side, 0.5, 1.2, 9.0, 18.0])
+				"monkey":
+					if tail_ok: out.append(["monkey_tail", false, Vector3(0, 0.3, -0.28), side, 0.15, 0.4, 2.2, 11.0])
+		_:
+			match String(hero["shape"]):
+				"coconut":
+					if bare: out.append(["straw", true, Vector3(0.1, 0.44, 0.02), side, 0.07, 0.34, 3.0, 14.0])
+				"mango":
+					if bare: out.append(["leaf", true, Vector3(0, 0.5, 0), side, 0.12, 0.42, 3.0, 14.0])
+				"cup":
+					if bare: out.append(["spoon", true, Vector3(0.26, 0.38, -0.08), side, 0.06, 0.3, 3.0, 14.0])
+				"robot":
+					if bare: out.append(["antenna", true, Vector3(0, 0.38, 0), side, 0.1, 0.6, 5.0, 18.0])
+				"ghost":
+					if bare: out.append(["curl", true, Vector3(0, 0.46, 0), side, 0.14, 0.42, 2.6, 12.0])
+				"alien":
+					if bare:
+						for part: String in ["feeler_l", "feeler_r"]:
+							out.append([part, true, Vector3(-0.2 if part == "feeler_l" else 0.2, 0.46, 0), side, 0.08, 0.42, 3.4, 15.0])
+				"flame":
+					if bare: out.append(["flames", true, Vector3(0, 0.05, 0), side, 0.05, 0.12, 8.0, 18.0])
+	return out
+
+
+func _build_wiggle(k: MeshKit, part: String, hero: Dictionary, skin: Dictionary) -> void:
+	var s := -1.0 if part.ends_with("_l") else 1.0
+	match part:
+		"cowlick":
+			k.tube(PackedVector3Array([Vector3(0, -0.05, 0), Vector3(0, 0.1, 0.02), Vector3(0.04, 0.22, 0), Vector3(0.12, 0.29, -0.03), Vector3(0.21, 0.25, -0.05)]), 0.07, Color(hero["hair"]), false, 10, 0.022)
+		"sprout":
+			for a: float in [-0.55, 0.0, 0.55]:
+				k.push(Transform3D(Basis(Vector3.BACK, a), Vector3.ZERO))
+				k.ball(Vector3(0, 0.11, 0), Vector3(0.04, 0.13, 0.04), Color(hero["hair"]), 8, 10)
+				k.pop()
+		"ponytail":
+			k.ball(Vector3.ZERO, Vector3(0.09, 0.09, 0.09), _main(hero, skin, "top"), 8, 10)
+			k.ball(Vector3(0, -0.26, -0.12), Vector3(0.15, 0.29, 0.15), Color(hero["hair"]), 10, 14)
+		"buns":
+			for side: float in [-1.0, 1.0]:
+				k.ball(Vector3(side * 0.33, 0.04, 0), Vector3(0.17, 0.17, 0.17), Color(hero["hair"]), 10, 14)
+				k.torus(Vector3(side * 0.3, -0.08, 0.01), 0.09, 0.024, _main(hero, skin, "top"), 16, 6)
+		"mohawk":
+			for i in 5:
+				k.ball(Vector3(0, 0.2 - absf(i - 2.0) * 0.05, -0.26 + i * 0.13), Vector3(0.07, 0.17, 0.08), _second(hero, skin, "top"), 8, 10)
+		"long_hair":
+			k.ball(Vector3(0, -0.35, 0), Vector3(0.48, 0.55, 0.26), Color(hero["hair"]), 12, 16)
+		"ear_l", "ear_r":
+			k.ball(Vector3(s * 0.07, -0.22, 0), Vector3(0.14, 0.3, 0.17), _main(hero, skin, "fur").darkened(0.25), 8, 12)
+		"big_ear_l", "big_ear_r":
+			k.ball(Vector3(s * 0.2, 0.08, 0), Vector3(0.28, 0.32, 0.1), _main(hero, skin, "fur").darkened(0.1), 8, 14)
+			k.outline = 0.0
+			k.ball(Vector3(s * 0.2, 0.08, 0.07), Vector3(0.18, 0.22, 0.05), Color("ffb3a8"), 6, 10)
+			k.outline = 0.02
+		"dog_tail":
+			k.tube(PackedVector3Array([Vector3.ZERO, Vector3(0, 0.13, -0.12), Vector3(0, 0.31, -0.17)]), 0.08, _main(hero, skin, "fur"), false, 8, 0.05)
+		"cat_tail":
+			var fur := _main(hero, skin, "fur")
+			k.tube(PackedVector3Array([Vector3.ZERO, Vector3(0, 0.1, -0.2), Vector3(0.06, 0.35, -0.28), Vector3(0.02, 0.6, -0.24), Vector3(-0.07, 0.72, -0.14)]), 0.07, fur, false, 8, 0.055)
+			k.ball(Vector3(-0.07, 0.72, -0.14), Vector3(0.07, 0.07, 0.07), fur.darkened(0.2), 8, 10)
+		"cow_tail":
+			var fur := _main(hero, skin, "fur")
+			k.tube(PackedVector3Array([Vector3.ZERO, Vector3(0, -0.12, -0.1), Vector3(0, -0.3, -0.12)]), 0.035, fur, false, 7, 0.03)
+			k.ball(Vector3(0, -0.36, -0.12), Vector3(0.07, 0.1, 0.07), fur.darkened(0.25), 8, 10)
+		"monkey_tail":
+			k.tube(PackedVector3Array([Vector3.ZERO, Vector3(0, 0, -0.2), Vector3(0, 0.2, -0.38), Vector3(0, 0.45, -0.36), Vector3(0, 0.55, -0.2), Vector3(0, 0.45, -0.1), Vector3(0, 0.35, -0.16)]), 0.05, _main(hero, skin, "fur"), false, 8, 0.035)
+		"pig_tail":
+			var curl := PackedVector3Array()
+			for i in 15:
+				var a := i * 0.9
+				var r := 0.075 - i * 0.003
+				curl.append(Vector3(cos(a) * r, sin(a) * r, -i * 0.012))
+			k.tube(curl, 0.028, _main(hero, skin, "fur"), false, 7)
+		"ring":
+			k.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, -0.05, 0.015)))
+			k.torus(Vector3.ZERO, 0.052, 0.015, Color("ffd23f"), 16, 6)
+			k.pop()
+		"comb":
+			var red := Color(hero["accent"])
+			for i in 3:
+				k.ball(Vector3(0, 0.05 + (1 - absf(i - 1)) * 0.07, -0.12 + i * 0.13), Vector3(0.075, 0.17, 0.09), red, 8, 10)
+		"wattle":
+			var red := Color(hero["accent"])
+			k.ball(Vector3(-0.045, -0.1, 0), Vector3(0.06, 0.11, 0.045), red, 8, 10)
+			k.ball(Vector3(0.05, -0.08, 0), Vector3(0.05, 0.09, 0.04), red, 8, 10)
+		"feathers":
+			for i in 3:
+				var angle := -0.45 + i * 0.45
+				k.push(Transform3D(Basis(Vector3.BACK, angle), Vector3.ZERO))
+				k.ball(Vector3(0, 0.26, -0.05), Vector3(0.1, 0.27, 0.07), Color(hero["accent"]).lerp(Color("3a6aff"), i * 0.5), 8, 12)
+				k.pop()
+		"straw":
+			var accent := Color(hero["accent"])
+			k.tube(PackedVector3Array([Vector3(0, -0.04, 0), Vector3(0.02, 0.3, 0), Vector3(0.14, 0.42, 0)]), 0.032, accent, false, 8)
+			# A tiny paper umbrella, because it's on holiday.
+			k.tube(PackedVector3Array([Vector3(-0.2, -0.02, 0.06), Vector3(-0.27, 0.3, 0.06)]), 0.014, Color("f4ecd2"), false, 6)
+			k.dome(Vector3(-0.27, 0.27, 0.06), Vector3(0.2, 0.1, 0.2), Color("ff6fb5"), 6, 16)
+		"leaf":
+			k.cyl(Vector3.ZERO, 0.14, 0.04, 0.03, Color("7a5230"), 8)
+			k.push(Transform3D(Basis(Vector3.BACK, 0.2), Vector3(0, 0.14, 0)))
+			k.ball(Vector3(0.18, 0, 0), Vector3(0.21, 0.05, 0.11), Color(hero["accent"]), 8, 12)
+			k.pop()
+		"spoon":
+			var accent := Color(hero["accent"])
+			k.tube(PackedVector3Array([Vector3(0, -0.04, 0), Vector3(0.09, 0.4, 0)]), 0.028, accent, false, 8)
+			k.ball(Vector3(0.1, 0.48, 0), Vector3(0.09, 0.12, 0.035), accent, 8, 12)
+		"antenna":
+			var path := PackedVector3Array([Vector3(0, -0.04, 0), Vector3(0, 0.12, 0), Vector3(0, 0.27, 0)])
+			k.tube(path, 0.03, Color("0a1426"), false, 7)
+			k.ball(Vector3(0, 0.3, 0), Vector3(0.075, 0.075, 0.075), _second(hero, skin, "second"), 8, 10)
+		"curl":
+			var main := _main(hero, skin, "main")
+			var spiral := PackedVector3Array()
+			for i in 11:
+				var f := i / 10.0
+				spiral.append(Vector3(sin(f * 7.0) * 0.07 * f, -0.03 + f * 0.26, cos(f * 7.0) * 0.03 * f))
+			k.tube(spiral, 0.06, main, false, 8, 0.016)
+		"feeler_l", "feeler_r":
+			k.push(Transform3D(Basis(Vector3.BACK, s * -0.4), Vector3.ZERO))
+			k.tube(PackedVector3Array([Vector3.ZERO, Vector3(0, 0.15, 0), Vector3(0, 0.3, 0)]), 0.026, _main(hero, skin, "main").darkened(0.2), false, 7)
+			k.ball(Vector3(0, 0.34, 0), Vector3(0.075, 0.075, 0.075), Color(hero["accent"]), 8, 10)
+			k.pop()
+		"flames":
+			var main := _main(hero, skin, "main")
+			k.tube(PackedVector3Array([Vector3(0, -0.12, -0.02), Vector3(-0.02, 0.1, -0.02), Vector3(0.03, 0.32, -0.03), Vector3(0.12, 0.54, -0.04)]), 0.36, main, false, 16, 0.03)
+			k.tube(PackedVector3Array([Vector3(0.3, -0.16, 0.0), Vector3(0.36, 0.02, -0.01), Vector3(0.42, 0.18, -0.02), Vector3(0.52, 0.3, -0.02)]), 0.17, main.lightened(0.14), false, 12, 0.02)
+			k.tube(PackedVector3Array([Vector3(-0.3, -0.16, 0.0), Vector3(-0.36, 0.0, -0.01), Vector3(-0.42, 0.12, -0.02), Vector3(-0.5, 0.2, -0.02)]), 0.15, main.lightened(0.14), false, 12, 0.02)
+
+
+func _tick_wiggles(delta: float) -> void:
+	_kick = move_toward(_kick, 0.0, delta * 1.4)
+	var amount := clampf(moving, 0.0, 1.0)
+	if state in ["dash", "air", "stun"]:
+		amount = 1.0
+	for w: Dictionary in _wiggles:
+		var phase: float = float(w["phase"]) + delta * lerpf(w["slow"], w["fast"], maxf(amount, _kick))
+		w["phase"] = phase
+		var node: Node3D = w["node"]
+		node.rotation = (w["axis"] as Vector3) * sin(phase) * (lerpf(w["amp"], w["run"], amount) + _kick * float(w["run"]))
+		if w["flicker"]:
+			var lick := sin(phase * 1.7)
+			node.scale = Vector3(1.0 - lick * 0.05, 1.0 + lick * 0.14, 1.0)
+
+
+# --- Each character's own gag ------------------------------------------------------------------------
+
+## Starts this character's own bit of silliness.
+func play_gag() -> void:
+	var who := Faces.person(_hero_id)
+	var gag: String = who.get("gag", "wave")
+	var info: Dictionary = Faces.GAGS.get(gag, Faces.GAGS["wave"])
+	_gag = gag
+	_gag_total = float(info["time"])
+	_gag_left = _gag_total
+	_gag_wait = randf_range(7.0, 15.0)
+	react(String(info["face"]), _gag_total)
+	_kick = maxf(_kick, 0.7)
+	var lines: Array = who.get("lines", [])
+	gag_started.emit(String(lines[randi() % lines.size()]) if not lines.is_empty() else "")
+
+
+func _tick_gag(delta: float) -> void:
+	if _gag != "":
+		_gag_left -= delta
+		if _gag_left <= 0.0 or state != "idle":
+			_gag = ""
+		return
+	if calm or state != "idle":
+		return
+	_gag_wait -= delta
+	if _gag_wait <= 0.0:
+		play_gag()
+
+
+## What the body does during a gag. Anything left out stays as it was.
+func _gag_pose() -> Dictionary:
+	var f := 1.0 - _gag_left / maxf(_gag_total, 0.01)
+	var swell := sin(f * PI)  # Into it and out of it.
+	match _gag:
+		"flex":  # Kiko: look at these arms. Look at them.
+			var pump := absf(sin(_t * 6.0))
+			return {"arm_l": Vector3(-0.3, 0, 1.45 + pump * 0.4), "arm_r": Vector3(-0.3, 0, -1.45 - pump * 0.4), "y": pump * 0.06, "turn": sin(_t * 3.0) * 0.3, "head_tilt": -0.14 * swell}
+		"wave":  # Lani: hi! hi! hi!
+			return {"arm_r": Vector3(-0.2, 0, -1.8 + sin(_t * 11.0) * 0.45), "arm_l": Vector3(0, 0, 0.25), "head_roll": sin(_t * 4.0) * 0.12, "y": absf(sin(_t * 5.0)) * 0.05}
+		"peek":  # Bong: was anyone watching?
+			return {"y": -0.05 * swell, "head_turn": sin(f * TAU * 2.0) * 0.75 * swell, "arm_l": Vector3(-1.3, 0, 0.05), "arm_r": Vector3(-1.3, 0, -0.05), "tilt": 0.08 * swell}
+		"hop":  # Maya: boing boing boing.
+			var hop := absf(sin(f * PI * 3.0))
+			return {"y": hop * 0.36, "stretch": 1.0 + hop * 0.12, "arm_l": Vector3(0, 0, 1.4 + hop * 0.5), "arm_r": Vector3(0, 0, -1.4 - hop * 0.5)}
+		"shout":  # Rafael: sorry, was that loud?
+			var lean := smoothstep(0.0, 0.25, f) * (1.0 - smoothstep(0.8, 1.0, f))
+			return {"tilt": -0.2 * lean + sin(_t * 40.0) * 0.02 * lean, "head_tilt": -0.28 * lean, "stretch": 1.0 + 0.1 * lean, "arm_l": Vector3(0, 0, 0.3 + 1.4 * lean), "arm_r": Vector3(0, 0, -0.3 - 1.4 * lean)}
+		"stargaze":  # Tala: ooh.
+			return {"head_tilt": -0.42 * swell, "head_roll": sin(_t * 1.6) * 0.12, "turn": sin(_t * 1.2) * 0.2, "arm_l": Vector3(0, 0, 0.8), "arm_r": Vector3(0, 0, -0.8)}
+		"chase_tail":  # Bantay: nearly had it.
+			return {"turn": smoothstep(0.0, 1.0, f) * TAU * 3.0, "tilt": 0.12 * swell, "y": absf(sin(_t * 12.0)) * 0.06, "arm_l": Vector3(-0.7, 0, 0.5), "arm_r": Vector3(0.7, 0, -0.5)}
+		"lick":  # Muning: mlem.
+			return {"arm_r": Vector3(-2.3 + sin(_t * 14.0) * 0.14, 0, -0.55), "head_tilt": 0.16, "head_roll": -0.14 * swell, "arm_l": Vector3(0, 0, 0.2)}
+		"yawn":  # Damulag: is it lunch?
+			return {"arm_l": Vector3(0, 0, 0.3 + 1.6 * swell), "arm_r": Vector3(0, 0, -0.3 - 1.6 * swell), "head_tilt": -0.36 * swell, "stretch": 1.0 + 0.1 * swell, "turn": sin(_t * 0.9) * 0.08}
+		"owl_turn":  # Tarsi: the head goes all the way round. The eyes stay on you as long as they can.
+			return {"head_turn": smoothstep(0.08, 0.92, f) * TAU, "arm_l": Vector3(0, 0, 0.3), "arm_r": Vector3(0, 0, -0.3)}
+		"crow":  # Tandang: it's four in the morning.
+			var flap := sin(_t * 26.0)
+			return {"head_tilt": -0.46 * swell, "stretch": 1.0 + 0.12 * swell, "y": swell * 0.12, "arm_l": Vector3(0, 0, 1.2 + flap * 0.6), "arm_r": Vector3(0, 0, -1.2 - flap * 0.6), "tilt": -0.1 * swell}
+		"wiggle":  # Biik: that's the whole dance.
+			return {"roll": sin(_t * 16.0) * 0.18 * swell, "turn": sin(_t * 8.0) * 0.25, "y": absf(sin(_t * 8.0)) * 0.06, "arm_l": Vector3(0, 0, 0.9), "arm_r": Vector3(0, 0, -0.9)}
+		"scratch":  # Unggoy: itchy.
+			return {"arm_r": Vector3(-0.7, 0, -2.15 + sin(_t * 18.0) * 0.16), "arm_l": Vector3(0.5, 0, 0.15), "head_roll": 0.2 * swell, "head_turn": -0.2 * swell, "y": absf(sin(_t * 7.0)) * 0.05}
+		"wobble":  # Buko: a coconut doesn't have a lot of balance.
+			var rock := sin(_t * 5.0) * 0.42 * swell
+			return {"roll": rock, "head_roll": -rock * 0.5, "arm_l": Vector3(0, 0, 1.1 + rock), "arm_r": Vector3(0, 0, -1.1 + rock)}
+		"shy_sway":  # Manga: oh, stop it.
+			return {"turn": sin(_t * 2.4) * 0.35, "head_roll": sin(_t * 2.4) * 0.16, "head_tilt": 0.14 * swell, "arm_l": Vector3(-1.1, 0, 0.05), "arm_r": Vector3(-1.1, 0, -0.05)}
+		"brain_freeze":  # Halo: worth it.
+			return {"head_roll": sin(_t * 38.0) * 0.08 * swell, "arm_l": Vector3(-0.8, 0, 2.1), "arm_r": Vector3(-0.8, 0, -2.1), "stretch": 1.0 + sin(_t * 30.0) * 0.03, "y": absf(sin(_t * 19.0)) * 0.03}
+		"glitch":  # Botbot: have you tried turning it off and on again?
+			var step: float = floor(_t * 9.0)
+			return {"head_turn": sin(step * 12.9) * 0.55, "head_roll": sin(step * 4.1) * 0.22, "arm_l": Vector3(sin(step * 7.3) * 1.3, 0, 0.2), "arm_r": Vector3(sin(step * 2.7) * 1.3, 0, -0.2)}
+		"boo":  # Multo: BOO! ...sorry.
+			var jump := smoothstep(0.0, 0.18, f) * (1.0 - smoothstep(0.7, 1.0, f))
+			return {"arm_l": Vector3(-1.0 * jump, 0, 0.4 + 1.2 * jump), "arm_r": Vector3(-1.0 * jump, 0, -0.4 - 1.2 * jump), "tilt": 0.26 * jump, "y": 0.22 * jump, "stretch": 1.0 + 0.16 * jump}
+		"hello":  # Kosmo: we come in peace.
+			var wave := sin(_t * 10.0) * 0.4
+			return {"y": 0.22 * swell, "arm_l": Vector3(0, 0, 1.75 + wave), "arm_r": Vector3(0, 0, -1.75 + wave), "head_roll": sin(_t * 5.0) * 0.1}
+		"flare":  # Apoy: totally fine.
+			var pulse := absf(sin(_t * 9.0))
+			_kick = 1.0
+			return {"stretch": 1.0 + pulse * 0.18 * swell, "arm_l": Vector3(0, 0, 1.6), "arm_r": Vector3(0, 0, -1.6), "y": pulse * 0.05}
+		"shiver":  # Yelo: who left the door open?
+			return {"turn": sin(_t * 44.0) * 0.07, "roll": sin(_t * 51.0) * 0.05, "arm_l": Vector3(-1.2, 0, 0.0), "arm_r": Vector3(-1.2, 0, 0.0), "y": -0.03 * swell}
+	return {}
 
 
 # --- Hats and things on the back ------------------------------------------------------------------
@@ -1568,7 +2012,11 @@ func animate(delta: float) -> void:
 	var foot_l := Vector3(0, 0, 0)
 	var foot_r := Vector3(0, 0, 0)
 	var head_tilt := 0.0
+	var head_turn := 0.0
+	var head_roll := 0.0
+	var roll := 0.0
 	var stretch := 1.0
+	_tick_gag(delta)
 	match state:
 		"run":
 			var r := _run_pose()
@@ -1632,6 +2080,21 @@ func animate(delta: float) -> void:
 			arm_l = Vector3(sin(_t * 2.6) * 0.08, 0, 0.42 + sin(_t * 2.6) * 0.05)
 			arm_r = Vector3(-sin(_t * 2.6) * 0.08, 0, -0.42 - sin(_t * 2.6) * 0.05)
 			head_tilt = sin(_t * 0.9) * 0.05
+			head_roll = sin(_t * 0.7) * 0.04
+			if _floaty:
+				y += 0.05 + sin(_t * 2.0) * 0.04
+			if _gag != "":
+				var pose := _gag_pose()
+				y += float(pose.get("y", 0.0))
+				tilt = pose.get("tilt", tilt)
+				turn = pose.get("turn", turn)
+				roll = pose.get("roll", roll)
+				stretch = pose.get("stretch", stretch)
+				head_tilt = pose.get("head_tilt", head_tilt)
+				head_turn = pose.get("head_turn", head_turn)
+				head_roll = pose.get("head_roll", head_roll)
+				arm_l = pose.get("arm_l", arm_l)
+				arm_r = pose.get("arm_r", arm_r)
 	if state != "run":
 		_hover_extra = 0.0
 	_hips.position.y = y + _hover_extra
@@ -1640,11 +2103,11 @@ func animate(delta: float) -> void:
 	# Poses say "outward" with a plus on the left arm and a minus on the right; the hinges run the other way.
 	arm_l.z = -arm_l.z
 	arm_r.z = -arm_r.z
-	_hips.rotation = Vector3(tilt, turn, 0)
+	_hips.rotation = Vector3(tilt, turn, roll)
 	var sq := _squash
 	_hips.scale = Vector3(1.0 + sq * 0.5, stretch * (1.0 - sq * 0.6), 1.0 + sq * 0.5)
 	if _head:
-		_head.rotation.x = head_tilt
+		_head.rotation = Vector3(head_tilt, head_turn, head_roll)
 	if _arm_l:
 		_arm_l.rotation = _arm_l.rotation.lerp(arm_l, clampf(delta * 16.0, 0.0, 1.0))
 		_arm_r.rotation = _arm_r.rotation.lerp(arm_r, clampf(delta * 16.0, 0.0, 1.0))
@@ -1653,6 +2116,7 @@ func animate(delta: float) -> void:
 		_foot_r.position = Vector3(FOOT_X, FOOT_Y + foot_r.y, foot_r.z)
 	if _back and (look.get("back", "") in ["angel", "bat", "dragon", "butterfly"]):
 		_back.rotation.y = sin(_t * (9.0 if state == "run" else 3.0)) * 0.12
+	_tick_wiggles(delta)
 	_tick_blink(delta)
 	if _flash > 0.0:
 		set_material_kind("flash")
@@ -1669,7 +2133,7 @@ func _run_pose() -> Dictionary:
 		"arm_l": Vector3(swing * 0.9 * m, 0, 0.32), "arm_r": Vector3(-swing * 0.9 * m, 0, -0.32),
 		"foot_l": Vector3(0, maxf(cos(phase), 0.0) * 0.16, swing * 0.26) * m,
 		"foot_r": Vector3(0, maxf(-cos(phase), 0.0) * 0.16, -swing * 0.26) * m}
-	match run_id:
+	match run_id if run_id != "" else _own_run:
 		"strut":
 			out["turn"] = swing * 0.28 * m
 			out["tilt"] = -0.04

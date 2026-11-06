@@ -21,7 +21,7 @@ void fragment() {
 	float gentle = smoothstep(-0.8, 0.7, ndl);
 	float band = mix(hard, gentle, soft);
 	vec3 col = COLOR.rgb * tint.rgb;
-	vec3 shade = col * mix(vec3(0.5, 0.46, 0.68), vec3(0.74, 0.68, 0.84), soft);
+	vec3 shade = col * mix(vec3(0.5, 0.46, 0.68), vec3(0.86, 0.8, 0.9), soft);
 	vec3 lit = mix(shade, col, band);
 	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	float rim = pow(1.0 - facing, 3.0);

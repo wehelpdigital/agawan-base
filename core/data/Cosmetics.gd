@@ -206,27 +206,27 @@ const RUNS: Array[Dictionary] = [
 ]
 
 const HEROES: Array[Dictionary] = [
-	{"id": "kiko", "name": "Kiko", "rarity": "free", "kind": "kid", "skin": "e8b07a", "hair": "2c1f3a", "style": "spiky", "top": "ff5a4e", "low": "2f5fd0", "shoe": "ffffff", "blurb": "Fastest kid on the block. Says so himself."},
-	{"id": "lani", "name": "Lani", "rarity": "free", "kind": "kid", "skin": "d99a68", "hair": "3b2230", "style": "ponytail", "top": "35d07f", "low": "ffb52e", "shoe": "ff6fb5", "blurb": "Has never once lost at tag. Ask anyone."},
-	{"id": "bong", "name": "Bong", "rarity": "free", "kind": "kid", "skin": "c98a58", "hair": "1d1630", "style": "bowl", "top": "3aa6ff", "low": "3a3a58", "shoe": "ffd23f", "blurb": "Quiet, sneaky, always in the tall grass."},
-	{"id": "maya", "name": "Maya", "rarity": "common", "kind": "kid", "skin": "f0c090", "hair": "5a2b1a", "style": "buns", "top": "ff6fb5", "low": "ffffff", "shoe": "7f5cff", "blurb": "Named after a tiny bird. Just as hard to catch."},
-	{"id": "rafael", "name": "Rafael", "rarity": "common", "kind": "kid", "skin": "b87a4c", "hair": "241a33", "style": "mohawk", "top": "ffd23f", "low": "24135f", "shoe": "ff5a4e", "blurb": "Louder than the fiesta band."},
-	{"id": "tala", "name": "Tala", "rarity": "rare", "kind": "kid", "skin": "e0a874", "hair": "e8eaff", "style": "long", "top": "7f5cff", "low": "2b2466", "shoe": "bff3ff", "blurb": "Runs by starlight. Silver hair, no explanation."},
-	{"id": "bantay", "name": "Bantay", "rarity": "common", "kind": "animal", "animal": "dog", "fur": "c98a4a", "belly": "fff1d6", "accent": "ff5a4e", "blurb": "Very good boy. Guards the base. Mostly."},
-	{"id": "muning", "name": "Muning", "rarity": "common", "kind": "animal", "animal": "cat", "fur": "ffb04d", "belly": "fff6e6", "accent": "35d07f", "blurb": "Knocks your powerup off the table on purpose."},
-	{"id": "tamaraw", "name": "Damulag", "rarity": "rare", "kind": "animal", "animal": "buffalo", "fur": "5c5a78", "belly": "8d8ba8", "accent": "ffd23f", "blurb": "Big, gentle, and absolutely not stopping."},
-	{"id": "tarsi", "name": "Tarsi", "rarity": "rare", "kind": "animal", "animal": "tarsier", "fur": "b58d6a", "belly": "e6cfae", "accent": "3aa6ff", "blurb": "Those eyes see you. They always see you."},
-	{"id": "tandang", "name": "Tandang", "rarity": "rare", "kind": "animal", "animal": "rooster", "fur": "fff4dc", "belly": "ffffff", "accent": "ff3f3f", "blurb": "Wakes the whole team at 4 a.m."},
-	{"id": "biik", "name": "Biik", "rarity": "common", "kind": "animal", "animal": "pig", "fur": "ffa6c0", "belly": "ffd0de", "accent": "3aa6ff", "blurb": "Surprisingly aerodynamic."},
-	{"id": "unggoy", "name": "Unggoy", "rarity": "rare", "kind": "animal", "animal": "monkey", "fur": "8a5a3a", "belly": "e6c9a0", "accent": "ffd23f", "blurb": "Stole the last hero's banana. And their shoes."},
-	{"id": "buko", "name": "Buko", "rarity": "epic", "kind": "mascot", "shape": "coconut", "main": "7a5230", "second": "fff8ea", "accent": "35d07f", "blurb": "A coconut with places to be."},
-	{"id": "manga", "name": "Manga", "rarity": "epic", "kind": "mascot", "shape": "mango", "main": "ffc21f", "second": "ff7f2e", "accent": "35d07f", "blurb": "The sweetest runner in the islands."},
-	{"id": "halo", "name": "Halo", "rarity": "epic", "kind": "mascot", "shape": "cup", "main": "cfeeff", "second": "b57cff", "accent": "ff6fb5", "blurb": "Shaved ice, sweet beans, zero chill."},
-	{"id": "botbot", "name": "Botbot", "rarity": "epic", "kind": "mascot", "shape": "robot", "main": "9aa8d6", "second": "ffd23f", "accent": "27e9ff", "blurb": "Calculated your route. Calculated your snack, too."},
-	{"id": "multo", "name": "Multo", "rarity": "epic", "kind": "mascot", "shape": "ghost", "main": "eef1ff", "second": "c9c4ff", "accent": "7f5cff", "blurb": "Says boo. Means it."},
-	{"id": "kosmo", "name": "Kosmo", "rarity": "legend", "kind": "mascot", "shape": "alien", "main": "6dffb0", "second": "2b2466", "accent": "ff6fb5", "blurb": "Came for the base, stayed for the fiesta."},
-	{"id": "apoy", "name": "Apoy", "rarity": "legend", "kind": "mascot", "shape": "flame", "main": "ff7a1f", "second": "ffd23f", "accent": "ff3f3f", "blurb": "Don't ask for a hug."},
-	{"id": "yelo", "name": "Yelo", "rarity": "legend", "kind": "mascot", "shape": "crystal", "main": "9fe6ff", "second": "e8fbff", "accent": "5a7dff", "blurb": "A cool head, in the most literal way."},
+	{"id": "kiko", "name": "Kiko", "rarity": "free", "kind": "kid", "skin": "e8b07a", "hair": "4a2a1c", "style": "spiky", "top": "ff5a4e", "low": "2f5fd0", "shoe": "ffffff", "blurb": "Fastest kid on the block. He'll tell you. Twice."},
+	{"id": "lani", "name": "Lani", "rarity": "free", "kind": "kid", "skin": "d99a68", "hair": "5c2f1e", "style": "ponytail", "top": "35d07f", "low": "ffb52e", "shoe": "ff6fb5", "blurb": "Has never lost at tag. Has also never admitted to losing at tag."},
+	{"id": "bong", "name": "Bong", "rarity": "free", "kind": "kid", "skin": "c98a58", "hair": "33221c", "style": "bowl", "top": "3aa6ff", "low": "2f5fd0", "shoe": "ffd23f", "blurb": "Quiet, sneaky, and behind you. No, the other behind."},
+	{"id": "maya", "name": "Maya", "rarity": "common", "kind": "kid", "skin": "f0c090", "hair": "8a4a24", "style": "buns", "top": "ff6fb5", "low": "ffffff", "shoe": "7f5cff", "blurb": "Named after a tiny bird. Eats like a big one."},
+	{"id": "rafael", "name": "Rafael", "rarity": "common", "kind": "kid", "skin": "b87a4c", "hair": "3a2618", "style": "mohawk", "top": "ffd23f", "low": "ff7a3c", "shoe": "ff5a4e", "blurb": "Louder than the fiesta band. The band has complained."},
+	{"id": "tala", "name": "Tala", "rarity": "rare", "kind": "kid", "skin": "e0a874", "hair": "e8eaff", "style": "long", "top": "7f5cff", "low": "35b8d0", "shoe": "bff3ff", "blurb": "Runs by starlight. Walks into poles by daylight."},
+	{"id": "bantay", "name": "Bantay", "rarity": "common", "kind": "animal", "animal": "dog", "fur": "c98a4a", "belly": "fff1d6", "accent": "ff5a4e", "blurb": "Very good boy. Guards the base. Forgot which one."},
+	{"id": "muning", "name": "Muning", "rarity": "common", "kind": "animal", "animal": "cat", "fur": "ffb04d", "belly": "fff6e6", "accent": "35d07f", "blurb": "Knocks your power card off the table. On purpose. While looking at you."},
+	{"id": "tamaraw", "name": "Damulag", "rarity": "rare", "kind": "animal", "animal": "buffalo", "fur": "6577c8", "belly": "c8d0f4", "accent": "ffd23f", "blurb": "Big, gentle, and absolutely not stopping. The brakes are a rumour."},
+	{"id": "tarsi", "name": "Tarsi", "rarity": "rare", "kind": "animal", "animal": "tarsier", "fur": "b58d6a", "belly": "e6cfae", "accent": "3aa6ff", "blurb": "Those eyes see you. The head goes all the way round, too."},
+	{"id": "tandang", "name": "Tandang", "rarity": "rare", "kind": "animal", "animal": "rooster", "fur": "fff4dc", "belly": "ffffff", "accent": "ff3f3f", "blurb": "Wakes the whole team at 4 a.m. Also 4:05."},
+	{"id": "biik", "name": "Biik", "rarity": "common", "kind": "animal", "animal": "pig", "fur": "ffa6c0", "belly": "ffd0de", "accent": "3aa6ff", "blurb": "Surprisingly aerodynamic. Nobody knows why, least of all Biik."},
+	{"id": "unggoy", "name": "Unggoy", "rarity": "rare", "kind": "animal", "animal": "monkey", "fur": "8a5a3a", "belly": "e6c9a0", "accent": "ffd23f", "blurb": "Stole the last hero's banana. And their shoes. Is wearing both."},
+	{"id": "buko", "name": "Buko", "rarity": "epic", "kind": "mascot", "shape": "coconut", "main": "7a5230", "second": "fff8ea", "accent": "35d07f", "blurb": "A coconut with places to be, and a tiny umbrella for the trip."},
+	{"id": "manga", "name": "Manga", "rarity": "epic", "kind": "mascot", "shape": "mango", "main": "ffc21f", "second": "ffa235", "accent": "35d07f", "blurb": "The sweetest runner in the islands. Goes bright red if you say so."},
+	{"id": "halo", "name": "Halo", "rarity": "epic", "kind": "mascot", "shape": "cup", "main": "cfeeff", "second": "b57cff", "accent": "ff6fb5", "blurb": "Shaved ice, sweet beans, constant brain freeze."},
+	{"id": "botbot", "name": "Botbot", "rarity": "epic", "kind": "mascot", "shape": "robot", "main": "8fd0ff", "second": "ffd23f", "accent": "27e9ff", "blurb": "Calculated your route. Calculated your snack. Ate your snack."},
+	{"id": "multo", "name": "Multo", "rarity": "epic", "kind": "mascot", "shape": "ghost", "main": "eef1ff", "second": "c9c4ff", "accent": "7f5cff", "blurb": "Says boo. Then says sorry."},
+	{"id": "kosmo", "name": "Kosmo", "rarity": "legend", "kind": "mascot", "shape": "alien", "main": "6dffb0", "second": "2b2466", "accent": "ff6fb5", "blurb": "Came for the base, stayed for the fiesta. Third eye is for the buffet."},
+	{"id": "apoy", "name": "Apoy", "rarity": "legend", "kind": "mascot", "shape": "flame", "main": "ff7a1f", "second": "ffd23f", "accent": "ff3f3f", "blurb": "Loves hugs. Nobody has survived one."},
+	{"id": "yelo", "name": "Yelo", "rarity": "legend", "kind": "mascot", "shape": "crystal", "main": "9fe6ff", "second": "e8fbff", "accent": "5a7dff", "blurb": "A cool head, in the most literal way. Please close the door."},
 ]
 
 ## Outfit colours: repaint the main and accent colours of any hero.
@@ -474,7 +474,7 @@ static func total_items() -> int:
 
 
 static func default_look() -> Dictionary:
-	return {"char": "kiko", "skin": "", "face": "", "mask": "shades", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
+	return {"char": "kiko", "skin": "", "face": "", "mask": "", "hat": "", "top": "tee", "pants": "shorts", "shoes": "sneakers", "gloves": "", "back": "", "run": "", "trail": "", "aura": "", "burst": "", "dance": "", "frame": "", "title": ""}
 
 
 ## A believable random outfit, for bots.

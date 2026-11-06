@@ -39,6 +39,7 @@ var _zoom := -2.0  ## From ZOOM_OUT_MOST to 1, whole avatar at 0 and close up at
 var _touches := {}
 var _pinch := 0.0
 var _turned := false
+var _bubble: PanelContainer
 
 
 func _init() -> void:
@@ -81,6 +82,8 @@ func _ready() -> void:
 	world.add_child(_pad)
 	avatar = Avatar3D.new()
 	world.add_child(avatar)
+	avatar.gag_started.connect(_say)
+	avatar.calm = preview_slot == "face"
 	fx = FxField.new(120)
 	fx.density = 0.6 if Quality.is_low() else 1.0
 	world.add_child(fx)
@@ -123,6 +126,7 @@ func set_look(look: Dictionary, slot := "") -> void:
 			_auto_yaw = not _yaw_locked
 	if avatar == null:
 		return
+	avatar.calm = slot == "face"
 	if not same:
 		avatar.setup(_look, ArenaBuilder.team_color(0))
 	_apply_preview()
@@ -143,6 +147,41 @@ func _apply_preview() -> void:
 	if _emote:
 		_emote.queue_free()
 		_emote = null
+
+
+## A little speech bubble at the top of the picture, for a moment.
+func _say(line: String) -> void:
+	if line == "" or not is_inside_tree() or size.x < 80.0:
+		return
+	if is_instance_valid(_bubble):
+		_bubble.queue_free()
+	_bubble = PanelContainer.new()
+	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := UiKit.style(UiKit.PAPER, 12, 3, UiKit.INK)
+	box.content_margin_left = 10
+	box.content_margin_right = 10
+	box.content_margin_top = 3
+	box.content_margin_bottom = 4
+	_bubble.add_theme_stylebox_override("panel", box)
+	var text := UiKit.label(line, 15, UiKit.INK, 0, true)
+	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if UiKit.font_title().get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 26.0 > size.x:
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text.custom_minimum_size.x = size.x - 26.0
+	_bubble.add_child(text)
+	add_child(_bubble)
+	_bubble.reset_size()
+	var wide := _bubble.get_combined_minimum_size()
+	_bubble.size = wide
+	_bubble.position = Vector2((size.x - wide.x) * 0.5, 6.0)
+	_bubble.pivot_offset = wide * 0.5
+	_bubble.scale = Vector2.ONE * 0.6
+	var shown := _bubble
+	var tween := create_tween()
+	tween.tween_property(shown, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(1.7)
+	tween.tween_property(shown, "modulate:a", 0.0, 0.25)
+	tween.tween_callback(shown.queue_free)
 
 
 func show_emote(text: String) -> void:
@@ -168,8 +207,10 @@ func _process(delta: float) -> void:
 		pass
 	elif _yaw_locked:
 		_yaw = lerp_angle(_yaw, _want_yaw + sin(Time.get_ticks_msec() * 0.0012) * 0.22, clampf(delta * 5.0, 0.0, 1.0))
-	elif _auto_yaw:
-		_yaw += delta * (1.4 if preview_slot in ["trail", "run"] else 0.35)
+	elif _auto_yaw and preview_slot in ["trail", "run"]:
+		_yaw += delta * 1.4
+	elif _auto_yaw:  # Left alone, it sways a little and keeps looking at you.
+		_yaw = lerp_angle(_yaw, sin(Time.get_ticks_msec() * 0.00045) * 0.38, clampf(delta * 3.0, 0.0, 1.0))
 	avatar.rotation.y = _yaw
 	_distance = lerpf(_distance, _want_distance, clampf(delta * 5.0, 0.0, 1.0))
 	_height = lerpf(_height, _want_height, clampf(delta * 5.0, 0.0, 1.0))
@@ -228,7 +269,7 @@ func _add_zoom_buttons() -> void:
 		row.add_child(b)
 
 
-## Drag to turn the avatar round; a tap makes it pull a silly face. The wheel or two fingers zoom.
+## Drag to turn the avatar round; a tap sets off its own gag. The wheel or two fingers zoom.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if zoomable and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
@@ -238,7 +279,7 @@ func _gui_input(event: InputEvent) -> void:
 			_dragging = event.pressed
 			_auto_yaw = false
 			if event.pressed and avatar:
-				avatar.react(Faces.funny(), 1.4)
+				avatar.play_gag()
 	elif event is InputEventMouseMotion and _dragging:
 		if _touches.size() < 2:
 			_turn(event.relative.x)
@@ -255,7 +296,7 @@ func _gui_input(event: InputEvent) -> void:
 		_dragging = event.pressed
 		_auto_yaw = false
 		if event.pressed and avatar:
-			avatar.react(Faces.funny(), 1.4)
+			avatar.play_gag()
 	elif event is InputEventScreenDrag:
 		_touches[event.index] = event.position
 		if _touches.size() >= 2:

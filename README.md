@@ -51,7 +51,7 @@ scenes/     Main, and match/: MatchRunner, MatchView (3D), Hud, Minimap
 ui/         UiKit, UiRoot, GameButton, screens/
 server/     Node server (server.js), tests, public/ (the exported web game)
 tests/      SimTest, OnlineE2E, UiShots, ZoomTest, MatchShot, ThumbBaker, AvatarShot, ItemAudit (every item on any avatar),
-            SpinShot, TrickShot, PropSheet, IconSheet (pictures to check by eye)
+            SpinShot, TrickShot, PropSheet, IconSheet, GagSheet (pictures to check by eye)
 tools/      gen_art (logo, icons, atlas), gen_icons, copy_audio, publish_web
 web/        The web page around the game (edit shell.src.html)
 ```

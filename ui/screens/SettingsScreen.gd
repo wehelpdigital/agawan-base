@@ -105,7 +105,7 @@ func _section(title: String) -> PanelContainer:
 
 func _slider(title: String, value: float, on_change: Callable) -> Control:
 	var row := UiKit.hbox(10)
-	var caption := UiKit.label(title, 18)
+	var caption := UiKit.label(title, 18, UiKit.INK)
 	caption.custom_minimum_size.x = 92
 	row.add_child(caption)
 	var slider := HSlider.new()
@@ -123,7 +123,7 @@ func _slider(title: String, value: float, on_change: Callable) -> Control:
 
 func _toggle(title: String, value: bool, on_change: Callable) -> Control:
 	var row := UiKit.hbox(10)
-	var caption := UiKit.label(title, 18)
+	var caption := UiKit.label(title, 18, UiKit.INK)
 	caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(caption)
 	var b := UiKit.button("ON" if value else "OFF", "green" if value else "black", 16)
@@ -140,7 +140,7 @@ func _toggle(title: String, value: bool, on_change: Callable) -> Control:
 
 func _choice(title: String, options: Array, current: String, on_change: Callable) -> Control:
 	var col := UiKit.vbox(4)
-	col.add_child(UiKit.label(title, 18))
+	col.add_child(UiKit.label(title, 18, UiKit.INK))
 	var row := UiKit.hbox(6)
 	var buttons: Array[GameButton] = []
 	for option: Array in options:

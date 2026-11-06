@@ -37,6 +37,8 @@ const BUTTON_COLORS := {
 	"white": {"top": Color("ffffff"), "low": Color("e8f2fb"), "lip": INK, "text": INK},
 }
 
+const WEIGHT_AXIS := 2003265652  ## The font's "wght" axis. It has to be this number: the name alone is silently ignored.
+
 static var _title_font: Font
 static var _body_font: Font
 static var _body_bold: Font
@@ -60,7 +62,7 @@ static func font_body() -> Font:
 		var base: Font = load("res://assets/fonts/Nunito.ttf")
 		var variation := FontVariation.new()
 		variation.base_font = base
-		variation.variation_opentype = {"wght": 800}
+		variation.variation_opentype = {WEIGHT_AXIS: 700}
 		_body_font = variation
 	return _body_font
 
@@ -70,7 +72,7 @@ static func font_bold() -> Font:
 		var base: Font = load("res://assets/fonts/Nunito.ttf")
 		var variation := FontVariation.new()
 		variation.base_font = base
-		variation.variation_opentype = {"wght": 900}
+		variation.variation_opentype = {WEIGHT_AXIS: 900}
 		_body_bold = variation
 	return _body_bold
 

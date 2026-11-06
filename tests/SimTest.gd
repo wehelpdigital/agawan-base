@@ -358,6 +358,20 @@ func _test_tricks() -> void:
 
 ## Everything the game asks an avatar's face to do has to exist.
 func _test_faces() -> void:
+	var run_ids := {}
+	for run: Dictionary in Cosmetics.RUNS:
+		run_ids[run["id"]] = true
+	for hero: Dictionary in Cosmetics.HEROES:
+		var who := Faces.person(hero["id"])
+		_ok(not who.is_empty(), "%s has a personality" % hero["id"])
+		_ok(Faces.GAGS.has(who.get("gag", "")), "%s has a gag" % hero["id"])
+		_ok(run_ids.has(who.get("run", "")), "%s has a real walk" % hero["id"])
+		_ok((who.get("lines", []) as Array).size() == 3, "%s has things to say" % hero["id"])
+		_ok((who.get("likes", []) as Array).size() >= 3, "%s has favourite faces" % hero["id"])
+		for face: String in who.get("likes", []):
+			_ok(Faces.PARTS.has(face), "%s is a face" % face)
+	for gag: String in Faces.GAGS:
+		_ok(Faces.PARTS.has(Faces.GAGS[gag]["face"]), "%s has a real face" % gag)
 	for entry: Dictionary in Cosmetics.FACES:
 		_ok(Faces.PARTS.has(entry["expr"]), "%s is a face" % entry["expr"])
 	for list: Array in [Faces.FUNNY, Faces.TAGGING, Faces.TAGGED, Faces.CHEERING, Faces.BOOING, Faces.GOT_CRYSTAL]:

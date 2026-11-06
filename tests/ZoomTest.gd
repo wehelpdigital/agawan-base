@@ -118,6 +118,9 @@ func _run() -> void:
 	_send_button(view.get_global_rect().get_center() + Vector2(0, -40), false, MOUSE_BUTTON_LEFT)
 	await get_tree().process_frame
 	_check("tapping the avatar pulls a silly face", view.avatar._face_for_state() != tapped)
+	_check("and it has something to say", is_instance_valid(view._bubble))
+	await _wait(0.5)
+	await _shot("6_gag")
 	for file in DirAccess.get_files_at("user://"):
 		if file.begins_with("profile"):
 			DirAccess.remove_absolute("user://" + file)
