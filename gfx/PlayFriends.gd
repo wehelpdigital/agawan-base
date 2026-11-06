@@ -7,11 +7,15 @@ extends Node3D
 signal said(line: String, at: Vector3)  ## One of them has something to say, from about here.
 
 const FRIEND_SIZE := 0.62
+const DRESSED := 0.3  ## How likely each thing they could wear is. Clothes add triangles, so phones get fewer.
+const DRESSED_LOW := 0.08
 const WIDE_ROOM := 2.6  ## How far out to each side there's room on a wide screen. A narrower one brings everybody in.
 const LEAST_ROOM := 0.72
 const FIRST_WAIT := 0.3
 const NEXT_WAIT := 0.12
 const QUIET_MSEC := 4500  ## They take turns to talk.
+const SLOW_FRAME := 1.0 / 24.0
+const SLOW_CHECK_SECONDS := 6.0
 const HEAD_HEIGHT := 2.05
 
 const SIDE_X := 1.6  ## Where the rope and the ball games are, either side of you and a little behind.
@@ -58,6 +62,8 @@ var _todo_wait := FIRST_WAIT
 var _friends: Array[Avatar3D] = []
 var _quiet_until := 0
 var _butterfly_wait := 1.0
+var _slow_clock := 0.0
+var _slow_time := 0.0
 var _left: Node3D
 var _right: Node3D
 
@@ -103,7 +109,7 @@ func setup(radius: float, fx: FxField, you: Avatar3D) -> void:
 	add_child(_right)
 	set_room(WIDE_ROOM)
 	_todo = [_add_runner, _add_runner, _add_thrower.bind(-1.0), _add_thrower.bind(1.0)]
-	if Settings.quality != "low" and not Quality.auto_lowered:  # Phones too: a match shows more than this.
+	if Settings.quality != "low" and not Quality.auto_lowered:  # Not on the Fast setting, or if the game's had to slow down.
 		_todo.append_array([_add_turner.bind(-1.0), _add_turner.bind(1.0), _add_skipper])
 
 
@@ -133,6 +139,7 @@ func _process(delta: float) -> void:
 		_play_ball(delta)
 	if _skipper:
 		_play_rope(delta)
+		_watch_speed(delta)
 	_butterfly_wait -= delta
 	if _butterfly_wait <= 0.0:
 		_butterfly_wait = BUTTERFLY_SECONDS * randf_range(0.6, 1.4)
@@ -166,9 +173,10 @@ func _look_for(index: int) -> Dictionary:
 	while _looks.size() <= index:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
-		var look := Cosmetics.random_look(rng, 0.3)
+		var dressed := DRESSED_LOW if Quality.is_low() else DRESSED
+		var look := Cosmetics.random_look(rng, dressed)
 		while _looks.any(func(other: Dictionary) -> bool: return other["char"] == look["char"]):
-			look = Cosmetics.random_look(rng, 0.3)
+			look = Cosmetics.random_look(rng, dressed)
 		for slot: String in ["pet", "flag", "aura"]:
 			look[slot] = ""
 		_looks.append(look)
@@ -444,6 +452,26 @@ func _play_rope(delta: float) -> void:
 		_skipper.squash(0.16)
 		if _skips % 5 == 0:
 			_speak("%d!" % _skips, _skipper)
+
+
+## On a device that's struggling, the rope game goes home: the screen matters more than three more friends.
+func _watch_speed(delta: float) -> void:
+	_slow_clock += delta
+	if delta > SLOW_FRAME:
+		_slow_time += delta
+	if _slow_clock >= SLOW_CHECK_SECONDS:
+		if _slow_time > SLOW_CHECK_SECONDS * 0.5:
+			send_rope_home()
+		_slow_clock = 0.0
+		_slow_time = 0.0
+
+
+func send_rope_home() -> void:
+	_friends = _friends.filter(func(who: Avatar3D) -> bool: return not _turners.has(who) and who != _skipper)
+	for child in _left.get_children():
+		child.queue_free()
+	_turners.clear()
+	_skipper = null
 
 
 func _trip() -> void:
