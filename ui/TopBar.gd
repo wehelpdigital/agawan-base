@@ -4,6 +4,7 @@ extends Control
 
 var _name_label: Label
 var _level_badge: RoundBadge
+var _flag_icon: TextureRect
 var _trophy_pill: PanelContainer
 var _coin_pill: PanelContainer
 var _gem_pill: PanelContainer
@@ -56,6 +57,14 @@ func _build() -> void:
 	me.add_child(inner)
 	_level_badge = RoundBadge.new().setup("1", height)
 	inner.add_child(_level_badge)
+	_flag_icon = TextureRect.new()
+	_flag_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_flag_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_flag_icon.custom_minimum_size = Vector2(height * 0.74, height * 0.54)
+	_flag_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_flag_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flag_icon.visible = not _narrow
+	inner.add_child(_flag_icon)
 	var col := UiKit.vbox(-2)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -115,6 +124,10 @@ func refresh() -> void:
 		return
 	_name_label.text = Profile.player_name
 	_level_badge.value = str(Profile.level)
+	var flag_id := str(Profile.look.get("flag", ""))
+	_flag_icon.visible = flag_id != "" and not _narrow
+	if flag_id != "":
+		_flag_icon.texture = Flags.texture(flag_id)
 	_level_badge.progress = float(Profile.xp) / maxf(Ranks.xp_for_level(Profile.level), 1.0)
 	_set_value(_trophy_pill, _amount(Profile.trophies))
 	_set_value(_coin_pill, _amount(Profile.coins))

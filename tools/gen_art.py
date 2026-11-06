@@ -1,37 +1,24 @@
-"""Draws the game's logo, app icons and particle atlas (original art, made here with Pillow).
-
-The logo spells the name out in toy building blocks.
+"""Draws the game's logo, app icons, the planet's skin and the particle atlas (original art, made here with Pillow).
 
     python tools/gen_art.py
 """
 import math
 import random
+import sys
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gen_logo  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-TITLE_FONT = str(ROOT / "assets/fonts/RammettoOne-Regular.ttf")
 
-INK = (10, 20, 38)
-INK_DARK = (4, 9, 18)
 WHITE = (255, 255, 255)
-CORAL = (255, 82, 71)
-MINT = (53, 208, 127)
 SKY_TOP = (69, 178, 255)
 SKY_LOW = (194, 240, 255)
 GRASS = (88, 200, 92)
 GRASS_DARK = (62, 170, 70)
-# Block colours: face top, face bottom, side.
-BLOCKS = {
-    "red": ((255, 110, 92), (240, 62, 54), (176, 34, 38)),
-    "yellow": ((255, 226, 92), (255, 182, 28), (214, 124, 10)),
-    "blue": ((104, 198, 255), (38, 138, 244), (20, 88, 182)),
-    "green": ((112, 234, 120), (46, 196, 88), (22, 134, 62)),
-    "orange": ((255, 184, 92), (255, 136, 36), (206, 88, 14)),
-    "pink": ((255, 150, 200), (255, 84, 160), (192, 40, 116)),
-    "teal": ((104, 232, 224), (30, 190, 196), (14, 130, 142)),
-}
 
 
 def vgrad(size, top, low, power=1.0):
@@ -52,139 +39,14 @@ def star_points(cx, cy, r_out, r_in, n=5, rot=-math.pi / 2):
     return pts
 
 
-def toy_block(size, colours, letter=None, font=None):
-    """A rounded plastic cube, seen a little from above, with a letter on its face. Returns an RGBA picture."""
-    top, low, side = colours
-    depth = int(size * 0.17)
-    pad = int(size * 0.06)
-    w = size + pad * 2
-    h = size + depth + pad * 2
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    radius = int(size * 0.2)
-    box = (pad, pad, pad + size, pad + size)
-    # The side of the block below its face, then a soft shadow line under the whole thing.
-    d.rounded_rectangle((pad, pad + depth, pad + size, pad + size + depth), radius=radius, fill=INK_DARK + (255,))
-    d.rounded_rectangle((pad, pad + depth - int(size * 0.02), pad + size, pad + size + depth - int(size * 0.03)), radius=radius, fill=side + (255,))
-    # The face, shading from top to bottom.
-    mask = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(mask).rounded_rectangle(box, radius=radius, fill=255)
-    face = vgrad((w, h), top, low, 0.9).convert("RGBA")
-    img.paste(face, (0, 0), mask)
-    # A soft rim of light round the face, and a highlight on the top edge, so it reads as glossy plastic.
-    rim = Image.new("L", (w, h), 0)
-    border = max(int(size * 0.035), 2)
-    ImageDraw.Draw(rim).rounded_rectangle(box, radius=radius, outline=120, width=border)
-    img.paste(Image.new("RGBA", (w, h), WHITE + (255,)), (0, 0), rim)
-    gloss = Image.new("L", (w, h), 0)
-    gd = ImageDraw.Draw(gloss)
-    gd.rounded_rectangle((pad + size * 0.1, pad + size * 0.075, pad + size * 0.9, pad + size * 0.28), radius=int(size * 0.1), fill=120)
-    gloss = gloss.filter(ImageFilter.GaussianBlur(size * 0.012))
-    img.paste(Image.new("RGBA", (w, h), WHITE + (255,)), (0, 0), gloss)
-    if letter:
-        # The letter sits on the face, with a little dark drop below it.
-        layer = Image.new("L", (w, h), 0)
-        ld = ImageDraw.Draw(layer)
-        bb = ld.textbbox((0, 0), letter, font=font)
-        x = pad + (size - (bb[2] - bb[0])) / 2 - bb[0]
-        y = pad + (size - (bb[3] - bb[1])) / 2 - bb[1] + size * 0.015
-        ld.text((x, y), letter, font=font, fill=255)
-        drop = ImageChops.offset(layer, 0, int(size * 0.035))
-        img.paste(Image.new("RGBA", (w, h), side + (255,)), (0, 0), drop)
-        img.paste(Image.new("RGBA", (w, h), WHITE + (255,)), (0, 0), layer)
-    return img
-
-
-def place(canvas, block, cx, cy, tilt):
-    turned = block.rotate(tilt, resample=Image.BICUBIC, expand=True)
-    canvas.alpha_composite(turned, (int(cx - turned.width / 2), int(cy - turned.height / 2)))
-
-
-def drop_shadow(canvas, offset, blur, opacity):
-    alpha = canvas.getchannel("A")
-    shadow = Image.new("RGBA", canvas.size, INK_DARK + (0,))
-    shadow.putalpha(alpha.point(lambda v: int(v * opacity)))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
-    out = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    out.alpha_composite(shadow, (offset[0], offset[1]))
-    out.alpha_composite(canvas)
-    return out
-
-
-def flag(canvas, x, base_y, height, width, colour):
-    d = ImageDraw.Draw(canvas)
-    top = base_y - height
-    pole = max(int(width * 0.07), 5)
-    d.rounded_rectangle((x - pole - 3, top - 3, x + pole + 3, base_y + 3), radius=pole, fill=INK_DARK + (255,))
-    d.rounded_rectangle((x - pole, top, x + pole, base_y), radius=pole, fill=(255, 246, 224, 255))
-    wave = []
-    bottom = []
-    drop = height * 0.5
-    for i in range(21):
-        f = i / 20
-        y = top + height * 0.05 + math.sin(f * 5.2) * height * 0.035
-        wave.append((x + pole + f * width, y + f * drop * 0.2))
-        bottom.append((x + pole + f * width, y + drop - f * drop * 0.34))
-    outline = wave + list(reversed(bottom))
-    d.polygon([(a + 5, b + 6) for a, b in outline], fill=INK_DARK + (255,))
-    d.polygon(outline, fill=colour + (255,))
-    cx = x + pole + width * 0.45
-    cy = top + height * 0.05 + drop * 0.46
-    d.polygon(star_points(cx, cy, drop * 0.34, drop * 0.15), fill=(255, 226, 92, 255))
-    d.ellipse((x - pole * 2.2, top - pole * 2.6, x + pole * 2.2, top + pole * 1.8), fill=INK_DARK + (255,))
-    d.ellipse((x - pole * 1.7, top - pole * 2.1, x + pole * 1.7, top + pole * 1.3), fill=(255, 226, 92, 255))
-
-
-def make_logo(path, width=1600):
-    h = int(width * 0.7)
-    canvas = Image.new("RGBA", (width, h), (0, 0, 0, 0))
-    small = int(width * 0.128)
-    big = int(width * 0.2)
-    font_small = ImageFont.truetype(TITLE_FONT, int(small * 0.66))
-    font_big = ImageFont.truetype(TITLE_FONT, int(big * 0.66))
-    random.seed(4)
-    # BASE first, bigger and at the front; the flag stands on it.
-    colours = ["blue", "red", "yellow", "green"]
-    gap = big * 1.06
-    start = width * 0.5 - gap * 1.5
-    y_base = h * 0.66
-    flag(canvas, int(start + gap * 3 + big * 0.1), int(y_base - big * 0.44), int(big * 1.02), int(big * 0.72), (255, 82, 71))
-    for i, letter in enumerate("BASE"):
-        place(canvas, toy_block(big, BLOCKS[colours[i]], letter, font_big), start + i * gap, y_base + [6, -8, 8, -4][i], [-4, 3, -2, 4][i])
-    # CAPTURE on top, in smaller blocks, overlapping the row below like a stack.
-    colours = ["red", "yellow", "green", "blue", "orange", "pink", "teal"]
-    gap = small * 1.03
-    start = width * 0.5 - gap * 3 - width * 0.03
-    y_top = h * 0.24
-    for i, letter in enumerate("CAPTURE"):
-        place(canvas, toy_block(small, BLOCKS[colours[i]], letter, font_small), start + i * gap, y_top + [6, -6, 7, -5, 6, -7, 5][i], [3, -3, 2, -2, 3, -3, 2][i])
-    # "the": a little round wooden peg between the rows.
-    d = ImageDraw.Draw(canvas)
-    cx, cy, r = width * 0.095, h * 0.5, width * 0.062
-    d.ellipse((cx - r, cy - r + r * 0.2, cx + r, cy + r + r * 0.2), fill=INK_DARK + (255,))
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 226, 92, 255))
-    d.ellipse((cx - r * 0.84, cy - r * 0.84, cx + r * 0.84, cy + r * 0.84), fill=(255, 240, 160, 255))
-    font_the = ImageFont.truetype(TITLE_FONT, int(r * 0.74))
-    bb = d.textbbox((0, 0), "THE", font=font_the)
-    d.text((cx - (bb[2] - bb[0]) / 2 - bb[0], cy - (bb[3] - bb[1]) / 2 - bb[1]), "THE", font=font_the, fill=INK + (255,))
-    canvas = drop_shadow(canvas, (0, int(width * 0.008)), width * 0.005, 0.45)
-    canvas = canvas.crop(canvas.getbbox())
-    canvas.save(path, optimize=True)
-
-
 def emblem_layer(size):
-    """The mark: one big toy block with a star on it, and a flag planted on top."""
-    s = size
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    block_size = int(s * 0.56)
-    block = toy_block(block_size, BLOCKS["blue"])
-    d = ImageDraw.Draw(block)
-    mid = block.width / 2
-    d.polygon(star_points(mid, mid + block_size * 0.01, block_size * 0.36, block_size * 0.16), fill=(214, 124, 10, 255))
-    d.polygon(star_points(mid, mid - block_size * 0.015, block_size * 0.34, block_size * 0.15), fill=(255, 226, 92, 255))
-    flag(img, int(s * 0.5), int(s * 0.46), int(s * 0.36), int(s * 0.28), (255, 82, 71))
-    place(img, block, s * 0.5, s * 0.62, -5)
-    return img
+    """The mark: the little planet with the flag planted on it."""
+    img = Image.new("RGBA", (size * 2, size * 2), (0, 0, 0, 0))
+    r = int(size * 0.72)
+    cx, cy = size, int(size * 1.2)
+    gen_logo.globe(img, cx, cy, r)
+    gen_logo.team_flag(img, cx + int(r * 0.1), cy - int(r * 0.92), int(r * 0.9), int(r * 0.92))
+    return img.resize((size, size), Image.LANCZOS)
 
 
 def sky_with_hills(size):
@@ -469,7 +331,8 @@ def main():
     brand = ROOT / "assets/brand"
     brand.mkdir(parents=True, exist_ok=True)
     make_atlas()
-    make_logo(brand / "logo.png")
+    gen_logo.make_logo(brand / "logo.png")
+    gen_logo.world_map(1024).save(brand / "world_map.png", optimize=True)
     make_icons()
     print("art done")
 

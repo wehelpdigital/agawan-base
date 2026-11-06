@@ -54,7 +54,7 @@ static func draw(kit: MeshKit, prop: String, at: Vector3, yaw := 0.0, scale := 1
 		"dead_tree": _dead_tree(kit)
 		_:
 			if not WorldProps.draw(kit, prop, v, accent):
-				kit.soft_box(Vector3(0, 0.6, 0), Vector3(0.65, 0.6, 0.65), accent, 0.5)
+				kit.soft_box(Vector3(0, 0.6, 0), Vector3(0.65, 0.6, 0.65), accent, 0.5, 11, 17)
 	kit.pop()
 
 

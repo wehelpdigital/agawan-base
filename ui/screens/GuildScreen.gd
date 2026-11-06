@@ -178,8 +178,9 @@ func _create_popup() -> void:
 		pick.pressed.connect(func() -> void:
 			chosen[0] = i
 			for j in plates.size():
-				plates[j].modulate.a = 1.0 if j == i else 0.45)
-		pick.modulate.a = 1.0 if i == 0 else 0.45
+				plates[j].scale = Vector2.ONE if j == i else Vector2.ONE * 0.72)
+		pick.pivot_offset = Vector2(21, 21)
+		pick.scale = Vector2.ONE if i == 0 else Vector2.ONE * 0.72
 		plates.append(pick)
 		badge_row.add_child(pick)
 	col.add_child(badge_row)

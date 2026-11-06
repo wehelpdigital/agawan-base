@@ -89,7 +89,7 @@ func _add_list(parent: Control) -> void:
 	groups_scroll.custom_minimum_size.y = 56
 	groups_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	groups_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_groups_row = UiKit.hbox(6)
+	_groups_row = UiKit.hbox(4)
 	groups_scroll.add_child(_groups_row)
 	parent.add_child(groups_scroll)
 	_chips_scroll = UiKit.scroller(true)
@@ -142,16 +142,25 @@ func _build_tabs() -> void:
 			continue
 		for slot: String in group["slots"]:
 			var info: Dictionary = Cosmetics.SLOT_INFO[slot]
-			var chip := UiKit.button(info["name"], "blue" if slot == _slot else "ink", 14, info["icon"])
-			chip.custom_minimum_size.y = 44
-			chip.pressed.connect(func() -> void:
-				_slot = slot
-				_after_tab())
-			_chips.add_child(chip)
+			_chips.add_child(_chip(info["name"], slot, info["icon"]))
+		if _group == "world":
+			for region: Dictionary in Cosmetics.REGIONS:
+				_chips.add_child(_chip(region["name"], "region:" + String(region["id"]), "globe"))
+	# One kind of thing needs no row of its own.
+	_chips_scroll.visible = _group not in ["deals", "pets"]
+
+
+func _chip(text: String, slot: String, icon_name: String) -> Control:
+	var chip := UiKit.button(text, "blue" if slot == _slot else "ink", 14, icon_name)
+	chip.custom_minimum_size.y = 44
+	chip.pressed.connect(func() -> void:
+		_slot = slot
+		_after_tab())
+	return chip
 
 
 func _group_button(id: String, text: String, icon_name: String) -> Control:
-	var b := UiKit.button(text, "yellow" if id == _group else "teal", 16, icon_name)
+	var b := UiKit.button(text, "yellow" if id == _group else "teal", 14, icon_name)
 	b.custom_minimum_size.y = 50
 	b.pressed.connect(func() -> void:
 		_group = id
@@ -172,19 +181,8 @@ func _after_tab() -> void:
 	_show_item("", "")
 
 
-## Today's deals: a different handful each day, half price, the same for everyone.
 func _deals() -> Array[Dictionary]:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(Time.get_date_string_from_system())
-	var pool: Array[Dictionary] = []
-	for slot: String in Cosmetics.SLOTS:
-		for entry: Dictionary in Cosmetics.list(slot):
-			if entry["rarity"] != "free" and slot != "char":
-				pool.append({"slot": slot, "id": entry["id"]})
-	var out: Array[Dictionary] = []
-	while out.size() < DEALS_COUNT and not pool.is_empty():
-		out.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
-	return out
+	return Cosmetics.todays_deals(DEALS_COUNT)
 
 
 func _refill() -> void:
@@ -200,6 +198,14 @@ func _refill() -> void:
 			_grid.add_child(_card(deal["slot"], deal["id"], cell, true))
 		return
 	var shown := 0
+	if _slot.begins_with("region:"):
+		for found: Dictionary in Cosmetics.from_region(_slot.trim_prefix("region:")):
+			if not _owned_only or Profile.owns(found["slot"], found["id"]):
+				_grid.add_child(_card(found["slot"], found["id"], cell, false))
+				shown += 1
+		if shown == 0:
+			_grid.add_child(UiKit.open_text("Nothing from here yet. Win coins, then visit the Shop!", 18))
+		return
 	for entry: Dictionary in Cosmetics.list(_slot):
 		if _owned_only and not Profile.owns(_slot, entry["id"]):
 			continue
@@ -291,15 +297,20 @@ func _show_item(slot: String, id: String) -> void:
 		_avatar.show_emote(String(Cosmetics.item(slot, id).get("text", "")))
 	if slot == "":
 		_name_label.remove_theme_color_override("font_color")
-		_name_label.text = "Today's Deals" if _slot == "deals" else String(Cosmetics.SLOT_INFO.get(_slot, {}).get("name", ""))
-		_info_label.text = "Half price, today only." if _slot == "deals" else "Tap anything to try it on."
+		_name_label.text = "Today's Deals" if _slot == "deals" else String(Cosmetics.SLOT_INFO.get(_slot, {}).get("name", _region_name(_slot)))
+		_info_label.text = "Half price, today only." if _slot == "deals" else ("Every country's flag is free. Fly yours!" if _slot == "flag" else "Tap anything to try it on.")
 		_action.visible = false
 		return
 	var entry := Cosmetics.item(slot, id)
 	var rarity: Dictionary = Cosmetics.RARITY[entry["rarity"]]
 	_name_label.text = String(entry["name"])
 	_name_label.add_theme_color_override("font_color", UiKit.WHITE if entry["rarity"] == "free" else (rarity["color"] as Color).lightened(0.25))
-	_info_label.text = String(entry.get("blurb", "%s %s" % [rarity["name"], String(Cosmetics.SLOT_INFO[slot]["name"]).trim_suffix("s")]))
+	var words := String(entry.get("blurb", "%s %s" % [rarity["name"], String(Cosmetics.SLOT_INFO[slot]["name"]).trim_suffix("s")]))
+	if slot == "flag" and id != "" and entry["rarity"] == "free":
+		words = "Fly it with pride. It's free."
+	elif entry.has("from"):
+		words = "From %s. %s" % [entry["from"], words] if String(entry["from"]) not in ["Spanish", "Portuguese", "French", "Italian", "German", "Japanese", "Korean", "Mandarin", "Hindi", "Filipino", "Arabic", "Turkish", "Swahili", "Hawaiian"] else "%s for hello. %s" % [entry["from"], words] if slot == "emote" else words
+	_info_label.text = words
 	_action.visible = true
 	if Profile.owns(slot, id):
 		if _is_equipped(slot, id):
@@ -333,6 +344,13 @@ func _price_now(slot: String, id: String) -> Dictionary:
 		if deal["slot"] == slot and deal["id"] == id:
 			return {"coins": int(price["coins"]) / 2, "gems": int(price["gems"]) / 2}
 	return price
+
+
+func _region_name(slot: String) -> String:
+	for region: Dictionary in Cosmetics.REGIONS:
+		if slot == "region:" + String(region["id"]):
+			return "From %s" % region["name"]
+	return ""
 
 
 func _on_action() -> void:

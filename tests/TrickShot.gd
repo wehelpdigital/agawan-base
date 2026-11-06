@@ -7,6 +7,8 @@ var _map := "barrio_plaza"
 var _out := "user://shots"
 var _tag := "trick"
 var _at := Vector2(-1, -1)
+var _weather := "clear"
+var _wait := 0.7
 
 
 func _ready() -> void:
@@ -17,6 +19,10 @@ func _ready() -> void:
 			_out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--tag="):
 			_tag = arg.trim_prefix("--tag=")
+		elif arg.begins_with("--weather="):
+			_weather = arg.trim_prefix("--weather=")
+		elif arg.begins_with("--wait="):
+			_wait = float(arg.trim_prefix("--wait="))
 		elif arg.begins_with("--at="):
 			var parts := arg.trim_prefix("--at=").split(",")
 			_at = Vector2(float(parts[0]), float(parts[1]))
@@ -37,14 +43,14 @@ func _ready() -> void:
 	var seats: Array = []
 	for i in 10:
 		seats.append({"name": "You" if i == 0 else Names.bot_name(rng), "bot": i != 0, "skill": 0.5, "team": i % 2, "look": Cosmetics.default_look() if i == 0 else Cosmetics.random_look(rng, 0.7)})
-	runner.start(_map, seats, 0, 0.5, world, hud_root, false, true, 99)
+	runner.start(_map, seats, 0, 0.5, world, hud_root, false, true, 99, _weather)
 	var sim := runner.sim
 	while sim.phase != Sim.Phase.PLAY:
 		await get_tree().process_frame
 	var me: Sim.Player = sim.players[0]
 	var at := _at if _at.x >= 0.0 else sim.arena_size() * 0.5 - Vector2(8, 0)
 	me.pos = at
-	await get_tree().create_timer(0.7).timeout
+	await get_tree().create_timer(_wait).timeout
 	me.pos = at
 	await get_tree().create_timer(0.1).timeout
 	await RenderingServer.frame_post_draw

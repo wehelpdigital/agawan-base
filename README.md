@@ -1,6 +1,6 @@
 # Capture the Base
 
-5 vs 5 arcade tag in 3D, from the traditional Filipino game of **Agawan Base** (Prisoner's Base).
+5 vs 5 arcade tag in 3D, all around the world. Based on an old playground game played everywhere: Prisoner's Base, Barlay, or Agawan Base.
 Godot 4.7 client (Compatibility renderer: web, Android, desktop) and one small Node server for everything
 online.
 

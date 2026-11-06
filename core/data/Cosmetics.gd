@@ -486,6 +486,21 @@ static func _world_list(slot: String) -> Array:
 	return []
 
 
+## Today's deals: a different handful each day, half price, the same for everyone.
+static func todays_deals(count: int) -> Array[Dictionary]:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Time.get_date_string_from_system())
+	var pool: Array[Dictionary] = []
+	for slot: String in SLOTS:
+		for entry: Dictionary in list(slot):
+			if entry["rarity"] != "free" and slot != "char":
+				pool.append({"slot": slot, "id": entry["id"]})
+	var out: Array[Dictionary] = []
+	while out.size() < count and not pool.is_empty():
+		out.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
+	return out
+
+
 ## Everything from one part of the world, across every kind of item: [{slot, id}].
 static func from_region(region: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

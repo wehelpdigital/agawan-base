@@ -251,7 +251,8 @@ func _update_weather_chip() -> void:
 	if _wind_arrow.visible:
 		(_wind_arrow as WindArrow).way = sim.wind.rotated(view.view_yaw())
 	_weather_chip.reset_size()
-	_weather_chip.position = _mini.global_position - global_position + Vector2(0.0, _mini.size.y + 8.0)
+	var chip_size := _weather_chip.get_combined_minimum_size()
+	_weather_chip.position = _mini.global_position - global_position + _mini.size - chip_size + Vector2(6.0, 6.0)
 
 
 func _build_emotes() -> void:

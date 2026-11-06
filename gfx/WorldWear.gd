@@ -108,7 +108,6 @@ static func hat(k: MeshKit, id: String) -> void:
 			for spot: Vector3 in [Vector3(-0.3, 0.7, 0.42), Vector3(0.2, 0.92, 0.36), Vector3(0.36, 0.42, 0.4), Vector3(-0.1, 0.34, 0.56)]:
 				k.ball(spot, Vector3(0.12, 0.18, 0.05), Color("2f2a48"), 4, 8)
 			k.outline = 0.02
-			k.tube(AvatarParts._ring(-0.3, Vector3(0.62, 1.0, 0.6)), 0.015, GOLD, true, 5)
 			k.ball(Vector3(0.48, 0.42, 0.26), Vector3(0.05, 0.18, 0.05), Color("e8282f"), 6, 8)
 		"bobby":
 			var navy := Color("1f2f6a")
@@ -340,10 +339,11 @@ static func hat(k: MeshKit, id: String) -> void:
 		"dino":
 			var green := Color("6ccf5a")
 			k.dome(Vector3.ZERO, Vector3(0.6, 0.46, 0.6), green)
-			for i in 5:
-				var z := lerpf(0.42, -0.44, i / 4.0)
-				var y := 0.46 * sqrt(maxf(1.0 - z * z / 0.36, 0.0)) - 0.02
-				k.cone(Vector3(0, y, z), 0.26 - absf(i - 2.0) * 0.03, 0.09, Color("ffb21f"), 10)
+			for i in 7:  # A crest over the head from ear to ear, so you see it from the front as well as the side.
+				var a := lerpf(-1.05, 1.05, i / 6.0)
+				k.push(Transform3D(Basis(Vector3.BACK, -a), Vector3(sin(a) * 0.56, cos(a) * 0.44 - 0.02, 0.04)))
+				k.cone(Vector3.ZERO, 0.3 - absf(a) * 0.08, 0.1, Color("ffb21f"), 10)
+				k.pop()
 		"disco":
 			k.cyl(Vector3(0, 0.3, 0), 0.26, 0.012, 0.012, INK, 5)
 			k.ball(Vector3(0, 0.8, 0), Vector3(0.3, 0.3, 0.3), Color("cfe0ff"), 10, 18)
@@ -503,8 +503,11 @@ static func mask(k: MeshKit, id: String, hatted := false) -> void:
 			for s: float in [-1.0, 1.0]:
 				var x := s * 0.2
 				k.push(Transform3D(Basis(Vector3.UP, s * 0.42), Vector3(x, -0.01, AvatarParts._z(x, -0.01) + 0.03)))
-				k.torus(Vector3.ZERO, 0.135, 0.03, Color("c98c4a"), 18, 6)
-				k.ball(Vector3.ZERO, Vector3(0.125, 0.125, 0.03), Color("9fe6ff"), 6, 14)
+				k.ball(Vector3.ZERO, Vector3(0.15, 0.15, 0.03), Color("c98c4a"), 6, 14)
+				k.ball(Vector3(0, 0, 0.012), Vector3(0.115, 0.115, 0.03), Color("9fe6ff"), 6, 14)
+				k.outline = 0.0
+				k.ball(Vector3(-0.04, 0.05, 0.04), Vector3(0.03, 0.02, 0.006), Color.WHITE, 3, 6)
+				k.outline = 0.02
 				k.pop()
 		"vr":
 			var white := Color("f4f6ff")
@@ -518,7 +521,7 @@ static func mask(k: MeshKit, id: String, hatted := false) -> void:
 			var frame := Color("1d1a30")
 			for s: float in [-1.0, 1.0]:
 				var x := s * 0.2
-				k.push(Transform3D(Basis(Vector3.UP, s * 0.42), Vector3(x, 0.0, AvatarParts._z(x, 0.0) + 0.02)))
+				k.push(Transform3D(Basis(Vector3.UP, s * 0.42) * Basis(Vector3.RIGHT, PI * 0.5), Vector3(x, 0.0, AvatarParts._z(x, 0.0) + 0.02)))
 				k.torus(Vector3.ZERO, 0.125, 0.022, frame, 18, 6)
 				k.pop()
 				var arm := PackedVector3Array()

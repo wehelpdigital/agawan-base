@@ -19,6 +19,7 @@ var pet: Pet3D
 var fx: FxField
 var preview_slot := ""
 var zoomable := false  ## Shows zoom buttons, and lets the wheel and a pinch zoom too.
+var planet := false  ## Stands on a little turning world, not a patch of grass. Set before it's added.
 var _viewport: SubViewport
 var _picture: TextureRect
 var _camera: Camera3D
@@ -77,10 +78,16 @@ func _ready() -> void:
 	kit.outline = 0.0
 	kit.ball(Vector3(0, -0.14, 0), Vector3(1.32, 0.16, 1.32), Color("5cc94f"), 12, 40)
 	kit.ball(Vector3(0, 0.0, 0), Vector3(1.04, 0.022, 1.04), Color("9be36a"), 8, 40)
-	_pad = MeshInstance3D.new()
-	_pad.mesh = kit.to_mesh()
-	_pad.material_override = Avatar3D._material("normal")
-	world.add_child(_pad)
+	if planet:
+		var stage := WorldStage.new()
+		world.add_child(stage)
+		stage.setup(3.4)
+		stage.spin_speed = 0.11
+	else:
+		_pad = MeshInstance3D.new()
+		_pad.mesh = kit.to_mesh()
+		_pad.material_override = Avatar3D._material("normal")
+		world.add_child(_pad)
 	avatar = Avatar3D.new()
 	world.add_child(avatar)
 	avatar.gag_started.connect(_say)
@@ -252,7 +259,7 @@ func _apply_zoom() -> void:
 	var t := zoom_level()
 	# A narrow picture needs the camera further back to get the whole width across it.
 	var fit: float = maxf(0.95 / maxf(size.x / maxf(size.y, 1.0), 0.1), 1.0) if size.y > 0.0 else 1.0
-	var whole: float = WHOLE[0] * fit
+	var whole: float = WHOLE[0] * fit * (1.22 if planet else 1.0)
 	if t >= 0.0:
 		_want_distance = lerpf(whole, float(_focus[0]) * fit, t)
 		_want_height = lerpf(WHOLE[1], _focus[1], t)

@@ -2,10 +2,10 @@ class_name Names
 extends RefCounted
 ## Names for computer players and new accounts.
 
-const FIRST := ["Kuya", "Ate", "Bunso", "Tito", "Tita", "Lolo", "Lola", "Totoy", "Nene", "Boss", "Pare", "Mare", "Idol", "Sir", "Kap"]
-const LAST := ["Ben", "Joy", "Ricky", "Gina", "Dodong", "Inday", "Jun", "Baby", "Bong", "Rey", "Ling", "Nonoy", "Kiko", "Mayang", "Tess", "Popoy", "Waldo", "Pidoy"]
-const PLAYER_A := ["Swift", "Sneaky", "Lucky", "Turbo", "Happy", "Wild", "Brave", "Mighty", "Sunny", "Silent", "Cosmic", "Spicy"]
-const PLAYER_B := ["Runner", "Tagger", "Mango", "Tarsier", "Carabao", "Coconut", "Jeepney", "Sampaguita", "Pirate", "Rooster", "Bamboo", "Comet"]
+const FIRST := ["Turbo", "Sneaky", "Lucky", "Zippy", "Mighty", "Captain", "Sir", "Sunny", "Wild", "Cool", "Super", "Little", "Big", "Happy", "Boss"]
+const LAST := ["Yuki", "Mei", "Priya", "Leo", "Freya", "Amara", "Zola", "Tariq", "Diego", "Luna", "Max", "Kai", "Sofia", "Noah", "Aisha", "Kenji", "Ines", "Omar", "Nia", "Hugo", "Mila", "Ravi", "Chloe", "Mateo", "Hana", "Lars", "Ayo", "Tala", "Kiko", "Lani", "Bianca", "Jin", "Emma", "Sami", "Anya", "Paolo", "Zuri", "Ivan", "Rosa", "Tomas"]
+const PLAYER_A := ["Swift", "Sneaky", "Lucky", "Turbo", "Happy", "Wild", "Brave", "Mighty", "Sunny", "Silent", "Cosmic", "Spicy", "Fuzzy", "Jolly", "Rocket", "Golden"]
+const PLAYER_B := ["Runner", "Tagger", "Mango", "Panda", "Tiger", "Coconut", "Comet", "Pirate", "Rooster", "Bamboo", "Falcon", "Taco", "Noodle", "Otter", "Kiwi", "Dragon"]
 
 
 static func bot_name(rng: RandomNumberGenerator) -> String:

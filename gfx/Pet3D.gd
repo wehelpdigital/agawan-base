@@ -76,6 +76,12 @@ func _look_along(dir: Vector3, delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), clampf(delta * 10.0, 0.0, 1.0))
 
 
+## Runs on the spot, for someone else to move about: the title screen.
+func follow_in_place(delta: float) -> void:
+	if _body:
+		_animate(delta, true)
+
+
 ## Stands where it's put and potters about: for the menus.
 func idle(delta: float) -> void:
 	if _body == null:

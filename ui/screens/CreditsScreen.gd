@@ -5,8 +5,8 @@ extends Control
 const LINES := [
 	["Music", "Kevin MacLeod (incompetech.com), CC BY 4.0: Island Meet and Greet, Tiki Bar Mixer, Beachfront Celebration, Peppy Pepe, Samba Isobel, Pixel Peeker Polka, Sock Hop, Exhilarate, Sneaky Snitch, Jaunty Gumption.\nHoliznaCC0, CC0: Make Funk, Hard Mode, Final Level, Coins."],
 	["Sound effects", "Kenney (kenney.nl), Juhani Junkala (SubspaceAudio) and other Freesound authors, all CC0, plus sounds made for the game. The full list is in assets/audio/CREDITS.md."],
-	["Fonts", "Rammetto One by Vernon Adams, Nunito by Vernon Adams, Cyreal and Jacques Le Bailly, both SIL Open Font License."],
-	["The game", "Based on the traditional Filipino game of Agawan Base, known around the world as Prisoner's Base. Heroes, maps, logo and art are original to this game."],
+	["Fonts", "Rammetto One by Vernon Adams, Nunito by Vernon Adams, Cyreal and Jacques Le Bailly, both SIL Open Font License. The logo's letters are drawn from Luckiest Guy by Astigmatic, Apache License 2.0."],
+	["The game", "Based on an old playground game played all over the world: Prisoner's Base, or Barlay, or Agawan Base. Heroes, pets, maps, logo and art are original to this game. Landmarks are toy models of real places, and flags are for fun: they don't mean anyone's taking sides."],
 	["Engine", "Made with Godot Engine (godotengine.org)."],
 ]
 

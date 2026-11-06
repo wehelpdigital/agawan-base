@@ -70,7 +70,7 @@ const ALL: Array[Dictionary] = [
 	{"id": "cu", "name": "Cuba", "rarity": "free", "region": "americas", "h": ["002a8f", "ffffff", "002a8f", "ffffff", "002a8f"], "art": [["tri", 0, 0, 30, 20, 0, 40, "cf142b"], ["star", 10, 20, 6, "ffffff"]]},
 	{"id": "jm", "name": "Jamaica", "rarity": "free", "region": "americas", "h": ["009b3a"], "art": [["tri", 0, 0, 26, 20, 0, 40, "0a1426"], ["tri", 60, 0, 34, 20, 60, 40, "0a1426"], ["saltire", 5, "fed100"]]},
 	{"id": "cr", "name": "Costa Rica", "rarity": "free", "region": "americas", "h": ["002b7f", "ffffff", "ce1126", "ce1126", "ffffff", "002b7f"]},
-	{"id": "pa", "name": "Panama", "rarity": "free", "region": "americas", "h": ["ffffff", "d21034"], "art": [["rect", 0, 20, 30, 20, "005293"], ["star", 15, 10, 5, "005293"], ["star", 45, 30, 5, "d21034"]]},
+	{"id": "pa", "name": "Panama", "rarity": "free", "region": "americas", "h": ["ffffff"], "art": [["rect", 30, 0, 30, 20, "d21034"], ["rect", 0, 20, 30, 20, "005293"], ["star", 15, 10, 5, "005293"], ["star", 45, 30, 5, "d21034"]]},
 	{"id": "bo", "name": "Bolivia", "rarity": "free", "region": "americas", "h": ["d52b1e", "f9e300", "007934"]},
 	# Africa
 	{"id": "ng", "name": "Nigeria", "rarity": "free", "region": "africa", "v": ["008751", "ffffff", "008751"]},

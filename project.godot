@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Capture the Base"
-config/description="Capture the Base! 5v5 arcade tag in 3D, from the traditional game of Agawan Base."
+config/description="Capture the Base! 5 vs 5 arcade tag in 3D, all around the world."
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"

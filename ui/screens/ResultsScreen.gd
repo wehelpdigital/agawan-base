@@ -30,10 +30,8 @@ func _ready() -> void:
 	create_tween().tween_property(banner, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var why := _reason_text(result)
 	if why != "":
-		var reason := UiKit.body(why, 16, UiKit.MUTED)
+		var reason := UiKit.open_text(why, 17)
 		reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		reason.add_theme_color_override("font_outline_color", UiKit.INK)
-		reason.add_theme_constant_override("outline_size", 4)
 		outer.add_child(reason)
 	outer.add_child(_earned(rewards, result))
 	var scroll := UiKit.scroller()
@@ -93,10 +91,8 @@ func _earned(rewards: Dictionary, result: Dictionary) -> Control:
 		return row
 	var col := UiKit.vbox(2)
 	col.add_child(row)
-	var note := UiKit.body("No trophies in AI or Friend matches", 15, UiKit.MUTED)
+	var note := UiKit.open_text("No trophies in AI or Friend matches", 15)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.add_theme_color_override("font_outline_color", UiKit.INK)
-	note.add_theme_constant_override("outline_size", 4)
 	col.add_child(note)
 	return col
 
