@@ -132,6 +132,9 @@ func _bake_maps() -> void:
 		var sim := Sim.new()
 		sim.setup(map["id"], [], 1)
 		world.add_child(ArenaBuilder.build(sim, false))
+		var moving := ArenaBuilder.preview_hazards(sim, Maps.THEMES[map["theme"]])
+		if moving:
+			world.add_child(moving)
 		var env := Environment.new()
 		env.background_mode = Environment.BG_COLOR
 		env.background_color = Color(Maps.THEMES[map["theme"]]["sky"])

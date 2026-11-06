@@ -1069,7 +1069,7 @@ func _touch_arms(p: Player) -> void:
 			p.kb += way * 22.0
 			p.bump_cd = 0.7
 			_apply_cc(p, {"stun": 0.4}, null)
-			_event("bump", p.id, -1, p.pos.x, p.pos.y)
+			_event("bonk", p.id, -1, p.pos.x, p.pos.y)
 			return
 
 

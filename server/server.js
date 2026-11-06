@@ -692,8 +692,8 @@ function startFromQueue(entries) {
   startMatch(humans, map, Math.max(0.32, Math.min(0.32 + avg / 3500, 0.95)), true);
 }
 
-const BOT_FIRST = ['Kuya', 'Ate', 'Bunso', 'Tito', 'Tita', 'Lolo', 'Lola', 'Totoy', 'Nene', 'Boss', 'Pare', 'Mare', 'Idol', 'Sir', 'Kap'];
-const BOT_LAST = ['Ben', 'Joy', 'Ricky', 'Gina', 'Dodong', 'Inday', 'Jun', 'Baby', 'Bong', 'Rey', 'Ling', 'Nonoy', 'Kiko', 'Mayang', 'Tess', 'Popoy', 'Waldo', 'Pidoy'];
+const BOT_FIRST = ['Turbo', 'Sneaky', 'Lucky', 'Zippy', 'Mighty', 'Captain', 'Sir', 'Sunny', 'Wild', 'Cool', 'Super', 'Little', 'Big', 'Happy', 'Boss'];
+const BOT_LAST = ['Yuki', 'Mei', 'Priya', 'Leo', 'Freya', 'Amara', 'Zola', 'Tariq', 'Diego', 'Luna', 'Max', 'Kai', 'Sofia', 'Noah', 'Aisha', 'Kenji', 'Ines', 'Omar', 'Nia', 'Hugo', 'Mila', 'Ravi', 'Chloe', 'Mateo', 'Hana', 'Lars', 'Ayo', 'Tala', 'Kiko', 'Lani', 'Bianca', 'Jin', 'Emma', 'Sami', 'Anya', 'Paolo', 'Zuri', 'Ivan', 'Rosa', 'Tomas'];
 
 /** humans: [{client, team}]. Empty seats become AI. Seat numbers alternate teams: even is team 0. */
 function startMatch(humans, map, skill, ranked) {

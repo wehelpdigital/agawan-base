@@ -210,7 +210,7 @@ static func texture(id: String, framed := true) -> Texture2D:
 
 ## The country a device says it's in, if we have that flag: a good first guess at yours.
 static func from_locale(locale: String) -> String:
-	var parts := locale.split("_")
+	var parts := locale.replace("-", "_").split("_")
 	if parts.size() < 2:
 		return ""
 	var id := parts[1].to_lower().left(2)

@@ -250,6 +250,8 @@ func _nearest_pickup(sim: Sim, p: Sim.Player) -> Vector2:
 	var best: Vector2 = p.pos
 	var best_d := INF
 	for item: Dictionary in sim.pickups:
+		if int(item.get("trap", -1)) == p.team:  # Your own team's fake: nobody's falling for that.
+			continue
 		var d: float = p.pos.distance_squared_to(item["pos"])
 		if d < best_d:
 			best_d = d

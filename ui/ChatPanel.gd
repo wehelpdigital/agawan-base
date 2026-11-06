@@ -3,7 +3,7 @@ extends VBoxContainer
 ## Live chat for one channel: "global" or "guild". Used by the Chat tab and on the guild page.
 
 const MAX_LINES := 80
-const QUICK := ["Hi!", "GG!", "Anyone up for a match?", "Nice one!", "Join my guild!", "Salamat!"]
+const QUICK := ["Hi!", "GG!", "Anyone up for a match?", "Nice one!", "Join my guild!", "Thanks!", "Love your pet!", "Where are you from?"]
 
 var channel := "global"
 var _list: VBoxContainer

@@ -456,6 +456,7 @@ func _test_every_power() -> void:
 		for key: String in ["name", "desc", "cat", "tier", "kind", "ai", "sfx"]:
 			_ok(def.has(key), "%s has %s" % [id, key])
 		_ok(FileAccess.file_exists(Powerups.icon_path(id)), "%s has an icon" % id)
+		_ok(FileAccess.file_exists("res://assets/audio/sfx/%s.ogg" % def["sfx"]), "%s has a sound" % id)
 		var sim := _new_sim("volcano_conveyors" if Maps.by_id("volcano_conveyors") else "barrio_plaza")
 		var a: Sim.Player = sim.players[0]
 		var e: Sim.Player = sim.players[1]

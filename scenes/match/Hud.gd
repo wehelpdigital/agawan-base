@@ -552,6 +552,31 @@ func _refresh_status(me: Sim.Player) -> void:
 			text = "THE PAD IS ABOUT TO POP YOU!"
 		elif sim.tile_at(me.pos) == Maps.GRASS:
 			text = "HIDDEN! Stay still, or the leaves give you away."
+		elif sim.has_status(me, "chicken"):
+			text = "BAWK! You're a chicken! No tagging, no cards!"
+		elif sim.has_status(me, "dance"):
+			text = "DANCE FEVER! You can't stop!"
+		elif sim.has_status(me, "sleep"):
+			text = "Zzz..."
+		elif sim.has_status(me, "bubble"):
+			text = "STUCK IN A BUBBLE!"
+		elif sim.has_status(me, "potato"):
+			text = "HOT POTATO! Touch someone to pass it on!"
+		elif sim.has_status(me, "charging"):
+			text = "CHARGING UP..."
+		elif sim.has_status(me, "carpet"):
+			text = "FLYING! Mind where you land."
+		elif sim.has_status(me, "turbo"):
+			text = "TURBO! No brakes!"
+		else:
+			match sim.tile_at(me.pos):
+				Maps.QUICKSAND:
+					text = "SINKING! Dash out!"
+				Maps.TOWER:
+					text = "LOOKOUT: your team sees everyone."
+				Maps.TIDE:
+					if sim.tide_high():
+						text = "The tide's in! Wade to dry land."
 	_status_label.text = text
 	_set_blind(sim.has_status(me, "blind"))
 	_reverse_flash.visible = sim.has_status(me, "reverse")
@@ -614,8 +639,7 @@ func show_announcement(text: String, color: Color, big: bool) -> void:
 
 func show_feed(text: String, color: Color) -> void:
 	var line := UiKit.body(text, 15, color)
-	line.autowrap_mode = TextServer.AUTOWRAP_OFF
-	line.clip_text = true
+	line.custom_minimum_size.x = _feed_box.custom_minimum_size.x
 	line.add_theme_color_override("font_outline_color", UiKit.INK)
 	line.add_theme_constant_override("outline_size", 5)
 	_feed_box.add_child(line)
@@ -623,7 +647,7 @@ func show_feed(text: String, color: Color) -> void:
 		_feed_box.get_child(0).queue_free()
 		_feed_box.remove_child(_feed_box.get_child(0))
 	var tween := create_tween()
-	tween.tween_interval(3.0)
+	tween.tween_interval(3.0 + text.length() * 0.05)
 	tween.tween_property(line, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(line.queue_free)
 

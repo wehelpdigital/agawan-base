@@ -116,8 +116,12 @@ static func draw(k: MeshKit, prop: String, v: float, accent: Color) -> bool:
 	return true
 
 
+## A rounded block. Paint (with the outline off) is just a flat box: it doesn't need the triangles.
 static func _b(k: MeshKit, center: Vector3, half: Vector3, color: Color, e := 0.5) -> void:
-	k.soft_box(center, half, color, e, 4, 8)
+	if k.outline <= 0.0:
+		k.decal_box(center, half * 2.0, color)
+	else:
+		k.soft_box(center, half, color, e, 4, 8)
 
 
 # --- Japan ---------------------------------------------------------------------------------------------

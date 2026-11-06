@@ -15,6 +15,7 @@ var _power := ""
 var _all_powers := false
 var _power_i := 0
 var _power_clock := 0.0
+var _weather := ""
 
 
 func _ready() -> void:
@@ -27,6 +28,8 @@ func _ready() -> void:
 			_tag = arg.trim_prefix("--tag=")
 		elif arg.begins_with("--power="):
 			_power = arg.trim_prefix("--power=")
+		elif arg.begins_with("--weather="):
+			_weather = arg.trim_prefix("--weather=")
 		elif arg == "--all-powers":
 			_all_powers = true
 		elif arg.begins_with("--speed="):
@@ -52,7 +55,7 @@ func _ready() -> void:
 	var seats: Array = []
 	for i in 10:
 		seats.append({"name": "Player" if i == 0 else Names.bot_name(rng), "bot": true, "skill": 0.7, "team": i % 2, "look": Cosmetics.random_look(rng, 0.8)})
-	_runner.start(_map, seats, 0, 0.7, world, _hud_root, false, true, 99)
+	_runner.start(_map, seats, 0, 0.7, world, _hud_root, false, true, 99, _weather)
 
 
 func _process(delta: float) -> void:

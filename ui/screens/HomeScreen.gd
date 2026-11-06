@@ -66,7 +66,7 @@ func _build_landscape() -> void:
 	add_child(FlagBunting.new().setup(3, 18.0, 28.0))
 	add_child(row)
 	var left := UiKit.vbox(8)
-	left.custom_minimum_size.x = 132.0 if root.compact else 224.0
+	left.custom_minimum_size.x = 72.0 if root.compact else 224.0
 	row.add_child(left)
 	if not root.compact:
 		left.add_child(_league_card())

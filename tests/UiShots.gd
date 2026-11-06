@@ -45,7 +45,39 @@ func _run() -> void:
 		await _wait(0.9 if screen_name in ["home", "shop", "locker"] else 0.5)
 		await _shot(screen_name)
 		_audit(ui, screen_name)
+	if _only == "":
+		await _shop_extras(ui)
 	get_tree().quit()
+
+
+## The shop's newer shelves, and a button you can't afford.
+func _shop_extras(ui: UiRoot) -> void:
+	ui.show_screen("shop")
+	await _wait(0.5)
+	var shop: Node = ui._screen
+	for shelf: Array in [["pets", "pet", "pets"], ["world", "flag", "flags"], ["world", "region:asia", "asia"], ["wear", "hat", "hats"]]:
+		shop.set("_group", shelf[0])
+		shop.set("_slot", shelf[1])
+		shop.call("_after_tab")
+		await _wait(0.5)
+		await _shot("shop_" + String(shelf[2]))
+		_audit(ui, "shop_" + String(shelf[2]))
+	shop.set("_group", "pets")
+	shop.set("_slot", "pet")
+	shop.call("_after_tab")
+	await _wait(0.3)
+	shop.call("_show_item", "pet", "dragon")
+	await _wait(0.6)
+	await _shot("shop_pet_tryon")
+	var coins := Profile.coins
+	var gems := Profile.gems
+	Profile.coins = 0
+	Profile.gems = 0
+	shop.call("_show_item", "pet", "dragon")
+	await _wait(0.3)
+	await _shot("shop_cant_afford")
+	Profile.coins = coins
+	Profile.gems = gems
 
 
 func _wait(seconds: float) -> void:
@@ -56,6 +88,8 @@ func _wait(seconds: float) -> void:
 func _shot(screen_name: String) -> void:
 	var image := get_viewport().get_texture().get_image()
 	image.save_png("%s/%s_%s.png" % [_out, _tag, screen_name])
+	if screen_name in ["title", "home"]:
+		print("%s: %d triangles, %d draw calls" % [screen_name, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
 
 
 ## Nothing that matters should stick out of the window, and no button should be too small to tap.

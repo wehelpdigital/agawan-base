@@ -204,7 +204,7 @@ func _refill() -> void:
 				_grid.add_child(_card(found["slot"], found["id"], cell, false))
 				shown += 1
 		if shown == 0:
-			_grid.add_child(UiKit.open_text("Nothing from here yet. Win coins, then visit the Shop!", 18))
+			_grid.add_child(UiKit.note("Nothing from here yet. Win coins, then visit the Shop!", 16))
 		return
 	for entry: Dictionary in Cosmetics.list(_slot):
 		if _owned_only and not Profile.owns(_slot, entry["id"]):
@@ -212,8 +212,7 @@ func _refill() -> void:
 		_grid.add_child(_card(_slot, entry["id"], cell, false))
 		shown += 1
 	if shown == 0:
-		var empty := UiKit.open_text("Nothing here yet. Win coins, then visit the Shop!", 18)
-		_grid.add_child(empty)
+		_grid.add_child(UiKit.note("Nothing here yet. Win coins, then visit the Shop!", 16))
 
 
 func _card(slot: String, id: String, cell: float, deal: bool) -> Control:
@@ -309,7 +308,7 @@ func _show_item(slot: String, id: String) -> void:
 	if slot == "flag" and id != "" and entry["rarity"] == "free":
 		words = "Fly it with pride. It's free."
 	elif entry.has("from"):
-		words = "From %s. %s" % [entry["from"], words] if String(entry["from"]) not in ["Spanish", "Portuguese", "French", "Italian", "German", "Japanese", "Korean", "Mandarin", "Hindi", "Filipino", "Arabic", "Turkish", "Swahili", "Hawaiian"] else "%s for hello. %s" % [entry["from"], words] if slot == "emote" else words
+		words = "From %s. %s" % [entry["from"], words] if slot != "emote" else "Say it the %s way." % entry["from"]
 	_info_label.text = words
 	_action.visible = true
 	if Profile.owns(slot, id):

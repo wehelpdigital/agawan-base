@@ -10,7 +10,7 @@ const FACE := [3.7, 1.1]
 const ZOOM_OUT_MOST := -0.6  ## Past the whole avatar, for the widest hats and wings.
 const FOCUS := {
 	"face": [3.1, 1.08], "mask": [3.7, 1.1], "hat": [4.6, 1.42], "top": [3.6, 0.5], "gloves": [3.8, 0.45], "pants": [3.1, 0.28],
-	"shoes": [2.7, 0.14], "back": [5.4, 0.8], "flag": [6.6, 1.1], "pet": [5.0, 0.55],
+	"shoes": [2.7, 0.14], "back": [5.4, 0.8], "flag": [6.6, 1.1], "pet": [6.4, 0.8],
 }
 const MAX_SIDE := 1400.0
 
@@ -92,7 +92,7 @@ func _ready() -> void:
 	world.add_child(avatar)
 	avatar.gag_started.connect(_say)
 	pet = Pet3D.new()
-	pet.position = Vector3(0.92, 0, 0.22)
+	pet.position = Vector3(0.82, 0, 0.28)
 	pet.rotation.y = -0.55
 	world.add_child(pet)
 	avatar.calm = preview_slot == "face"

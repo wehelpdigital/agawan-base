@@ -771,6 +771,34 @@ static func _draw_grass(sim: Sim, theme: Dictionary, rng: RandomNumberGenerator,
 	return inst
 
 
+## What MatchView makes move, standing still: for the little pictures of each map, which have no match running.
+static func preview_hazards(sim: Sim, theme: Dictionary) -> MeshInstance3D:
+	var k := prop_kit(false)
+	k.detail = 0.6
+	var half := Maps.TILE * 0.47
+	for i in sim.w * sim.h:
+		var at := sim.tile_center(i)
+		var p := Vector3(at.x, 0, at.y)
+		match sim.tiles[i]:
+			Maps.CRUMBLE:
+				k.soft_box(p - Vector3(0, 0.05, 0), Vector3(half, 0.11, half), Color(theme["floor"][0]).darkened(0.14), 0.5, 3, 8)
+			Maps.TNT:
+				k.soft_box(p + Vector3(0, 0.72, 0), Vector3(0.84, 0.72, 0.84), Color("d8362f"), 0.45, 4, 8)
+			Maps.STONE:
+				k.ball(p, Vector3(half, 0.16, half), Color("a8b4c8"), 4, 10)
+			Maps.WEB:
+				k.ball(p + Vector3(0, 0.02, 0), Vector3(0.9, 0.03, 0.9), Color("f4f6ff"), 2, 8)
+	for arm: Dictionary in sim.arms:
+		var at: Vector2 = arm["at"]
+		k.soft_box(Vector3(at.x, 0.85, at.y), Vector3(Sim.ARM_REACH, 0.19, 0.2), Color("ff7a1f"), 0.5, 3, 8)
+	if k.is_empty():
+		return null
+	var inst := MeshInstance3D.new()
+	inst.mesh = k.to_mesh()
+	inst.material_override = prop_material()
+	return inst
+
+
 ## Temporary wall segment (Pop-Up Wall), one tile.
 static func wall_mesh(theme_id: String) -> ArrayMesh:
 	var theme: Dictionary = Maps.THEMES.get(theme_id, Maps.THEMES["barrio"])

@@ -309,7 +309,7 @@ const TRAILS: Array[Dictionary] = [
 	{"id": "sparks", "name": "Sparks", "rarity": "common", "fx": Fx.SPARK, "c": ["ffe36b", "ff9f2e"], "rate": 22.0, "size": 0.3},
 	{"id": "bubbles", "name": "Bubbles", "rarity": "common", "fx": Fx.RING, "c": ["bff3ff", "ffffff"], "rate": 16.0, "size": 0.32, "rise": 1.5},
 	{"id": "leaves", "name": "Falling Leaves", "rarity": "common", "fx": Fx.LEAF, "c": ["59c04f", "a6db5c", "ffc21f"], "rate": 14.0, "size": 0.32},
-	{"id": "petals", "name": "Sampaguita", "rarity": "common", "fx": Fx.PETAL, "c": ["ffffff", "fff4c9"], "rate": 16.0, "size": 0.3},
+	{"id": "petals", "name": "Sampaguita", "rarity": "common", "fx": Fx.PETAL, "c": ["ffffff", "fff4c9"], "rate": 16.0, "size": 0.3, "region": "asia", "from": "Philippines"},
 	{"id": "notes", "name": "Music Notes", "rarity": "rare", "fx": Fx.NOTE, "c": ["ff6fb5", "3aa6ff", "ffd23f"], "rate": 10.0, "size": 0.42, "rise": 1.2},
 	{"id": "hearts", "name": "Hearts", "rarity": "rare", "fx": Fx.HEART, "c": ["ff5a7a", "ff9fc0"], "rate": 14.0, "size": 0.36, "rise": 0.8},
 	{"id": "stars", "name": "Stardust", "rarity": "rare", "fx": Fx.STAR, "c": ["ffd23f", "ffffff"], "rate": 18.0, "size": 0.36},

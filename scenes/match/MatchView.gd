@@ -251,7 +251,8 @@ func _build_players() -> void:
 
 func _add_pet_and_flag(p: Sim.Player, av: Avatar3D) -> void:
 	var pet_id := str(p.look.get("pet", ""))
-	if pet_id != "" and not Cosmetics.item("pet", pet_id).is_empty():
+	# On a slow device, only your own: ten pets is a lot of extra triangles.
+	if pet_id != "" and not Cosmetics.item("pet", pet_id).is_empty() and (not low_detail or p.id == local_id):
 		var pet := Pet3D.new()
 		add_child(pet)
 		pet.setup(pet_id)
@@ -1035,7 +1036,10 @@ func _update_shots(delta: float) -> void:
 				node.position.y = float(s["r"]) * 0.9
 				node.rotation.x += delta * 6.0
 		var color := Powerups.color(s["pw"])
-		if randf() < 0.6:
+		if s["pw"] == "giant_snowball":
+			if randf() < 0.4:
+				fx.spawn(node.position - Vector3(0, float(s["r"]) * 0.7, 0), Vector3(randf_range(-0.6, 0.6), 0.8, randf_range(-0.6, 0.6)), 0.4, 0.3, Cosmetics.Fx.SNOW, Color.WHITE)
+		elif randf() < 0.6:
 			fx.spawn(node.position, Vector3(randf_range(-0.4, 0.4), 0.3, randf_range(-0.4, 0.4)), 0.3, float(s["r"]) * 0.8, Cosmetics.Fx.SOFT, color)
 	_erase_missing(_shots, seen)
 
@@ -1045,6 +1049,10 @@ func _make_shot(s: Dictionary) -> Node3D:
 	add_child(node)
 	var pw: String = s["pw"]
 	var kit := MeshKit.new()
+	kit.soften = true
+	kit.shells = false
+	kit.outline = 0.02
+	kit.detail = 0.8
 	var r: float = s["r"]
 	var color := Powerups.color(pw)
 	match pw:
@@ -1636,7 +1644,7 @@ func _event(ev: Array) -> void:
 			if a >= 0 and a < _avatars.size():
 				_avatars[a].flash()
 			if a == local_id:
-				var words := {"stun": "STUNNED!", "freeze": "FROZEN!", "root": "PINNED!", "fear": "PANIC!", "reverse": "CONTROLS FLIPPED!", "blind": "INKED!", "stale": "CURSED!"}
+				var words := {"stun": "STUNNED!", "freeze": "FROZEN!", "root": "PINNED!", "fear": "PANIC!", "reverse": "CONTROLS FLIPPED!", "blind": "SPLAT! Can't see!", "stale": "CURSED!", "chicken": "BAWK!", "dance": "DANCE!", "sleep": "SO SLEEPY...", "bubble": "BLOOP!", "mini": "TINY!"}
 				if words.has(extra):
 					announce.emit(words[extra], Color("ffc4bd"), false)
 				if extra == "blind":
@@ -1675,6 +1683,16 @@ func _event(ev: Array) -> void:
 			fx.burst(_world(x, y, 0.8), 7, 3.0, 0.3, 0.3, Cosmetics.Fx.PUFF, [Powerups.color(String(extra))], 0.0)
 		"lock":
 			announce.emit("BASE LOCKED!", ArenaBuilder.team_color(a), false)
+		"bonk":
+			fx.burst(_world(x, y, 1.0), 10, 5.0, 0.3, 0.34, Cosmetics.Fx.STAR, ["ffd23f", "ffffff"], 2.0)
+			if _audible(at2) > 0.6:
+				_float_text(_world(x, y, 2.2), "BONK!", Color("ffb21f"))
+				Audio.sfx("clash_hit", _audible(at2), 1.2)
+			if a >= 0:
+				_avatars[a].squash(0.5)
+				_avatars[a].react_any(Faces.TAGGED, 0.8)
+			if mine:
+				shake(0.2)
 		"spiked":
 			fx.burst(_world(x, y, 0.8), 10, 5.0, 0.35, 0.34, Cosmetics.Fx.STAR, ["ffffff", "ff5a4e"])
 			_float_text(_world(x, y, 2.2), "OUCH!", Color("ff8a78"))
@@ -1762,7 +1780,9 @@ func _event(ev: Array) -> void:
 			Audio.sfx("match_start")
 			announce.emit("GO!", Color("8fffb4"), true)
 			if sim.weather != "clear":
-				feed.emit("%s: %s" % [Weather.def(sim.weather)["name"], Weather.def(sim.weather)["hint"]], Color("c9f1ff"))
+				var sky := Weather.def(sim.weather)
+				announce.emit("%s!" % String(sky["name"]).to_upper(), Color("ffe36b"), false)
+				feed.emit(String(sky["hint"]), Color("ffffff"))
 		"round":
 			announce.emit("GET READY!", Color("ffffff"), true)
 		"fiesta":

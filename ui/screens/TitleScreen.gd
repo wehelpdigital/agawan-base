@@ -138,7 +138,7 @@ func _build_world() -> void:
 	_fx = FxField.new(160)
 	_fx.density = 0.5 if Quality.is_low() else 1.0
 	world.add_child(_fx)
-	var count := 4 if Quality.is_low() else RUNNERS.size()
+	var count := 4 if Quality.is_low() else 6
 	for i in count:
 		var look := Cosmetics.default_look()
 		look.merge(RUNNERS[i], true)
@@ -153,12 +153,12 @@ func _build_world() -> void:
 		runner.setup(look, ArenaBuilder.team_color(i % 2))
 		runner.state = "run"
 		runner.moving = 1.0
-		runner.rotation.y = PI * 0.5
+		runner.rotation.y = 0.95
 		_runners.append(runner)
 		var pet := Pet3D.new()
 		world.add_child(pet)
 		pet.setup(look["pet"])
-		pet.rotation.y = PI * 0.5
+		pet.rotation.y = 0.95
 		_pets.append(pet)
 	_fit()
 	resized.connect(_fit)
@@ -187,18 +187,18 @@ func _process(delta: float) -> void:
 	if _logo:
 		_logo.rotation = sin(_clock * 1.3) * 0.012
 	# Round and round they go, overtaking and falling behind, along the top of the planet.
-	var spacing := 1.7
+	var spacing := 2.45
 	for i in _runners.size():
 		var runner := _runners[i]
 		var x := (float(i) - (_runners.size() - 1) * 0.5) * spacing + sin(_clock * 0.5 + i * 1.7) * 0.55
 		var curve := x * x * 0.055
 		runner.position = Vector3(x, -curve, 0.25 * sin(_clock * 0.7 + i))
-		runner.rotation.z = -x * 0.11
+		runner.rotation.z = -x * 0.09
 		runner.emit_effects(_fx, delta, true)
 		var pet := _pets[i]
 		var px := x - 0.82
 		pet.position = Vector3(px, -px * px * 0.055, 0.5 + 0.25 * sin(_clock * 0.7 + i))
-		pet.rotation.z = -px * 0.11
+		pet.rotation.z = -px * 0.09
 		pet.follow_in_place(delta)
 	_spark -= delta
 	if _spark <= 0.0:

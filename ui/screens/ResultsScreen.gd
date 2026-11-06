@@ -30,8 +30,8 @@ func _ready() -> void:
 	create_tween().tween_property(banner, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var why := _reason_text(result)
 	if why != "":
-		var reason := UiKit.open_text(why, 17)
-		reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var reason := UiKit.note(why, 16, false)
+		reason.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		outer.add_child(reason)
 	outer.add_child(_earned(rewards, result))
 	var scroll := UiKit.scroller()
@@ -91,8 +91,8 @@ func _earned(rewards: Dictionary, result: Dictionary) -> Control:
 		return row
 	var col := UiKit.vbox(2)
 	col.add_child(row)
-	var note := UiKit.open_text("No trophies in AI or Friend matches", 15)
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var note := UiKit.note("No trophies in AI or Friend matches", 14, false)
+	note.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(note)
 	return col
 
@@ -127,6 +127,15 @@ func _player_row(row: Dictionary, mvp: int) -> Control:
 		box.add_child(UiKit.icon("crown", 20))
 	if row.get("bot", false):
 		box.add_child(UiKit.icon("robot", 16))
+	var flag_id := str((row.get("look", {}) as Dictionary).get("flag", ""))
+	if flag_id != "" and not Cosmetics.item("flag", flag_id).is_empty():
+		var flag := TextureRect.new()
+		flag.texture = Flags.texture(flag_id)
+		flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flag.custom_minimum_size = Vector2(28, 20)
+		flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		box.add_child(flag)
 	var name_line := UiKit.label(str(row["name"]), 15, UiKit.WHITE, 3, true)
 	name_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_line.clip_text = true

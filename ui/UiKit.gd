@@ -207,6 +207,24 @@ static func open_text(text: String, size := 18, color := WHITE) -> Label:
 	return l
 
 
+## A short message on a pale card of its own, which can be read whatever's behind it: sky, cloud or hill.
+static func note(text: String, size := 17, wrap := true) -> PanelContainer:
+	var card := PanelContainer.new()
+	var box := style(PAPER, 16, 3, INK)
+	box.content_margin_left = 14
+	box.content_margin_right = 14
+	box.content_margin_top = 8
+	box.content_margin_bottom = 9
+	card.add_theme_stylebox_override("panel", box)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var line := body(text, size, INK)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if not wrap:  # For a card that shrinks to fit its words: a wrapping label would shrink to one letter wide.
+		line.autowrap_mode = TextServer.AUTOWRAP_OFF
+	card.add_child(line)
+	return card
+
+
 static func hbox(gap := 10) -> HBoxContainer:
 	var b := HBoxContainer.new()
 	b.add_theme_constant_override("separation", gap)

@@ -184,10 +184,6 @@ func _board_row(rank: int, row: Dictionary, scope: String) -> Control:
 
 
 func _note(text: String) -> void:
-	var line := UiKit.open_text(text, 18)
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	line.add_theme_color_override("font_outline_color", UiKit.INK)
-	line.add_theme_constant_override("outline_size", 5)
 	var box := UiKit.margin(20, 40, 20, 20)
-	box.add_child(line)
+	box.add_child(UiKit.note(text, 18))
 	_body.add_child(box)

@@ -48,12 +48,8 @@ func _refresh() -> void:
 
 
 func _message(text: String) -> void:
-	var line := UiKit.open_text(text, 18)
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	line.add_theme_color_override("font_outline_color", UiKit.INK)
-	line.add_theme_constant_override("outline_size", 5)
 	var box := UiKit.margin(20, 50, 20, 20)
-	box.add_child(line)
+	box.add_child(UiKit.note(text, 18))
 	_body.add_child(box)
 
 
@@ -90,9 +86,7 @@ func _show_browser(search: String) -> void:
 		return
 	var rows: Array = (result["data"] as Dictionary).get("guilds", []) if result["ok"] else []
 	if rows.is_empty():
-		var empty := UiKit.open_text("No guilds found. Start your own!" if result["ok"] else "Couldn't load guilds. Try again soon.", 18)
-		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		list.add_child(empty)
+		list.add_child(UiKit.note("No guilds found. Start your own!" if result["ok"] else "Couldn't load guilds. Try again soon.", 18))
 		return
 	for row: Variant in rows:
 		if row is Dictionary:
@@ -217,9 +211,7 @@ func _create_popup() -> void:
 # --- My guild -------------------------------------------------------------------------------------
 
 func _show_my_guild() -> void:
-	var loading := UiKit.open_text("Loading your guild...", 18)
-	loading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_body.add_child(loading)
+	_body.add_child(UiKit.note("Loading your guild...", 18))
 	var request := _request
 	var result := await Net.guild_get(Profile.guild_id)
 	if request != _request or not is_instance_valid(_body):

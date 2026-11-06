@@ -15,6 +15,7 @@ const PLACES := [
 	[38, 35, "hot_balloon", 0.34], [-12, 148, "palm", 0.5], [-38, 145, "sheep", 0.5], [-16, 47, "palm", 0.5], [-36, 18, "acacia", 0.4], [56, 60, "pine", 0.6], [50, 90, "mountain", 0.26], [-40, -68, "mountain", 0.28],
 ]
 
+static var _ball: ArrayMesh
 static var _props: ArrayMesh
 static var _clouds: ArrayMesh
 static var _sea_mat: ShaderMaterial
@@ -35,12 +36,7 @@ func setup(radius: float) -> void:
 	_turning = Node3D.new()
 	side_on.add_child(_turning)
 	var ball := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = FULL_RADIUS
-	sphere.height = FULL_RADIUS * 2.0
-	sphere.radial_segments = 48 if not Quality.is_low() else 32
-	sphere.rings = 28 if not Quality.is_low() else 18
-	ball.mesh = sphere
+	ball.mesh = _globe()
 	ball.material_override = _sea()
 	ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_turning.add_child(ball)
@@ -72,11 +68,44 @@ static func _sea() -> ShaderMaterial:
 	return _sea_mat
 
 
+## A ball with the map on it, longitude 0 facing +Z and north up +Y.
+static func _globe() -> ArrayMesh:
+	if _ball != null:
+		return _ball
+	var rows := 18 if Quality.is_low() else 28
+	var cols := 32 if Quality.is_low() else 48
+	var at := func(row: int, col: int) -> Array:
+		var lat := PI * 0.5 - PI * row / rows
+		var lon := -PI + TAU * col / cols
+		var n := Vector3(cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon))
+		return [n * FULL_RADIUS, n, Vector2(float(col) / cols, float(row) / rows)]
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	for row in rows:
+		for col in cols:
+			var a: Array = at.call(row, col)
+			var b: Array = at.call(row, col + 1)
+			var c: Array = at.call(row + 1, col + 1)
+			var d: Array = at.call(row + 1, col)
+			for corner: Array in [a, b, c, a, c, d]:
+				verts.append(corner[0])
+				norms.append(corner[1])
+				uvs.append(corner[2])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	_ball = ArrayMesh.new()
+	_ball.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return _ball
+
+
 static func _surface(latitude: float, longitude: float) -> Transform3D:
-	# The sphere's texture runs round its Y axis, with longitude 0 facing +X. Match it.
 	var lat := deg_to_rad(latitude)
 	var lon := deg_to_rad(longitude)
-	var up := Vector3(cos(lat) * cos(-lon + PI * 0.5), sin(lat), cos(lat) * sin(-lon + PI * 0.5))
+	var up := Vector3(cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon))
 	var along := up.cross(Vector3.UP if absf(up.y) < 0.95 else Vector3.RIGHT).normalized()
 	var ahead := along.cross(up).normalized()
 	return Transform3D(Basis(along, up, ahead), up * (FULL_RADIUS - 0.04))
@@ -89,7 +118,7 @@ static func _landmarks() -> ArrayMesh:
 	k.detail = 0.6
 	for place: Array in PLACES:
 		k.push(_surface(place[0], place[1]))
-		PropKit.draw(k, place[2], Vector3.ZERO, fmod(float(place[1]), 3.0), float(place[3]), fmod(absf(float(place[0])) * 0.13, 1.0), Color("ff5a4e"))
+		PropKit.draw(k, place[2], Vector3.ZERO, fmod(float(place[1]), 3.0), float(place[3]) * 0.8, fmod(absf(float(place[0])) * 0.13, 1.0), Color("ff5a4e"))
 		k.pop()
 	# A bit of green round them, and trees all over.
 	var rng := RandomNumberGenerator.new()
